@@ -11,6 +11,7 @@ serverino.a
 serverino.lib
 serverino-test-*
 libserverino*
+dub.selections*
 *.exe
 *.o
 *.obj
