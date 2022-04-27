@@ -1,0 +1,6 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/andrea/src/serverinong'
+make: Leaving directory '/home/andrea/src/serverinong'
+ 
+make: *** No targets specified and no makefile found.  Stop.
+

@@ -1,0 +1,15 @@
+name "serverino"
+description "Small and ready-to-go http/https server"
+authors "Andrea Fontana"
+copyright "Copyright © 2022, Andrea Fontana"
+license "MIT"
+
+configuration "NoTLS" {
+    targetType "library"
+}
+
+configuration "WithTLS" {
+    targetType "library"
+	versions "WithTLS"
+	libs "tls"
+}

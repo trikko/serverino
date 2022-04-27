@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/serverinong
+serverinong.so
+serverinong.dylib
+serverinong.dll
+serverinong.a
+serverinong.lib
+serverinong-test-*
+*.exe
+*.o
+*.obj
+*.lst
