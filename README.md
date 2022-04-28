@@ -32,7 +32,9 @@ mixin ServerinoMain;
 }
 
 // This endpoint (default priority == 0) handles the homepage
-@endpoint @safe void hello(Request req, Output output) 
+// Request and Output can be used in @safe code
+@safe 
+@endpoint void hello(Request req, Output output) 
 { 
    // Skip this endpoint if uri is not "/"
    if (req.uri != "/") return;
