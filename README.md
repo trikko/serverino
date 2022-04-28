@@ -49,7 +49,7 @@ mixin ServerinoMain;
 ```
 
 ## @onServerInit UDA
-Use ```@onServerInit``` 
+Use ```@onServerInit``` to configure your server
 ```d
 // Try also `setup(string args[])` if you need to read arguments passed to program
 @onServerInit auto setup()
