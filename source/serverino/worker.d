@@ -1300,15 +1300,11 @@ struct Request
 /// Your reply.
 struct Output
 {
-	private struct KeyValue
-	{
-		@safe this (in string key, in string value) { this.key = key; this.value = value; }
-		string key;
-		string value;
-	}
-	
+
+	public:
+
    /// You can add a http header. But you can't if body is already sent.
-	@safe public void addHeader(in string key, in string value) 
+	@safe void addHeader(in string key, in string value) 
    {
      _internal._dirty = true;
 
@@ -1319,7 +1315,7 @@ struct Output
    }
 
    /// You can reply with a file. Automagical mime-type detection.
-   @safe public bool serveFile(const string path, bool guessMime = true)
+   @safe bool serveFile(const string path, bool guessMime = true)
    {
      _internal._dirty = true;
 
@@ -1392,11 +1388,8 @@ struct Output
       return true;
     }
 
-   @safe private void sendData(const string data) {_internal._dirty = true; import std.string : representation; sendData(data.representation); }
-   @safe private void sendData(const void[] data) {_internal._dirty = true;_internal._http.send(data); }
-   
 	/// Force sending of headers.
-	@safe public void sendHeaders()
+	@safe void sendHeaders()
    {
      _internal._dirty = true;
 
@@ -1472,7 +1465,7 @@ struct Output
    }
 	
 
-   @safe public string createSessionIdFromRequest(Request req, string cookiePath = string.init, string cookieDomain = string.init)
+   @safe string createSessionIdFromRequest(Request req, string cookiePath = string.init, string cookieDomain = string.init)
    {
       import std.random;
       import std.digest.sha;
@@ -1496,10 +1489,10 @@ struct Output
       return sessionId;
    }
 
-   @safe public void deleteSessionId() { deleteCookie("__SESSION_ID__"); }
+   @safe void deleteSessionId() { deleteCookie("__SESSION_ID__"); }
 
    /// You can set a cookie.  But you can't if body is already sent.
-   @safe public void setCookie(Cookie c)
+   @safe void setCookie(Cookie c)
    {
       if (_internal._headersSent) 
          throw new Exception("Can't set cookies. Too late. Headers just sent.");
@@ -1508,25 +1501,25 @@ struct Output
    }
 
    /// Create & set a cookie with an expire time.
-   @safe public void setCookie(string name, string value, SysTime expire, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
+   @safe void setCookie(string name, string value, SysTime expire, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       setCookie(Cookie.create(name, value, expire, path, domain, secure, httpOnly));
    }
 
    /// Create & set a cookie with a duration.
-   @safe public void setCookie(string name, string value, Duration duration, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
+   @safe void setCookie(string name, string value, Duration duration, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       setCookie(Cookie.create(name, value, duration, path, domain, secure, httpOnly));
    }
 
    /// Create & set a session cookie. (no expire time)
-   @safe public void setCookie(string name, string value, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
+   @safe void setCookie(string name, string value, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       setCookie(Cookie.create(name, value, path, domain, secure, httpOnly));
    }
 
    /// Delete a cookie
-   @safe public void deleteCookie(string name)
+   @safe void deleteCookie(string name)
    {
       if (_internal._headersSent) 
          throw new Exception("Can't delete cookies. Too late. Headers just sent.");
@@ -1539,10 +1532,10 @@ struct Output
    }
 	
    /// Output status
-   @safe @nogc @property nothrow public ushort 	  status() 	{ return _internal._status; }
+   @safe @nogc @property nothrow ushort 	  status() 	{ return _internal._status; }
 	
    /// Set response status. Default is 200 (OK)
-   @safe @property public void 		               status(ushort status) 
+   @safe @property void 		               status(ushort status) 
    {
      _internal._dirty = true;
       
@@ -1559,13 +1552,13 @@ struct Output
    * output ~= "Hello world";
    * --------------------
    */ 
-	@safe public void opOpAssign(string op, T)(T data) if (op == "~")  { import std.conv : to; write(data.to!string); }
+	@safe void opOpAssign(string op, T)(T data) if (op == "~")  { import std.conv : to; write(data.to!string); }
 
    /// Write data
-   @safe public void write(string data = string.init) { import std.string : representation; write(data.representation); }
+   @safe void write(string data = string.init) { import std.string : representation; write(data.representation); }
    
    /// Ditto
-   @safe public void write(in void[] data) 
+   @safe void write(in void[] data) 
    {
      _internal._dirty = true;
 
@@ -1575,8 +1568,20 @@ struct Output
    }
    
    /// Are headers already sent?
-   @safe @nogc nothrow public bool headersSent() { return _internal._headersSent; }
+   @safe @nogc nothrow bool headersSent() { return _internal._headersSent; }
 
+   struct KeyValue
+	{
+		@safe this (in string key, in string value) { this.key = key; this.value = value; }
+		string key;
+		string value;
+	}
+
+   private:
+   
+   @safe void sendData(const string data) {_internal._dirty = true; import std.string : representation; sendData(data.representation); }
+   @safe void sendData(const void[] data) {_internal._dirty = true;_internal._http.send(data); }
+   
    struct OutputImpl
    {
       this(HttpStream* w) { _http = w; }

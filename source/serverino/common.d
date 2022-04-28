@@ -61,15 +61,8 @@ auto configure()
 ++/
 struct ServerinoConfig
 {
-   @safe:
 
-   ///
-   enum ListenerProtocol
-   {
-      IPV4,
-      IPV6,
-      BOTH
-   }
+   public:
    
    @disable this();
 
@@ -93,24 +86,35 @@ struct ServerinoConfig
       return sc;
    }
 
-   void setReturnCode(int retCode = 0) { returnCode = retCode; }  /// Every value != 0 is used to terminate server immediatly.
-   void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; } /// Max number of workers 
-   void setMinWorkers(size_t val = 3)  { daemonConfig.minWorkers = val; } /// Min number of workers 
-   
-   void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); } /// Same as setMaxWorkers(v); setMinWorkers(v);
+   /// Every value != 0 is used to terminate server immediatly.
+   @safe void setReturnCode(int retCode = 0) { returnCode = retCode; }  
+   /// Max number of workers 
+   @safe void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; } 
+   /// Min number of workers 
+   @safe void setMinWorkers(size_t val = 3)  { daemonConfig.minWorkers = val; } 
 
-   void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { daemonConfig.maxWorkerLifetime = dur; } /// 
-   void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { daemonConfig.maxWorkerIdling = dur; } ///  
-   void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; } ///
+   /// Same as setMaxWorkers(v); setMinWorkers(v);
+   @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); } 
 
-   void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { daemonConfig.maxRequestTime = dur; }   ///
-   void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; } ///
-   
-   void setWorkerUser(string s = string.init)  { workerConfig.user = s; }  /// For example: www-data
-   void setWorkerGroup(string s = string.init) { workerConfig.group = s; } /// For example: www-data
+   /// 
+   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { daemonConfig.maxWorkerLifetime = dur; }  
+   ///
+   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { daemonConfig.maxWorkerIdling = dur; }   
+   ///
+   @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; } 
+
+   ///
+   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { daemonConfig.maxRequestTime = dur; }   
+   ///
+   @safe void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; } 
+
+   /// For example: "www-data"
+   @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }  
+   /// For example: "www-data"
+   @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; } 
 
    /// Add a new listener. Https protocol is used if certPath and privkeyPath are set.
-   void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init) 
+   @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init) 
    {
 
       if (certPath.length > 0 || privkeyPath.length > 0)
@@ -126,7 +130,17 @@ struct ServerinoConfig
       static if(LISTEN_IPV6) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new Internet6Address(address, port), certPath, privkeyPath);
    }
 
-   package void validate()
+   ///
+   enum ListenerProtocol
+   {
+      IPV4,
+      IPV6,
+      BOTH
+   }
+
+   package:
+
+   void validate()
    {
       if (daemonConfig.minWorkers == 0 || daemonConfig.minWorkers > 1024)
          throw new Exception("Configuration error. Must be 1 <= minWorkers <= 1024");
@@ -167,11 +181,11 @@ struct ServerinoConfig
       workerConfig.certsData = &certsData;
    }
 
-   package DaemonConfig       daemonConfig;
-   package WorkerConfig       workerConfig;
-   package CertData[size_t]   certsData;
+   DaemonConfig       daemonConfig;
+   WorkerConfig       workerConfig;
+   CertData[size_t]   certsData;
 
-   package int returnCode;
+   int returnCode;
 }
 
 // To avoid errors/mistakes copying data around
