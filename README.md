@@ -102,5 +102,32 @@ import test, other;
 
 mixin ServerinoMain!(other, test); // Current module is always processed
 ```
+## Enable https
+Follow [these instructions](https://git.causal.agency/libretls/about/) to install [libretls](https://git.causal.agency/libretls/).
+Enable "WithTLS" configuration for serverino.
 
+dub.sdl:
+```sdl
+subConfiguration "serverino" "WithTLS"
+```
 
+dub.json
+```json
+"subConfigurations" : { "serverino" : "WithTLS" }
+```
+
+Add a https listener:
+```d
+@onServerInit auto setup()
+{
+   ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
+   
+   // https
+   sc.addListener("127.0.0.1", 8082, "path-to-your/cert.pem", "path-to-your/privkey.pem");
+   
+   // http if you don't set certs
+   sc.addListener("127.0.0.1", 8083);
+  
+   return sc;
+}
+```
