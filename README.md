@@ -122,7 +122,9 @@ Add a https listener:
 {
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
    
-   // https
+   // https. Probably you need to run server as *root* to access cert files.
+   // Please run workers as unprivileged user using setWorkerUser/setWorkerGroup
+   // sc.setWorkerUser("www-data"); sc.setWorkerGroup("www-data");
    sc.addListener("127.0.0.1", 8082, "path-to-your/cert.pem", "path-to-your/privkey.pem");
    
    // http if you don't set certs
