@@ -23,6 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/// Common defs for workers and daemon
 module serverino.common;
 
 import core.sys.posix.unistd;
@@ -82,6 +83,7 @@ struct ServerinoConfig
       sc.setMaxRequestSize();
       sc.setWorkerUser();
       sc.setWorkerGroup();
+      sc.setMaxHttpWaiting();
 
       return sc;
    }
@@ -97,14 +99,14 @@ struct ServerinoConfig
    @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); } 
 
    /// 
-   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { daemonConfig.maxWorkerLifetime = dur; }  
+   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { workerConfig.maxWorkerLifetime = dur; }  
    ///
-   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { daemonConfig.maxWorkerIdling = dur; }   
+   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }   
    ///
    @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; } 
 
    ///
-   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { daemonConfig.maxRequestTime = dur; }   
+   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { workerConfig.maxRequestTime = dur; }   
    ///
    @safe void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; } 
 
@@ -112,6 +114,9 @@ struct ServerinoConfig
    @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }  
    /// For example: "www-data"
    @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; } 
+
+   /// How long the socket will wait for a request after the connection?
+   @safe void setMaxHttpWaiting(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; } 
 
    /// Add a new listener. Https protocol is used if certPath and privkeyPath are set.
    @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init) 
@@ -235,9 +240,15 @@ package struct CertData
 
 package struct WorkerConfig 
 {
-   size_t maxRequestSize;
-   string user;
-   string group;
+   
+   Duration    maxRequestTime;
+   Duration    maxHttpWaiting;
+   Duration    maxWorkerLifetime;
+   Duration    maxWorkerIdling;
+
+   size_t      maxRequestSize;
+   string      user;
+   string      group;
 
    CertDataPtr certsData;
 }
@@ -248,20 +259,16 @@ package struct DaemonConfig
     size_t   maxWorkers;
     int      listenerBacklog;
 
-    Duration maxWorkerLifetime;
-    Duration maxWorkerIdling;
-
-    Duration maxRequestTime;
-
     Listener[]    listeners;
     CertDataPtr   certsData;
 }
 
 package struct WorkerInfo
 {
-    pid_t   pid;
-    Socket  ipcSocket;
-    File    pipe;
+   bool     alwaysOn;
+   pid_t    pid;
+   Socket   ipcSocket;
+   File     pipe;
 }
 
 package union IPCMessage

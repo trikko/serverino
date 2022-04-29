@@ -125,11 +125,10 @@ private struct WorkerState
 
    @safe nothrow void setStatus(State s)
    {
-      if (s != status)
-      {
-         status = s;
-         statusChangedAt = Clock.currTime();
-      }
+      assert(s != status || s == State.PROCESSING);
+
+      status = s;
+      statusChangedAt = Clock.currTime();
    }
 
    this(WorkerInfo wi) { 
@@ -270,7 +269,8 @@ package class Daemon
 
                if (bytes > 0)
                {
-                  if (ack[0] == '\n')
+                  // *D*ONE
+                  if (ack[0] == 'D') 
                   {
 
                      if (w.socket !is null) 
@@ -283,7 +283,12 @@ package class Daemon
 
                      w.setStatus(WorkerState.State.IDLING);
                   }
-                  else if(ack[0] == 'k') w.setStatus(WorkerState.State.STOPPED);
+                  // *S*TOPPED
+                  else if(ack[0] == 'S') w.setStatus(WorkerState.State.STOPPED);
+                  // KEEP *A*LIVE
+                  else if(ack[0] == 'A')
+                     w.setStatus(WorkerState.State.PROCESSING);
+                  
                }
             }
          }
@@ -336,7 +341,7 @@ package class Daemon
 
                   log("Waking up a sleeping worker.");
 
-                  fi = createWorker();
+                  fi = createWorker(index<config.minWorkers);
                   if (fi.isThisAWorker) 
                   {
                      workers = null;
@@ -481,7 +486,7 @@ package class Daemon
    void process(ref Listener li, ref WorkerState worker)
    {
       Socket s = li.socket.accept();
-      
+    
       worker.setStatus(WorkerState.State.PROCESSING);
       worker.socket = s;
 
@@ -513,37 +518,20 @@ package class Daemon
          import core.sys.posix.stdlib : kill, SIGTERM, SIGKILL;
 
          if (!w.wi.ipcSocket.isAlive) 
+         {
             w.setStatus(WorkerState.State.INVALID);
+            log("Killing ", w.wi.pid, ". Invalid state.");
 
-         enum KillReason 
-         {
-            DONT_KILL = -1,
-            INVALID = 0,
-            MAX_WORKER_LIFE,
-            MAX_REQUEST_TIME,
-            MAX_IDLING_TIME
-         }
-
-         KillReason kr = KillReason.DONT_KILL;
-
-         if (w.status == WorkerState.State.INVALID) kr = KillReason.INVALID;
-         else if (w.status == WorkerState.State.IDLING && now - w.createdAt > config.maxWorkerLifetime) kr = KillReason.MAX_WORKER_LIFE;
-         else if (w.status == WorkerState.State.IDLING && now - w.statusChangedAt > config.maxWorkerIdling && k >= config.minWorkers) kr = KillReason.MAX_IDLING_TIME;
-         else if (w.status == WorkerState.State.PROCESSING && now - w.statusChangedAt > config.maxRequestTime) kr = KillReason.MAX_REQUEST_TIME;
-
-         if (kr != KillReason.DONT_KILL)
-         {
-               log("Killing ", w.wi.pid, ". REASON: ", kr);
-               if (w.status != WorkerState.State.EXITING)
-               {
-                  kill(w.wi.pid, SIGTERM);
-                  w.setStatus(WorkerState.State.EXITING);
-               }
-               else 
-               {
-                  kill(w.wi.pid, SIGKILL);
-                  w.setStatus(WorkerState.State.STOPPED);
-               }
+            if (w.status != WorkerState.State.EXITING)
+            {
+               kill(w.wi.pid, SIGTERM);
+               w.setStatus(WorkerState.State.EXITING);
+            }
+            else 
+            {
+               kill(w.wi.pid, SIGKILL);
+               w.setStatus(WorkerState.State.STOPPED);
+            }
          }
          
       }
@@ -558,7 +546,7 @@ package class Daemon
          // Enforce min workers count
          if (k < config.minWorkers && worker.status == WorkerState.State.STOPPED)
          {
-            auto fi = createWorker();
+            auto fi = createWorker(k<config.minWorkers);
             if (fi.isThisAWorker) return fi;
             else 
             {
@@ -571,13 +559,14 @@ package class Daemon
       return ForkInfo(false, WorkerInfo.init);
    }
 
-   ForkInfo createWorker()
+   ForkInfo createWorker(bool alwaysOn)
    {
       Socket[2]   sockets = datagramSocketPair();
       Pipe        pipes = pipe();
 
       WorkerInfo  wi;
-
+      wi.alwaysOn = alwaysOn;
+      
       int forked = fork();
 
       if (forked == 0)

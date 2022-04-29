@@ -23,6 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/// All about worker
 module serverino.worker;
 
 import std.conv : to;
@@ -129,7 +130,11 @@ package class Worker
    Request        request;
    Output         output;
 
+   __gshared      exitRequested = false;
+   
    size_t         requestCount = 0;
+
+   Thread         killer;
 
    TLS[size_t] tls;
 
@@ -146,7 +151,66 @@ package class Worker
       import core.sys.posix.grp;
       import core.sys.posix.unistd;
       import core.stdc.string : strlen;
+      import core.atomic;
+      import core.thread;
+      import std.datetime;
+
+      enum State 
+      {
+         PROCESSING = 0,
+         KILLING,
+         IDLING
+      }
+
+
+      __gshared State    status;
+      __gshared SysTime  started;       
+      __gshared SysTime  lastUpdate;
+      __gshared bool     alwaysOn;
+
+      __gshared Duration maxWorkerLifetime;
       
+      maxWorkerLifetime = dur!"seconds"(config.maxWorkerLifetime.total!"seconds" * uniform(100,115) / 100);
+      
+      started = Clock.currTime();
+      lastUpdate = started;
+      alwaysOn = wi.alwaysOn;
+      status = State.IDLING;
+
+      killer = new Thread({
+
+         while(!exitRequested)
+         {
+            Thread.sleep(250.dur!"msecs");
+            
+            if (Clock.currTime - lastUpdate > config.maxRequestTime && cas(&status, State.PROCESSING, State.KILLING))
+            {
+               log("Worker killed. Reason: MAX_REQUEST_TIME");
+               kill(thisProcessID, SIGTERM);
+               break;
+            }
+            
+            if (Clock.currTime - started > maxWorkerLifetime && cas(&status, State.IDLING, State.KILLING))
+            {
+               log("Worker stopped. Reason: MAX_WORKER_LIFETIME");
+               kill(thisProcessID, SIGTERM);
+               break;
+            }
+
+            if (!alwaysOn && Clock.currTime - lastUpdate > config.maxWorkerIdling && cas(&status, State.IDLING, State.KILLING))
+            {
+               log("Worker stopped. Reason: MAX_WORKER_IDLING");
+               kill(thisProcessID, SIGTERM);
+               break;
+            }
+            
+            Thread.yield();
+         }
+
+      });
+
+      killer.start();
+
       request._internal = new Request.RequestImpl();
       output._internal = new Output.OutputImpl(&http);
 
@@ -218,262 +282,288 @@ package class Worker
          if(!req.data.isIPV4)
             af = AddressFamily.INET6;
 
+         import core.sys.posix.sys.socket : linger;
          socket_t socket_handler = cast(socket_t)SocketTransfer.receive(wi.ipcSocket);
          socket = new Socket(socket_handler, af);
+         socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(1,0)));
+         socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
          if (req.data.isHttps) http.setSocket(socket, &tls[req.data.certIdx]);
          else http.setSocket(socket);
 
-         parseHttpRequest!Modules(config, req.data.isHttps);
+         while(true)
+         {
+            lastUpdate = Clock.currTime();
+            
+            if (!cas(&status, State.IDLING, State.PROCESSING))
+               break;
+
+            // FIXME: Always false
+            bool keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
+            
+            lastUpdate = Clock.currTime;
+            status = State.IDLING;
+            
+            if(keepAlive)
+            {
+               output._internal.clear();
+               request._internal.clear();
+               wi.ipcSocket.send("A"); // KEEP *A*LIVE
+            }
+            else break;
+         }
 
          // DO NOT CLOSE `Socket socket` HERE.
-         wi.ipcSocket.send("\n");
+         wi.ipcSocket.send("D"); // *D*ONE
+
+         
       }
    }
 
 
    private:
 
-   void parseHttpRequest(Modules...)(WorkerConfigPtr config, bool isHttps)
+   bool parseHttpRequest(Modules...)(WorkerConfigPtr config, bool isHttps)
    {
-         
+
       scope(failure)
       {
          warning("Exception during http request parsing");
          http.sendError("500 Internal Server Error");
       }
-      
-      bool parseAgain = true; // Let's support keep-alive
-      while(parseAgain)
+
+      ubyte[16*1024] 	buffer;
+      ubyte[]			   data;
+      size_t			   contentLength = 0;
+
+      char[]			method;
+      char[]			path;
+      char[]			httpVersion;
+
+      char[]			requestLine;
+      char[]			headers;
+
+      bool			headersParsed = false;
+      bool 			hasContentLength = false;
+
+      http.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, config.maxHttpWaiting);
+
+      // Read data
+      while(http.socket.isAlive)
       {
-         parseAgain = false;
-         ubyte[16*1024] 	buffer;
-         ubyte[]			   data;
-         size_t			   contentLength = 0;
 
-         char[]			method;
-         char[]			path;
-         char[]			httpVersion;
-
-         char[]			requestLine;
-         char[]			headers;
-
-         bool			headersParsed = false;
-         bool 			hasContentLength = false;
-
-         // Read data
-         while(http.socket.isAlive)
+         auto received = http.receive(buffer);
+         if (received <= 0) return false;
+      
+         data ~= buffer[0..received];
+                  
+         // Too much data read
+         if (data.length > config.maxRequestSize)
          {
-
-            auto received = http.receive(buffer);
-            if (received <= 0) break;
-            data ~= buffer[0..received];
-                     
-            // Too much data read
-            if (data.length > config.maxRequestSize)
-            {
-               http.sendError("413 Request Entity Too Large");
-               return;
-            }
-
-            // If we have content length, we read just what declared.
-            if (hasContentLength && data.length >= contentLength)
-            {
-               data = data[0..contentLength];
-               break;
-            }
-
-            // Have we finished with headers?
-            if (!headersParsed)
-            {
-               headers = cast(char[]) data;
-               auto headersEnd = headers.indexOf("\r\n\r\n");
-               
-               // Headers completed?
-               if (headersEnd > 0)
-               {
-
-                  headers.length = headersEnd;
-                  data = data[headersEnd+4..$];
-                  headersParsed = true;
-
-                  auto headersLines = headers.splitter("\r\n");
-
-                  if (headersLines.empty)
-                  {
-                     warning("HTTP Request: empty request");
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-                  
-                  requestLine = headersLines.front;
-
-                  if (requestLine.length < 14)
-                  {
-                     warning("HTTP request line too short: ", requestLine);
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-
-                  auto fields = requestLine.splitter(" ");
-                  size_t popped = 0;
-
-                  if (!fields.empty)
-                  {
-                     method = fields.front;
-                     fields.popFront;
-                     popped++;
-                  } 
-                  
-                  if (!fields.empty)
-                  {
-                     path = fields.front;
-                     fields.popFront;
-                     popped++;
-                  } 
-
-                  if (!fields.empty)
-                  {
-                     httpVersion = fields.front;
-                     fields.popFront;
-                     popped++;
-                  } 
-             
-                  if (popped != 3 || !fields.empty)
-                  {
-                     warning("HTTP request invalid: ", requestLine);
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-
-                  if (path.startsWith("http://") || path.startsWith("https://"))
-                  {
-                     warning("Can't use absolute uri");
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-
-                  if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
-                  {
-                     warning("HTTP request bad http version: ", httpVersion);
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-
-                  if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
-                  {
-                     warning("HTTP method unknown: ", method);
-                     http.sendError("400 Bad Request");
-                     return;
-                  }
-
-                  headersLines.popFront;
-                  foreach(const ref l; headersLines)
-                  {
-                     auto firstColon = l.indexOf(':');
-                     if (firstColon > 0 && l[0..firstColon].toLower == "content-length")
-                     {
-                        contentLength = l[firstColon+1..$].strip.to!size_t;
-                        hasContentLength = true;
-                        break;
-                     }
-                  }
-                     
-                  // If no content-length, we don't read body.
-                  if (contentLength == 0)
-                  {
-                     data = data.init;
-                     break;
-                  }
-                  else if (data.length >= contentLength)
-                  {
-                     data = data[0..contentLength];
-                     break;
-                  }
-
-               }
-            }
+            http.sendError("413 Request Entity Too Large");
+            return false;
          }
 
-         if (!http.socket.isAlive)
+         // If we have content length, we read just what declared.
+         if (hasContentLength && data.length >= contentLength)
+         {
+            data = data[0..contentLength];
             break;
+         }
 
-         if (headersParsed)
+         // Have we finished with headers?
+         if (!headersParsed)
          {
-            request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
-            request._internal._port           = http.socket.localAddress.toPortString.to!ushort;
-            request._internal._localAddress   = http.socket.localAddress.toAddrString;
-            request._internal._data           = cast(char[])data;
-            request._internal._rawHeaders     = headers.to!string;
-            request._internal._rawRequestLine = requestLine.to!string;
-            request._internal._isHttps        = isHttps; 
-
-            auto uriRegex = ctRegex!(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`, "g");
-            auto matches = path.to!string.matchFirst(uriRegex);
-
-            if (!matches[2].empty || !matches[4].empty)
-            {
-               warning("HTTP Request with absolute uri");
-               http.sendError("400 Bad Request");
-               return;
-            }
-
-            request._internal._uri            = matches[5];
-            request._internal._rawQueryString = matches[7];
-            request._internal._method         = method.to!string;
+            headers = cast(char[]) data;
+            auto headersEnd = headers.indexOf("\r\n\r\n");
             
-            request._internal.process();
-
-            if (request._internal._parsingStatus == Request.ParsingStatus.OK)
+            // Headers completed?
+            if (headersEnd > 0)
             {
-               try { callHandlers!Modules(request, output); }
 
-               // Unhandled Exception escaped from user code
-               catch (Exception e) 
-               { 
-                  if (!output.headersSent) 
-                     http.sendError("500 Internal Server Error");
-                  
-                  critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg)); 
-                  critical(e.info);
+               headers.length = headersEnd;
+               data = data[headersEnd+4..$];
+               headersParsed = true;
+
+               auto headersLines = headers.splitter("\r\n");
+
+               if (headersLines.empty)
+               {
+                  warning("HTTP Request: empty request");
+                  http.sendError("400 Bad Request");
+                  return false;
                }
-
-               // Even worse.
-               catch (Throwable t) 
-               { 
-                  if (!output.headersSent) 
-                     http.sendError("500 Internal Server Error");
-                     
-                  critical(format("%s:%s Throwable: %s", t.file, t.line, t.msg));
-                  critical(t.info);
-
-                  // Rethrow
-                  throw t;
-               }
-            }
-            else 
-            {
-               if (!output.headersSent) 
-                     http.sendError("400 Bad Request");
                
-               critical("Parsing error:", request._internal._parsingStatus);
-            }
+               requestLine = headersLines.front;
 
-            if (!output._internal._dirty)
-            {
-               if (!output.headersSent) 
-                  http.sendError("404 Not Found");
-            }
-            else if (!output._internal._headersSent) 
-               output.sendHeaders();
-         }
-         else if (data.length > 0)
-         {
-            http.sendError("400 Bad Request");
-            critical("Can't parse http headers");
-         }
+               if (requestLine.length < 14)
+               {
+                  warning("HTTP request line too short: ", requestLine);
+                  http.sendError("400 Bad Request");
+                  return false;
+               }
 
+               auto fields = requestLine.splitter(" ");
+               size_t popped = 0;
+
+               if (!fields.empty)
+               {
+                  method = fields.front;
+                  fields.popFront;
+                  popped++;
+               } 
+               
+               if (!fields.empty)
+               {
+                  path = fields.front;
+                  fields.popFront;
+                  popped++;
+               } 
+
+               if (!fields.empty)
+               {
+                  httpVersion = fields.front;
+                  fields.popFront;
+                  popped++;
+               } 
+            
+               if (popped != 3 || !fields.empty)
+               {
+                  warning("HTTP request invalid: ", requestLine);
+                  http.sendError("400 Bad Request");
+                  return false;
+               }
+
+               if (path.startsWith("http://") || path.startsWith("https://"))
+               {
+                  warning("Can't use absolute uri");
+                  http.sendError("400 Bad Request");
+                  return false;
+               }
+
+               if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
+               {
+                  warning("HTTP request bad http version: ", httpVersion);
+                  http.sendError("400 Bad Request");
+                  return false;
+               }
+
+               if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
+               {
+                  warning("HTTP method unknown: ", method);
+                  http.sendError("400 Bad Request");
+                  return false;
+               }
+
+               headersLines.popFront;
+               foreach(const ref l; headersLines)
+               {
+                  auto firstColon = l.indexOf(':');
+                  if (firstColon > 0 && l[0..firstColon].toLower == "content-length")
+                  {
+                     contentLength = l[firstColon+1..$].strip.to!size_t;
+                     hasContentLength = true;
+                     break;
+                  }
+               }
+                  
+               // If no content-length, we don't read body.
+               if (contentLength == 0)
+               {
+                  data = data.init;
+                  break;
+               }
+               else if (data.length >= contentLength)
+               {
+                  data = data[0..contentLength];
+                  break;
+               }
+
+            }
+         }
       }
+
+      if (!http.socket.isAlive)
+         return false;
+
+      http.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, Duration.zero);
+
+      if (headersParsed)
+      {
+         request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
+         request._internal._port           = http.socket.localAddress.toPortString.to!ushort;
+         request._internal._localAddress   = http.socket.localAddress.toAddrString;
+         request._internal._data           = cast(char[])data;
+         request._internal._rawHeaders     = headers.to!string;
+         request._internal._rawRequestLine = requestLine.to!string;
+         request._internal._isHttps        = isHttps; 
+
+         auto uriRegex = ctRegex!(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`, "g");
+         auto matches = path.to!string.matchFirst(uriRegex);
+
+         if (!matches[2].empty || !matches[4].empty)
+         {
+            warning("HTTP Request with absolute uri");
+            http.sendError("400 Bad Request");
+            return false;
+         }
+
+         request._internal._uri            = matches[5];
+         request._internal._rawQueryString = matches[7];
+         request._internal._method         = method.to!string;
+         
+         request._internal.process();
+
+         if (request._internal._parsingStatus == Request.ParsingStatus.OK)
+         {
+            try { callHandlers!Modules(request, output); }
+
+            // Unhandled Exception escaped from user code
+            catch (Exception e) 
+            { 
+               if (!output.headersSent) 
+                  http.sendError("500 Internal Server Error");
+               
+               critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg)); 
+               critical(e.info);
+            }
+
+            // Even worse.
+            catch (Throwable t) 
+            { 
+               if (!output.headersSent) 
+                  http.sendError("500 Internal Server Error");
+                  
+               critical(format("%s:%s Throwable: %s", t.file, t.line, t.msg));
+               critical(t.info);
+
+               // Rethrow
+               throw t;
+            }
+         }
+         else 
+         {
+            if (!output.headersSent) 
+                  http.sendError("400 Bad Request");
+            
+            critical("Parsing error:", request._internal._parsingStatus);
+         }
+
+         if (!output._internal._dirty)
+         {
+            if (!output.headersSent) 
+               http.sendError("404 Not Found");
+         }
+         else if (!output._internal._headersSent) 
+            output.sendHeaders();
+      }
+      else if (data.length > 0)
+      {
+         http.sendError("400 Bad Request");
+         critical("Can't parse http headers");
+      }
+
+      return false;
    }
 
    void callHandlers(modules...)(Request request, Output output)
@@ -1306,12 +1396,12 @@ struct Output
    /// You can add a http header. But you can't if body is already sent.
 	@safe void addHeader(in string key, in string value) 
    {
-     _internal._dirty = true;
+      _internal._dirty = true;
 
       if (_internal._headersSent) 
          throw new Exception("Can't add/edit headers. Too late. Just sent.");
 
-     _internal._headers ~= KeyValue(key, value); 
+      _internal._headers ~= KeyValue(key, value); 
    }
 
    /// You can reply with a file. Automagical mime-type detection.
@@ -1579,9 +1669,9 @@ struct Output
 
    private:
    
-   @safe void sendData(const string data) {_internal._dirty = true; import std.string : representation; sendData(data.representation); }
+   @safe void sendData(const string data) { import std.string : representation; sendData(data.representation); }
    @safe void sendData(const void[] data) {_internal._dirty = true;_internal._http.send(data); }
-   
+
    struct OutputImpl
    {
       this(HttpStream* w) { _http = w; }
@@ -1593,7 +1683,7 @@ struct Output
       
       private bool            _dirty         = false;
 
-      private HttpStream*         _http;
+      private HttpStream*     _http;
 
       private size_t          _requestId;
 
@@ -1619,9 +1709,11 @@ extern(C) private void onExit(Modules...)(int value)
       
    with(Worker.instance)
    {
+      exitRequested = true;
+
       if (workerInfo.ipcSocket !is null)
       {
-         workerInfo.ipcSocket.send("k");
+         workerInfo.ipcSocket.send("S"); // *S*TOPPED
          workerInfo.ipcSocket.shutdown(SocketShutdown.BOTH);
          workerInfo.ipcSocket.close();
          workerInfo.ipcSocket = null;
