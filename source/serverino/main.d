@@ -26,10 +26,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.main;
 
 import serverino.common;
-import std.datetime;
-import std.socket;
 
-import std.experimental.logger;
+import std.experimental.logger : Logger, LogLevel;
 import std.stdio : File, stderr;
 
 class CustomLogger : Logger
@@ -47,14 +45,12 @@ class CustomLogger : Logger
          LogLevel.all : "[\x1b[1ml\x1b[0m]", LogLevel.trace : "[\x1b[1;32mt\x1b[0m]",
          LogLevel.info : "[\x1b[1;32mi\x1b[0m]", LogLevel.warning : "[\x1b[1;33mw\x1b[0m]",
          LogLevel.critical : "[\x1b[1;31mc\x1b[0m]", LogLevel.fatal : "[\x1b[1;31mf\x1b[0m]",
-      
       ];
 
       import std.path : baseName;
-      string t = payload.timestamp.toISOExtString;
-      
       import std.conv : text;
       
+      string t = payload.timestamp.toISOExtString;
       string msg = payload.msg;
       
       if(payload.logLevel >= LogLevel.critical)
@@ -62,9 +58,7 @@ class CustomLogger : Logger
       
 
       auto str = text(LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",payload.line, "] ", msg);
-
       stderr.writeln(str);
-      stderr.flush();
    }
 
    private File outputStream;
@@ -137,14 +131,27 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    Daemon.ForkInfo fi;
 
    {
-      Daemon daemon = new Daemon();
-      fi = daemon.wake(daemonConfig);
-      daemon.destroy();
+      fi = Daemon.instance.wake(daemonConfig);
+      Daemon.instance.destroy();
    }
 
    // Daemon was forked to invoke a worker
    if (fi.isThisAWorker)
    {
+      // Close all opened files
+      {
+         import std.string : lastIndexOf;
+         import std.file : dirEntries, SpanMode;
+         import std.algorithm : map, filter, each;
+         import std.conv : to;
+         import core.sys.posix.unistd : close;
+
+         dirEntries("/dev/fd", SpanMode.shallow)
+         .map!(x => x.name[x.name.lastIndexOf('/')+1..$].to!int)
+         .filter!(x => x != fi.wi.pipe.fileno && x != cast(int)(fi.wi.ipcSocket.handle) && x > 2)
+         .each!( x => close(x) );
+      }
+
       import serverino.worker;
       Worker.instance.wake!Modules(workerConfig, fi.wi);
    }

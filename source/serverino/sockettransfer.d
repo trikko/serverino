@@ -25,13 +25,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.sockettransfer;
 
-import std.socket;
-import std.process;
-import std.conv : to;
-import core.stdc.stdlib;
-import core.stdc.string;
-import std.file : remove, FileException;
-import std.experimental.logger;
+
+import std.socket : Socket, socket_t, cmsghdr, msghdr, 
+   sendmsg, recvmsg, iovec, 
+   CMSG_FIRSTHDR, CMSG_SPACE, CMSG_DATA, CMSG_LEN,
+   SOL_SOCKET, SCM_RIGHTS;
 
 version(darwin)
 {
@@ -53,7 +51,6 @@ version(darwin)
       int        cmsg_type;
    }
 
-
    extern (D)
    {
       socklen_t CMSG_ALIGN(socklen_t len) pure nothrow @nogc { return (len + socklen_t.sizeof - 1) & cast(socklen_t) (~(socklen_t.sizeof - 1)); }
@@ -67,7 +64,6 @@ version(darwin)
          return ( cast(socklen_t)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
       }
    } 
-
 
    extern(C) {
       ssize_t recvmsg(int, scope msghdr*, int);
@@ -108,8 +104,9 @@ class SocketTransfer
 
          cmsghdr *cmsgp = CMSG_FIRSTHDR(&msgh);
 
-         int fd;
-         memcpy(&fd, CMSG_DATA(cmsgp), int.sizeof);
+         int fd = *(cast(int*)CMSG_DATA(cmsgp));
+         //import core.stdc.string : memcpy;
+         //memcpy(&fd, CMSG_DATA(cmsgp), int.sizeof);
 
          return fd;
       }
@@ -143,7 +140,4 @@ class SocketTransfer
 
       return true;
    }
-
-
-
 }

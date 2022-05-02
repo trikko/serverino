@@ -25,22 +25,18 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.daemon;
 
-import std.process;
-import std.experimental.logger;
-import std.socket;
-import std.typecons;
-import std.datetime;
-import std.random;
-import std.algorithm;
-import std.range;
-import std.format;
-import core.thread;
-import core.sys.posix.unistd;
-import core.stdc.stdlib;
-import core.sys.posix.signal;
+import std.process : thisProcessID, Pipe, pipe;
+import std.experimental.logger : log, info;
+import std.socket : linger, AddressFamily, socketPair, socket_t, Socket, Linger, SocketSet, SocketOption, SocketOptionLevel, TcpSocket, SocketShutdown;
+import std.typecons : Tuple;
+import std.datetime : SysTime, Clock, dur;
+import core.thread : Thread, thread_detachInstance;
+import std.algorithm : filter, splitter, each;
+import core.sys.posix.signal : sigset, SIGTERM, SIGINT, SIGKILL;
+import core.sys.posix.unistd : STDIN_FILENO, STDERR_FILENO, dup, dup2, fork;
+import std.string : format;
+
 import serverino.sockettransfer;
-import core.sync.mutex;
-                     
 import serverino.common;
 import serverino : CustomLogger;
 
@@ -67,10 +63,8 @@ private struct WorkerState
 
    bool isTerminated()
    {
-      import core.sys.posix.stdlib;
-      import core.sys.posix.sys.wait;
-      import core.sys.posix.unistd;
-      import core.stdc.errno;
+      import core.sys.posix.sys.wait : waitpid, WNOHANG, WIFEXITED, WIFSIGNALED;
+      import core.stdc.errno : errno, ECHILD;
 
       bool term = false;
 
@@ -143,6 +137,15 @@ package class Daemon
    package:
    alias ForkInfo = Tuple!(bool, "isThisAWorker", WorkerInfo, "wi");
 
+   static auto instance()
+   {
+      __gshared Daemon i = null;
+      
+      if (i is null) 
+         i = new Daemon();
+
+      return i;   
+   } 
 
    ForkInfo wake(DaemonConfigPtr config)
    {
@@ -160,13 +163,10 @@ package class Daemon
       {
          
          import core.sys.posix.stdlib : kill, SIGTERM;
-         import core.runtime;
-         import core.thread;
-
+         
+         Daemon daemon = Daemon.instance;
          SysTime t = Clock.currTime;
          
-         import std.stdio;
-
          bool killing = true;
          while(killing)
          {
@@ -175,13 +175,13 @@ package class Daemon
 
             killing = false;
 
-            foreach(ref w; workers.filter!(w=>w.isAlive))
+            foreach(ref w; daemon.workers.filter!(w=>w.isAlive))
                if (!w.isTerminated)
                   killing = true;
          }
 
-         exitRequested = true;
-         loggerExitRequested = true;
+         daemon.exitRequested = true;
+         daemon.loggerExitRequested = true;
       }
 
       sigset(SIGINT, &uninit);
@@ -377,11 +377,13 @@ package class Daemon
 
    private: 
    
-   __gshared bool          exitRequested = false;
-   __gshared bool          loggerExitRequested = false;
-   __gshared Thread        loggerThread;
-   __gshared WorkerState[] workers;
-   __gshared Pipe          daemonPipe;
+   bool          exitRequested = false;
+   bool          loggerExitRequested = false;
+   Thread        loggerThread;
+   WorkerState[] workers;
+   Pipe          daemonPipe;
+
+   this() { }
 
    void logger(int stdErrFd)
    {
@@ -403,7 +405,7 @@ package class Daemon
          
          while(true)
          {
-            import core.stdc.stdio;
+            import core.stdc.stdio : fgets;
             auto f = fgets(buffer.ptr, 4096, file.getFP);
             if (f == null) break;
             output ~= buffer[0..buffer[0..$].indexOf(0)];
@@ -458,7 +460,6 @@ package class Daemon
                {
                   import std.stdio : write, stderr;
                   import std.string : indexOf;
-                  import std.random : uniform;
                   
                   size_t seed = ws.wi.pid;
 
@@ -490,7 +491,6 @@ package class Daemon
       worker.setStatus(WorkerState.State.PROCESSING);
       worker.socket = s;
 
-      import serverino.common;
       IPCMessage header;
       header.data.command = "RQST";
 
@@ -571,8 +571,6 @@ package class Daemon
 
       if (forked == 0)
       {
-         import std.file : dirEntries, SpanMode;
-         import std.string : lastIndexOf;
          import std.stdio : File;
          import std.conv : to;
 
@@ -596,12 +594,6 @@ package class Daemon
          // stdin <- /dev/null
          dup2(wi.pipe.fileno, STDERR_FILENO);
          dup2(File("/dev/null").fileno, STDIN_FILENO);
-
-         // Close all opened files
-         dirEntries("/dev/fd", SpanMode.shallow)
-         .map!(x => x.name[x.name.lastIndexOf('/')+1..$].to!int)
-         .filter!(x => x != wi.pipe.fileno && x != cast(int)(sockets[0].handle) && x > 2)
-         .each!( x => close(x) );
 
          return ForkInfo(true, wi);
       }
@@ -631,6 +623,7 @@ package class Daemon
    // Used for ipc between daemon <-> workers
    Socket[2] datagramSocketPair()
    {
+      import std.socket : AF_UNIX, SOCK_DGRAM, socketpair, SocketOSException;
       int[2] socks;
 
       if (socketpair(AF_UNIX, SOCK_DGRAM, 0, socks) == -1)

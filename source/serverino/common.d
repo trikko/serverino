@@ -26,10 +26,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 /// Common defs for workers and daemon
 module serverino.common;
 
-import core.sys.posix.unistd;
-import core.stdc.stdlib;
-import core.sys.posix.signal; 
-import std.socket;
+import core.sys.posix.unistd : pid_t;
+import std.socket : Socket, InternetAddress, Address;
 import std.stdio : File;
 import std.datetime : Duration, dur;
 import std.traits : ReturnType;
@@ -187,7 +185,7 @@ struct ServerinoConfig
    }
 
    DaemonConfig       daemonConfig;
-   WorkerConfig       workerConfig;
+   WorkerConfig       workerConfig; 
    CertData[size_t]   certsData;
 
    int returnCode;

@@ -27,20 +27,13 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.worker;
 
 import std.conv : to;
-import std.regex;
-import std.string;
-import std.range;
-import std.algorithm;
-import core.thread;
-import std.process;
-import std.datetime;
-import std.experimental.logger;
-import std.random;
-import std.socket;
-import core.stdc.stdlib;
-import core.sys.posix.signal;
-
-import std.datetime : SysTime, DateTime, Duration, dur; // For cookies
+import std.string : format, representation, indexOf, lastIndexOf, toLower, toUpper, toStringz, strip;
+import std.range : empty, assumeSorted;
+import std.algorithm : map, canFind, splitter, startsWith;
+import core.thread : Thread;
+import std.datetime : SysTime, Clock, dur, Duration, DateTime;
+import std.experimental.logger : log, warning, fatal, critical;
+import std.socket : Socket, SocketShutdown, socket_t, SocketOptionLevel, SocketOption, Linger, AddressFamily;
 
 import serverino.common;
 import serverino.sockettransfer;
@@ -128,22 +121,20 @@ package class Worker
    WorkerInfo        workerInfo;
    WorkerConfigPtr   config;
 
-   HttpStream     http;
-   Request        request;
-   Output         output;
+   HttpStream        http;
+   Request           request;
+   Output            output;
 
-   __gshared bool       exitRequested = false;
-   __gshared bool       persistent = false;
-   __gshared SysTime    lastUpdate;
-   __gshared Duration   maxWorkerLifetime;
-   __gshared Duration   maxRequestTime;
-   __gshared Duration   maxWorkerIdling;
-   __gshared State      status;
-
-   size_t         requestCount = 0;
-
-   Thread         killer;
-
+   bool       exitRequested = false;
+   bool       persistent = false;
+   SysTime    lastUpdate;
+   Duration   maxWorkerLifetime;
+   Duration   maxRequestTime;
+   Duration   maxWorkerIdling;
+   State      status;
+   Thread     killer;
+   size_t     requestCount = 0;
+   
    TLS[size_t] tls;
 
    enum State 
@@ -155,37 +146,44 @@ package class Worker
    
    static void killerThread()
    {
-      import core.atomic;
-      import core.thread;
-      import std.datetime;
+      import std.datetime : SysTime, Clock, dur, Duration, DateTime;
+      import std.process : thisProcessID;
+      import core.sys.posix.signal : kill, SIGTERM, SIGINT, sigset;
+      import core.atomic : cas;
+      import std.stdio : stderr;
+
 
       SysTime started = Clock.currTime();      
-      
-      while(!exitRequested)
+      Worker worker = Worker.instance;
+
+      while(!worker.exitRequested)
       {
          Thread.sleep(250.dur!"msecs");
          
-         Duration maxT = maxRequestTime;
-         if (Worker.instance.output._internal._timeout > 0.dur!"seconds")
-            maxT = Worker.instance.output._internal._timeout;
+         Duration maxT = worker.maxRequestTime;
+         if (worker.output._internal._timeout > 0.dur!"seconds")
+            maxT = worker.output._internal._timeout;
          
-         if (Clock.currTime - lastUpdate > maxT && cas(&status, State.PROCESSING, State.KILLING))
+         if (Clock.currTime - worker.lastUpdate > maxT && cas(&worker.status, State.PROCESSING, State.KILLING))
          {
-            log("Worker killed. Reason: MAX_REQUEST_TIME");
+            log("Worker killed. Reason: MAX_REQUEST_TIME"); stderr.flush();
+            Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
          }
 
-         if (Clock.currTime - started > maxT && cas(&status, State.IDLING, State.KILLING))
+         if (Clock.currTime - started > maxT && cas(&worker.status, State.IDLING, State.KILLING))
          {
-            log("Worker stopped. Reason: MAX_WORKER_LIFETIME");
+            log("Worker stopped. Reason: MAX_WORKER_LIFETIME"); stderr.flush();
+            Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
          }
 
-         if (!persistent && Clock.currTime - lastUpdate > maxWorkerIdling && cas(&status, State.IDLING, State.KILLING))
+         if (!worker.persistent && Clock.currTime - worker.lastUpdate > worker.maxWorkerIdling && cas(&worker.status, State.IDLING, State.KILLING))
          {
-            log("Worker stopped. Reason: MAX_WORKER_IDLING");
+            log("Worker stopped. Reason: MAX_WORKER_IDLING"); stderr.flush();
+            Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
          }
@@ -194,19 +192,19 @@ package class Worker
       }
    }
 
-   public:
+   
+   package:
 
    static auto instance()
    {
-      static __gshared Worker i = null;
+      __gshared Worker i = null;
       
       if (i is null) 
          i = new Worker();
-      
 
       return i;   
    } 
-   
+
    void wake(Modules...)(WorkerConfigPtr cfg, WorkerInfo wi)
    {
       config = cfg;
@@ -216,11 +214,9 @@ package class Worker
       import core.sys.posix.grp;
       import core.sys.posix.unistd;
       import core.stdc.string : strlen;
-      import core.atomic;
-      import core.thread;
-      import std.datetime;
+      import core.atomic : cas;
+      import std.random : uniform;
 
-      
       maxWorkerLifetime = dur!"seconds"(config.maxWorkerLifetime.total!"seconds" * uniform(100,115) / 100);
       maxRequestTime = config.maxRequestTime;
       maxWorkerIdling = config.maxWorkerIdling;
@@ -272,6 +268,7 @@ package class Worker
       
       workerInfo = wi;
 
+      import core.sys.posix.signal : sigset, SIGTERM, SIGINT;
       sigset(SIGINT, &onExit!Modules);
       sigset(SIGTERM, &onExit!Modules);
 
@@ -279,8 +276,6 @@ package class Worker
 
       while(true)
       {
-         import core.memory;
-         
          output._internal.clear();
          request._internal.clear();
 
@@ -321,6 +316,7 @@ package class Worker
             // FIXME: Always false
             bool keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
             
+            requestCount++;
             lastUpdate = Clock.currTime;
             status = State.IDLING;
             
@@ -342,6 +338,8 @@ package class Worker
 
 
    private:
+
+   this() { }
 
    bool parseHttpRequest(Modules...)(WorkerConfigPtr config, bool isHttps)
    {
@@ -510,6 +508,8 @@ package class Worker
 
       if (headersParsed)
       {
+         import std.regex : ctRegex, matchFirst;
+
          request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
          request._internal._port           = http.socket.localAddress.toPortString.to!ushort;
          request._internal._localAddress   = http.socket.localAddress.toAddrString;
@@ -588,9 +588,9 @@ package class Worker
 
    void callHandlers(modules...)(Request request, Output output)
    {
-      import std.algorithm;
-      import std.array;
-      import std.traits;
+      import std.algorithm : sort;
+      import std.array : array;
+      import std.traits : getUDAs, ParameterStorageClass, ParameterStorageClassTuple, fullyQualifiedName, getSymbolsByUDA;
 
       struct FunctionPriority 
       {
@@ -807,8 +807,6 @@ struct Request
    /// ditto
    @safe string toString() const 
    {
-      import std.conv : to;
-      import std.string : toUpper;
 
       string output;
       output ~= format("Worker: #%s\n", worker.to!string);
@@ -822,11 +820,8 @@ struct Request
       output ~= format("- Remote Address: %s\n", remoteAddress);
       
       if (!_internal._user.empty)
-      {
-         import std.algorithm : map;
          output ~= format("- Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
-      }
-
+      
       if (!get.data.empty)
       {
          output ~= "\nQuery Params:\n";
@@ -964,7 +959,6 @@ struct Request
       // It's more or less another way to represent a timestamp :)
 
       string h,h2;
-      import std.string : representation;
 
       auto s = __TIMESTAMP__.representation;
       auto hex = "0123456789abcdef".representation;
@@ -1015,11 +1009,17 @@ struct Request
       InvalidRequest          ///
    }
 
+   /// Simple structure to access data from an associative array.
    private struct SafeAccess(T)
    {
+      public: 
 
-      @safe @nogc nothrow private this(const ref T[string] data) { _data = data; }
-
+      /++
+         Read a value. Return defaultValue if k does not exist.
+         ---------
+         request.cookie.read("user", "anonymous");
+         ---------
+      +/
       @safe @nogc nothrow auto read(string key, T defaultValue = T.init) const
       {
          auto v = key in _data;
@@ -1028,20 +1028,21 @@ struct Request
          return *v;
       }
 
+      /// Check if value exists
       @safe @nogc nothrow bool has(string key) const 
       {
          return (key in _data) != null; 
       }
 
+      /// Return the underlying AA
       @safe @nogc nothrow @property auto data() const { return _data; }
 
-      auto toString() const
-      {
-         import std.conv : to;
-         return _data.to!string;
-      }
+      auto toString() const { return _data.to!string; }
 
-      private const T[string] _data;
+      private:
+      
+      @safe @nogc nothrow private this(const ref T[string] data) { _data = data; }
+      const T[string] _data;
    }
 
    /++ Data sent through multipart/form-data.
@@ -1069,7 +1070,6 @@ struct Request
          import std.regex : match, ctRegex;
          import std.uri : decodeComponent;
          import std.string : translate, split, toUpper, strip;
-         import std.conv : to;
 
          string[string] splittedHeaders;
          //string[]       splittedRequest = _rawRequestLine.split(" ");
@@ -1089,8 +1089,8 @@ struct Request
          _cookie  = (typeof(_cookie)).init;
          _form    = typeof(_form).init;
 
-         
-         _worker        = thisProcessID();
+         import std.process : thisProcessID;
+         _worker = thisProcessID();
          
          {
             import std.array : array, join;
@@ -1102,19 +1102,18 @@ struct Request
                _host = _host[0..colon];
          }
 
-      
-         import std.file;
-
          // Read get params
          if (!_rawQueryString.empty)
             foreach(m; match(_rawQueryString, ctRegex!("([^=&]+)(?:=([^&]+))?&?", "g")))
                _get[m.captures[1].decodeComponent] = translate(m.captures[2],['+':' ']).decodeComponent;
 
-
          // Read post params
          try 
          {
-            import std;
+            import std.algorithm : filter, endsWith, countUntil;
+            import std.range : drop, takeOne;
+            import std.array : array;
+
             if (_method == "POST" && "content-type" in _header)
             {
                auto cSplitted = _header["content-type"].splitter(";");
@@ -1253,7 +1252,9 @@ struct Request
                            string path = tempDir.buildPath("upload_%s_%s_%s%s".format(now, pid, uploadId, extension(fd.filename)));
 
                            fd.path = path;
-                           std.file.write(path, chunk);
+
+                           import std.file : write;
+                           write(path, chunk);
                         }
 
                         _form[fd.name] = fd;
@@ -1413,6 +1414,7 @@ struct Output
 
 	public:
 
+   /// Override timeout for this request
    @safe void setTimeout(Duration max) {  _internal._timeout = max; }
 
    /// You can add a http header. But you can't if body is already sent.
@@ -1579,7 +1581,7 @@ struct Output
 
    @safe string createSessionIdFromRequest(Request req, string cookiePath = string.init, string cookieDomain = string.init)
    {
-      import std.random;
+      import std.random : unpredictableSeed, Xorshift192;
       import std.digest.sha;
       import std.uuid : randomUUID;
 
@@ -1664,10 +1666,10 @@ struct Output
    * output ~= "Hello world";
    * --------------------
    */ 
-	@safe void opOpAssign(string op, T)(T data) if (op == "~")  { import std.conv : to; write(data.to!string); }
+	@safe void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
 
    /// Write data
-   @safe void write(string data = string.init) { import std.string : representation; write(data.representation); }
+   @safe void write(string data = string.init) { write(data.representation); }
    
    /// Ditto
    @safe void write(in void[] data) 
@@ -1691,7 +1693,7 @@ struct Output
 
    private:
    
-   @safe void sendData(const string data) { import std.string : representation; sendData(data.representation); }
+   @safe void sendData(const string data) { sendData(data.representation); }
    @safe void sendData(const void[] data) {_internal._dirty = true;_internal._http.send(data); }
 
    struct OutputImpl
@@ -1728,10 +1730,12 @@ struct Output
 
 extern(C) private void onExit(Modules...)(int value)
 {
-   import core.runtime;
-
+   import core.stdc.stdlib : exit;
+   import std.stdio : stderr;
+   
    tryUninit!Modules();
-      
+   stderr.flush;
+
    with(Worker.instance)
    {
       exitRequested = true;
@@ -1761,6 +1765,7 @@ extern(C) private void onExit(Modules...)(int value)
       }
    }
 
+   Thread.yield();
    exit(0);
 }
 
