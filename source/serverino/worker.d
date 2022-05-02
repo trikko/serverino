@@ -124,29 +124,94 @@ package class Worker
 {
 
    private:
-   WorkerInfo     workerInfo;
+   
+   WorkerInfo        workerInfo;
+   WorkerConfigPtr   config;
 
    HttpStream     http;
    Request        request;
    Output         output;
 
-   __gshared      exitRequested = false;
-   
+   __gshared bool       exitRequested = false;
+   __gshared bool       persistent = false;
+   __gshared SysTime    lastUpdate;
+   __gshared Duration   maxWorkerLifetime;
+   __gshared Duration   maxRequestTime;
+   __gshared Duration   maxWorkerIdling;
+   __gshared State      status;
+
    size_t         requestCount = 0;
 
    Thread         killer;
 
    TLS[size_t] tls;
 
-   static Worker instance; // To handle C signals
+   enum State 
+   {
+      PROCESSING = 0,
+      KILLING,
+      IDLING
+   }
    
+   static void killerThread()
+   {
+      import core.atomic;
+      import core.thread;
+      import std.datetime;
+
+      SysTime started = Clock.currTime();      
+      
+      while(!exitRequested)
+      {
+         Thread.sleep(250.dur!"msecs");
+         
+         Duration maxT = maxRequestTime;
+         if (Worker.instance.output._internal._timeout > 0.dur!"seconds")
+            maxT = Worker.instance.output._internal._timeout;
+         
+         if (Clock.currTime - lastUpdate > maxT && cas(&status, State.PROCESSING, State.KILLING))
+         {
+            log("Worker killed. Reason: MAX_REQUEST_TIME");
+            kill(thisProcessID, SIGTERM);
+            break;
+         }
+
+         if (Clock.currTime - started > maxT && cas(&status, State.IDLING, State.KILLING))
+         {
+            log("Worker stopped. Reason: MAX_WORKER_LIFETIME");
+            kill(thisProcessID, SIGTERM);
+            break;
+         }
+
+         if (!persistent && Clock.currTime - lastUpdate > maxWorkerIdling && cas(&status, State.IDLING, State.KILLING))
+         {
+            log("Worker stopped. Reason: MAX_WORKER_IDLING");
+            kill(thisProcessID, SIGTERM);
+            break;
+         }
+         
+         Thread.yield();
+      }
+   }
+
    public:
 
-   this() { instance = this; }
-
-   void wake(Modules...)(WorkerConfigPtr config, WorkerInfo wi)
+   static auto instance()
    {
+      static __gshared Worker i = null;
       
+      if (i is null) 
+         i = new Worker();
+      
+
+      return i;   
+   } 
+   
+   void wake(Modules...)(WorkerConfigPtr cfg, WorkerInfo wi)
+   {
+      config = cfg;
+      workerInfo = wi;
+
       import core.sys.posix.pwd;
       import core.sys.posix.grp;
       import core.sys.posix.unistd;
@@ -155,61 +220,16 @@ package class Worker
       import core.thread;
       import std.datetime;
 
-      enum State 
-      {
-         PROCESSING = 0,
-         KILLING,
-         IDLING
-      }
-
-
-      __gshared State    status;
-      __gshared SysTime  started;       
-      __gshared SysTime  lastUpdate;
-      __gshared bool     alwaysOn;
-
-      __gshared Duration maxWorkerLifetime;
       
       maxWorkerLifetime = dur!"seconds"(config.maxWorkerLifetime.total!"seconds" * uniform(100,115) / 100);
-      
-      started = Clock.currTime();
-      lastUpdate = started;
-      alwaysOn = wi.alwaysOn;
+      maxRequestTime = config.maxRequestTime;
+      maxWorkerIdling = config.maxWorkerIdling;
+
+      lastUpdate = Clock.currTime(); 
+      persistent = wi.persistent;
       status = State.IDLING;
 
-      killer = new Thread({
-
-         while(!exitRequested)
-         {
-            Thread.sleep(250.dur!"msecs");
-            
-            if (Clock.currTime - lastUpdate > config.maxRequestTime && cas(&status, State.PROCESSING, State.KILLING))
-            {
-               log("Worker killed. Reason: MAX_REQUEST_TIME");
-               kill(thisProcessID, SIGTERM);
-               break;
-            }
-            
-            if (Clock.currTime - started > maxWorkerLifetime && cas(&status, State.IDLING, State.KILLING))
-            {
-               log("Worker stopped. Reason: MAX_WORKER_LIFETIME");
-               kill(thisProcessID, SIGTERM);
-               break;
-            }
-
-            if (!alwaysOn && Clock.currTime - lastUpdate > config.maxWorkerIdling && cas(&status, State.IDLING, State.KILLING))
-            {
-               log("Worker stopped. Reason: MAX_WORKER_IDLING");
-               kill(thisProcessID, SIGTERM);
-               break;
-            }
-            
-            Thread.yield();
-         }
-
-      });
-
-      killer.start();
+      killer = new Thread(&killerThread).start();
 
       request._internal = new Request.RequestImpl();
       output._internal = new Output.OutputImpl(&http);
@@ -1393,6 +1413,8 @@ struct Output
 
 	public:
 
+   @safe void setTimeout(Duration max) {  _internal._timeout = max; }
+
    /// You can add a http header. But you can't if body is already sent.
 	@safe void addHeader(in string key, in string value) 
    {
@@ -1680,7 +1702,7 @@ struct Output
 
       private ushort          _status        = 200;
       private bool			   _headersSent   = false;
-      
+      private Duration        _timeout       = 0.dur!"seconds";
       private bool            _dirty         = false;
 
       private HttpStream*     _http;
@@ -1689,6 +1711,9 @@ struct Output
 
       void clear()
       {
+         // HACK
+         _timeout = 0.dur!"seconds";
+
          _dirty = false;
          _status = 200;
          _headersSent = false;

@@ -265,7 +265,7 @@ package struct DaemonConfig
 
 package struct WorkerInfo
 {
-   bool     alwaysOn;
+   bool     persistent;
    pid_t    pid;
    Socket   ipcSocket;
    File     pipe;

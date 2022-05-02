@@ -146,8 +146,7 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    if (fi.isThisAWorker)
    {
       import serverino.worker;
-      Worker w = new Worker();
-      w.wake!Modules(workerConfig, fi.wi);
+      Worker.instance.wake!Modules(workerConfig, fi.wi);
    }
 
    return 0;

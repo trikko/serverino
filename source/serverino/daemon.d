@@ -559,13 +559,13 @@ package class Daemon
       return ForkInfo(false, WorkerInfo.init);
    }
 
-   ForkInfo createWorker(bool alwaysOn)
+   ForkInfo createWorker(bool persistent)
    {
       Socket[2]   sockets = datagramSocketPair();
       Pipe        pipes = pipe();
 
       WorkerInfo  wi;
-      wi.alwaysOn = alwaysOn;
+      wi.persistent = persistent;
       
       int forked = fork();
 
