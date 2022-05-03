@@ -195,7 +195,7 @@ package class Worker
    
    package:
 
-   @trusted static auto instance()
+   static auto instance()
    {
       __gshared Worker i = null;
       
@@ -504,6 +504,7 @@ package class Worker
       if (headersParsed)
       {
          import std.regex : ctRegex, matchFirst;
+         import std.algorithm : max;
 
          request._internal._httpVersion    = httpVersion.to!string;
          request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
@@ -530,7 +531,17 @@ package class Worker
          request._internal.process();
 
          output._internal._httpVersion = httpVersion.to!string;
-         
+         output._internal._keepAlive = 
+            config.keepAlive && 
+            output._internal._httpVersion == "HTTP/1.1" && 
+            request.header.read("connection", "keep-alive").toLower == "keep-alive";
+   
+         if (output._internal._keepAlive)
+         {
+            output.addHeader("Transfer-Encoding", "chunked");
+            output.addHeader("Keep-Alive", format("timeout=%s", max(1, config.maxHttpWaiting.total!"seconds")));
+         }
+
          if (request._internal._parsingStatus == Request.ParsingStatus.OK)
          {
             try 
@@ -547,7 +558,7 @@ package class Worker
                   if (!output._internal._headersSent) 
                      output.sendHeaders();
 
-                  if (config.keepAlive && httpVersion == "HTTP/1.1")
+                  if (output._internal._keepAlive)
                   {
                      output.sendData([]);
                      return true;
@@ -1519,7 +1530,7 @@ struct Output
 	/// Force sending of headers.
 	@safe void sendHeaders()
    {
-     _internal._dirty = true;
+      _internal._dirty = true;
 
       if (_internal._headersSent) 
          throw new Exception("Can't resend headers. Too late. Just sent.");
@@ -1549,13 +1560,8 @@ struct Output
       sendData(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
       sendData("Server: serverino/%02d.%02d.%02d\r\n".format(SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION));
       
-      if (!Worker.instance.config.keepAlive || _internal._httpVersion == "HTTP/1.0") sendData("Connection: close\r\n");
-      else 
-      {
-         sendData("Connection: keep-alive\r\n");
-         sendData("Transfer-Encoding: chunked\r\n");
-         //sendData("Keep-Alive: timeout=3\r\n");
-      }
+      if (!_internal._keepAlive) sendData("Connection: close\r\n");
+      else sendData("Connection: keep-alive\r\n");
 
       // send user-defined headers
       foreach(const ref header;_internal._headers)
@@ -1719,7 +1725,7 @@ struct Output
    {
       _internal._dirty = true;
 
-      if (Worker.instance.config.keepAlive && _internal._headersSent && _internal._httpVersion == "HTTP/1.1")
+      if (_internal._keepAlive && _internal._headersSent)
       {
          _internal._http.send(format("%X\r\n", data.length));
          _internal._http.send(data); 
@@ -1734,6 +1740,7 @@ struct Output
       private Cookie[string]  _cookies;
       private KeyValue[]  	   _headers;
 
+      private bool            _keepAlive     = false;
       private string          _httpVersion   = string.init;
       private ushort          _status        = 200;
       private bool			   _headersSent   = false;
@@ -1754,6 +1761,7 @@ struct Output
          _headersSent = false;
          _cookies = null;
          _headers = null;
+         _keepAlive = false;
       }
    }
 
