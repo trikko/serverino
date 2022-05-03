@@ -284,11 +284,7 @@ package class Daemon
                      w.setStatus(WorkerState.State.IDLING);
                   }
                   // *S*TOPPED
-                  else if(ack[0] == 'S') w.setStatus(WorkerState.State.STOPPED);
-                  // KEEP *A*LIVE
-                  else if(ack[0] == 'A')
-                     w.setStatus(WorkerState.State.PROCESSING);
-                  
+                  else if(ack[0] == 'S') w.setStatus(WorkerState.State.STOPPED);      
                }
             }
          }

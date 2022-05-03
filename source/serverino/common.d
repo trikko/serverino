@@ -81,7 +81,9 @@ struct ServerinoConfig
       sc.setMaxRequestSize();
       sc.setWorkerUser();
       sc.setWorkerGroup();
-      sc.setMaxHttpWaiting();
+      sc.setHttpTimeout();
+
+      sc.disableKeepAlive();
 
       return sc;
    }
@@ -114,8 +116,12 @@ struct ServerinoConfig
    @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; } 
 
    /// How long the socket will wait for a request after the connection?
-   @safe void setMaxHttpWaiting(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; } 
+   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; } 
 
+   /// Enable/Disable keep-alive for http/1.1
+   @safe void enableKeepAlive(bool enable = true) { workerConfig.keepAlive = enable; }
+   @safe void disableKeepAlive() { enableKeepAlive(false); }
+   
    /// Add a new listener. Https protocol is used if certPath and privkeyPath are set.
    @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init) 
    {
@@ -244,6 +250,7 @@ package struct WorkerConfig
    Duration    maxWorkerLifetime;
    Duration    maxWorkerIdling;
 
+   bool        keepAlive;
    size_t      maxRequestSize;
    string      user;
    string      group;
