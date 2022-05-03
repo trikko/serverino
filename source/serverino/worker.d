@@ -86,7 +86,7 @@ private struct HttpStream
    @safe void sendError(string s)
    {
       if (hasWritten) return;
-      socket.send(format("HTTP/1.1 %s\r\nConnection: close\r\n\r\n%s\n", s, s).representation);
+      send(format("HTTP/1.1 %s\r\nConnection: close\r\n\r\n%s\n", s, s).representation);
    }
 
    @trusted void send(const void[] data) 
@@ -172,7 +172,7 @@ package class Worker
             break;
          }
 
-         if (Clock.currTime - started > maxT && cas(&worker.status, State.IDLING, State.KILLING))
+         if (Clock.currTime - started > worker.maxWorkerLifetime && cas(&worker.status, State.IDLING, State.KILLING))
          {
             log("Worker stopped. Reason: MAX_WORKER_LIFETIME"); stderr.flush();
             Thread.sleep(1.dur!"msecs");
@@ -195,7 +195,7 @@ package class Worker
    
    package:
 
-   static auto instance()
+   @trusted static auto instance()
    {
       __gshared Worker i = null;
       
@@ -276,9 +276,6 @@ package class Worker
 
       while(true)
       {
-         output._internal.clear();
-         request._internal.clear();
-
          IPCMessage msg;
          {
             auto received = wi.ipcSocket.receive(msg.raw);
@@ -313,20 +310,17 @@ package class Worker
             if (!cas(&status, State.IDLING, State.PROCESSING))
                break;
 
-            // FIXME: Always false
+            output._internal.clear();
+            request._internal.clear();
+
             bool keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
             
             requestCount++;
             lastUpdate = Clock.currTime;
             status = State.IDLING;
             
-            if(keepAlive)
-            {
-               output._internal.clear();
-               request._internal.clear();
-               wi.ipcSocket.send("A"); // KEEP *A*LIVE
-            }
-            else break;
+            if(!keepAlive)
+               break;
          }
 
          // DO NOT CLOSE `Socket socket` HERE.
@@ -366,6 +360,7 @@ package class Worker
 
       http.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, config.maxHttpWaiting);
 
+      // FIXME: Support pipelining
       // Read data
       while(http.socket.isAlive)
       {
@@ -374,7 +369,7 @@ package class Worker
          if (received <= 0) return false;
       
          data ~= buffer[0..received];
-                  
+
          // Too much data read
          if (data.length > config.maxRequestSize)
          {
@@ -510,6 +505,7 @@ package class Worker
       {
          import std.regex : ctRegex, matchFirst;
 
+         request._internal._httpVersion    = httpVersion.to!string;
          request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
          request._internal._port           = http.socket.localAddress.toPortString.to!ushort;
          request._internal._localAddress   = http.socket.localAddress.toAddrString;
@@ -531,12 +527,35 @@ package class Worker
          request._internal._uri            = matches[5];
          request._internal._rawQueryString = matches[7];
          request._internal._method         = method.to!string;
-         
          request._internal.process();
 
+         output._internal._httpVersion = httpVersion.to!string;
+         
          if (request._internal._parsingStatus == Request.ParsingStatus.OK)
          {
-            try { callHandlers!Modules(request, output); }
+            try 
+            { 
+               callHandlers!Modules(request, output); 
+
+               if (!output._internal._dirty && !output.headersSent)
+               {
+                  http.sendError("404 Not Found");
+                  return false;
+               }
+               else 
+               {
+                  if (!output._internal._headersSent) 
+                     output.sendHeaders();
+
+                  if (config.keepAlive && httpVersion == "HTTP/1.1")
+                  {
+                     output.sendData([]);
+                     return true;
+                  }
+
+                  return false;
+               }
+            }
 
             // Unhandled Exception escaped from user code
             catch (Exception e) 
@@ -569,13 +588,6 @@ package class Worker
             critical("Parsing error:", request._internal._parsingStatus);
          }
 
-         if (!output._internal._dirty)
-         {
-            if (!output.headersSent) 
-               http.sendError("404 Not Found");
-         }
-         else if (!output._internal._headersSent) 
-            output.sendHeaders();
       }
       else if (data.length > 0)
       {
@@ -1349,6 +1361,7 @@ struct Request
       private string[string]  _header;
       private string[string]  _cookie;
 
+      private string _httpVersion;
       private ushort _port;
       private string _uri;
       private string _method;
@@ -1391,6 +1404,7 @@ struct Request
          _user          = string.init;
          _password      = string.init;
          _sessionId     = string.init;
+         _httpVersion   = string.init;
 
          _rawQueryString   = string.init;
          _rawHeaders       = string.init;
@@ -1532,9 +1546,16 @@ struct Output
          statusDescription = StatusCode[_internal._status];
 
       bool has_content_type = false;
-      sendData(format("HTTP/1.1 %s %s\r\n", status, statusDescription));
-      sendData("Connection: close\r\n");
+      sendData(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
       sendData("Server: serverino/%02d.%02d.%02d\r\n".format(SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION));
+      
+      if (!Worker.instance.config.keepAlive || _internal._httpVersion == "HTTP/1.0") sendData("Connection: close\r\n");
+      else 
+      {
+         sendData("Connection: keep-alive\r\n");
+         sendData("Transfer-Encoding: chunked\r\n");
+         //sendData("Keep-Alive: timeout=3\r\n");
+      }
 
       // send user-defined headers
       foreach(const ref header;_internal._headers)
@@ -1646,10 +1667,10 @@ struct Output
    }
 	
    /// Output status
-   @safe @nogc @property nothrow ushort 	  status() 	{ return _internal._status; }
+   @safe @nogc @property nothrow ushort status() 	{ return _internal._status; }
 	
    /// Set response status. Default is 200 (OK)
-   @safe @property void 		               status(ushort status) 
+   @safe @property void status(ushort status) 
    {
      _internal._dirty = true;
       
@@ -1694,7 +1715,18 @@ struct Output
    private:
    
    @safe void sendData(const string data) { sendData(data.representation); }
-   @safe void sendData(const void[] data) {_internal._dirty = true;_internal._http.send(data); }
+   @safe void sendData(const void[] data) 
+   {
+      _internal._dirty = true;
+
+      if (Worker.instance.config.keepAlive && _internal._headersSent && _internal._httpVersion == "HTTP/1.1")
+      {
+         _internal._http.send(format("%X\r\n", data.length));
+         _internal._http.send(data); 
+         _internal._http.send("\r\n");
+      }
+      else _internal._http.send(data); 
+   }
 
    struct OutputImpl
    {
@@ -1702,6 +1734,7 @@ struct Output
       private Cookie[string]  _cookies;
       private KeyValue[]  	   _headers;
 
+      private string          _httpVersion   = string.init;
       private ushort          _status        = 200;
       private bool			   _headersSent   = false;
       private Duration        _timeout       = 0.dur!"seconds";
@@ -1715,7 +1748,7 @@ struct Output
       {
          // HACK
          _timeout = 0.dur!"seconds";
-
+         _httpVersion = string.init;
          _dirty = false;
          _status = 200;
          _headersSent = false;
