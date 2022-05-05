@@ -37,14 +37,14 @@ package enum SERVERINO_MINOR     = 1;
 package enum SERVERINO_REVISION  = 0;
 
 
-public struct priority { long priority; } /// UDA. Set @endpoint priority 
+public struct priority { long priority; } /// UDA. Set @endpoint priority
 
-public enum endpoint;         /// UDA. Attach @endpoint to functions worker should call 
-public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached are called when worker is started 
-public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped 
+public enum endpoint;         /// UDA. Attach @endpoint to functions worker should call
+public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached are called when worker is started
+public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
 public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
 
-/++ 
+/++
    Struct used to setup serverino.
    You must return this struct from a function with @onServerInit UDA attached.
 ---
@@ -62,7 +62,7 @@ struct ServerinoConfig
 {
 
    public:
-   
+
    @disable this();
 
    /// Create a new instance of ServerinoConfig
@@ -89,41 +89,41 @@ struct ServerinoConfig
    }
 
    /// Every value != 0 is used to terminate server immediatly.
-   @safe void setReturnCode(int retCode = 0) { returnCode = retCode; }  
-   /// Max number of workers 
-   @safe void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; } 
-   /// Min number of workers 
-   @safe void setMinWorkers(size_t val = 3)  { daemonConfig.minWorkers = val; } 
+   @safe void setReturnCode(int retCode = 0) { returnCode = retCode; }
+   /// Max number of workers
+   @safe void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; }
+   /// Min number of workers
+   @safe void setMinWorkers(size_t val = 3)  { daemonConfig.minWorkers = val; }
 
    /// Same as setMaxWorkers(v); setMinWorkers(v);
-   @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); } 
-
-   /// 
-   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { workerConfig.maxWorkerLifetime = dur; }  
-   ///
-   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }   
-   ///
-   @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; } 
+   @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); }
 
    ///
-   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { workerConfig.maxRequestTime = dur; }   
+   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { workerConfig.maxWorkerLifetime = dur; }
    ///
-   @safe void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; } 
+   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }
+   ///
+   @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; }
+
+   ///
+   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { workerConfig.maxRequestTime = dur; }
+   ///
+   @safe void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; }
 
    /// For example: "www-data"
-   @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }  
+   @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }
    /// For example: "www-data"
-   @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; } 
+   @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; }
 
    /// How long the socket will wait for a request after the connection?
-   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; } 
+   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; }
 
    /// Enable/Disable keep-alive for http/1.1
    @safe void enableKeepAlive(bool enable = true) { workerConfig.keepAlive = enable; }
    @safe void disableKeepAlive() { enableKeepAlive(false); }
-   
+
    /// Add a new listener. Https protocol is used if certPath and privkeyPath are set.
-   @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init) 
+   @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init)
    {
 
       if (certPath.length > 0 || privkeyPath.length > 0)
@@ -134,7 +134,7 @@ struct ServerinoConfig
 
       enum LISTEN_IPV4 = (p == ListenerProtocol.IPV4 || p == ListenerProtocol.BOTH);
       enum LISTEN_IPV6 = (p == ListenerProtocol.IPV6 || p == ListenerProtocol.BOTH);
-      
+
       static if(LISTEN_IPV4) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new InternetAddress(address, port), certPath, privkeyPath);
       static if(LISTEN_IPV6) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new Internet6Address(address, port), certPath, privkeyPath);
    }
@@ -162,7 +162,7 @@ struct ServerinoConfig
 
       if (daemonConfig.listeners.length == 0)
          addListener("0.0.0.0", 8080);
-      
+
       foreach(idx, const l; daemonConfig.listeners)
       {
          if (l.isHttps)
@@ -174,13 +174,13 @@ struct ServerinoConfig
 
             if (!exists(l.privkeyPath))
                throw new Exception("Configuration error. " ~ l.privkeyPath ~ " can't be read.");
-               
-            
+
+
             import std.string : representation;
-            
+
             certsData[idx] = CertData
             (
-               readText(l.certPath).representation, 
+               readText(l.certPath).representation,
                readText(l.privkeyPath).representation
             );
          }
@@ -191,7 +191,7 @@ struct ServerinoConfig
    }
 
    DaemonConfig       daemonConfig;
-   WorkerConfig       workerConfig; 
+   WorkerConfig       workerConfig;
    CertData[size_t]   certsData;
 
    int returnCode;
@@ -203,7 +203,7 @@ package alias DaemonConfigPtr = Typedef!(DaemonConfig*);
 package alias WorkerConfigPtr = Typedef!(WorkerConfig*);
 package alias CertDataPtr     = Typedef!(CertData[size_t]*);
 
-package struct Listener 
+package struct Listener
 {
    @safe:
 
@@ -224,7 +224,7 @@ package struct Listener
    string   privkeyPath;
    size_t   index;
 
-   Socket   socket;  
+   Socket   socket;
 }
 
 package struct CertData
@@ -242,9 +242,9 @@ package struct CertData
    ubyte[] privkeyData;
 }
 
-package struct WorkerConfig 
+package struct WorkerConfig
 {
-   
+
    Duration    maxRequestTime;
    Duration    maxHttpWaiting;
    Duration    maxWorkerLifetime;
@@ -290,8 +290,8 @@ package union IPCMessage
 
    void validate()
    {
-      bool valid = 
-      ( 
+      bool valid =
+      (
          data.magic == [0x19, 0x83, 0x05, 0x31] &&
          data.command == "RQST"
       );
@@ -303,7 +303,7 @@ package union IPCMessage
 
 package union IPCRequestMessage
 {
-   struct Data 
+   struct Data
    {
       bool    isHttps;
       bool    isIPV4;
@@ -311,5 +311,5 @@ package union IPCRequestMessage
    }
 
    Data                 data;
-   ubyte[Data.sizeof]   raw; 
+   ubyte[Data.sizeof]   raw;
 }

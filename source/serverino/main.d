@@ -49,13 +49,13 @@ class CustomLogger : Logger
 
       import std.path : baseName;
       import std.conv : text;
-      
+
       string t = payload.timestamp.toISOExtString;
       string msg = payload.msg;
-      
+
       if(payload.logLevel >= LogLevel.critical)
          msg = "\x1b[1;31m" ~ msg ~ "\x1b[0m";
-      
+
 
       auto str = text(LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",payload.line, "] ", msg);
       stderr.writeln(str);
@@ -68,14 +68,14 @@ template ServerinoMain(Modules...)
 {
    mixin ServerinoLoop!Modules;
 
-   int main(string[] args) 
+   int main(string[] args)
    {
       import std.experimental.logger : sharedLog, LogLevel;
 
       sharedLog = new CustomLogger(sharedLog.logLevel);
       sharedLog.logLevel = LogLevel.all;
 
-      return mainServerinoLoop(args); 
+      return mainServerinoLoop(args);
    }
 }
 
@@ -88,7 +88,7 @@ template ServerinoLoop(Modules...)
 
    static foreach(m; allModules)
       static assert(__traits(isModule, m), "All ServerinoMain params must be modules");
-   
+
    int mainServerinoLoop(string[] args)
    {
       import std.traits : getSymbolsByUDA, isFunction, ReturnType, Parameters;
@@ -105,7 +105,7 @@ template ServerinoLoop(Modules...)
             static if (is(Parameters!f == AliasSeq!(string[])))  config = f(args);
             else static if (is(Parameters!f == AliasSeq!()))  config = f();
             else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onServerInit but it is not callable");
-         
+
             static if (!__traits(compiles, hasSetup)) { enum hasSetup; }
             else static assert(0, "You can't mark more than one function with @onServerInit");
          }
@@ -125,7 +125,7 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
 
    DaemonConfigPtr daemonConfig = &config.daemonConfig;
    WorkerConfigPtr workerConfig = &config.workerConfig;
-   
+
    // Let's wake up the daemon
    import serverino.daemon;
    Daemon.ForkInfo fi;

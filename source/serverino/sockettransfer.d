@@ -26,8 +26,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.sockettransfer;
 
 
-import std.socket : Socket, socket_t, cmsghdr, msghdr, 
-   sendmsg, recvmsg, iovec, 
+import std.socket : Socket, socket_t, cmsghdr, msghdr,
+   sendmsg, recvmsg, iovec,
    CMSG_FIRSTHDR, CMSG_SPACE, CMSG_DATA, CMSG_LEN,
    SOL_SOCKET, SCM_RIGHTS;
 
@@ -63,7 +63,7 @@ version(darwin)
       {
          return ( cast(socklen_t)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
       }
-   } 
+   }
 
    extern(C) {
       ssize_t recvmsg(int, scope msghdr*, int);
@@ -72,7 +72,7 @@ version(darwin)
 
 }
 
-class SocketTransfer 
+class SocketTransfer
 {
 
    static int receive(Socket socket)
@@ -88,7 +88,7 @@ class SocketTransfer
          msgh.msg_namelen = 0;
 
          iovec iov;
-         
+
          msgh.msg_iov = &iov;
          msgh.msg_iovlen = 1;
          iov.iov_base = cast(char*)&buf;
@@ -121,7 +121,7 @@ class SocketTransfer
 
       int fd = cast(int)s;
       char [CMSG_SPACE(fd.sizeof)] buf;
-      
+
       iovec io;
       io.iov_base = null;
       io.iov_len = 0;

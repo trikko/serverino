@@ -43,7 +43,7 @@ import serverino : CustomLogger;
 
 private struct WorkerState
 {
-   enum State 
+   enum State
    {
       IDLING = 0,
       PROCESSING,
@@ -82,7 +82,7 @@ private struct WorkerState
                else continue;
             }
 
-            if (check == 0) 
+            if (check == 0)
             {
                term = false;
                break;
@@ -90,13 +90,13 @@ private struct WorkerState
 
             if (WIFEXITED(status)) { term = true; break; }
             if (WIFSIGNALED(status)) { term = true; break; }
-            
+
             term = false;
             break;
       }
-      
+
       if (term == true)
-      { 
+      {
          if(socket !is null)
          {
             socket.blocking = false;
@@ -113,7 +113,7 @@ private struct WorkerState
             wi.ipcSocket = null;
          }
       }
-      
+
       return term;
    }
 
@@ -125,8 +125,8 @@ private struct WorkerState
       statusChangedAt = Clock.currTime();
    }
 
-   this(WorkerInfo wi) { 
-      this.wi           = wi; 
+   this(WorkerInfo wi) {
+      this.wi           = wi;
       createdAt         = Clock.currTime();
       statusChangedAt   = Clock.currTime();
    }
@@ -140,12 +140,12 @@ package class Daemon
    static auto instance()
    {
       __gshared Daemon i = null;
-      
-      if (i is null) 
+
+      if (i is null)
          i = new Daemon();
 
-      return i;   
-   } 
+      return i;
+   }
 
    ForkInfo wake(DaemonConfigPtr config)
    {
@@ -161,12 +161,12 @@ package class Daemon
 
       extern(C) void uninit(int value)
       {
-         
+
          import core.sys.posix.stdlib : kill, SIGTERM;
-         
+
          Daemon daemon = Daemon.instance;
          SysTime t = Clock.currTime;
-         
+
          bool killing = true;
          while(killing)
          {
@@ -191,12 +191,12 @@ package class Daemon
       import core.sys.posix.fcntl;
       daemonPipe = pipe();
       int stderrCopy = dup(STDERR_FILENO);
-      int flags = fcntl(daemonPipe.readEnd.fileno, F_GETFL, 0); 
+      int flags = fcntl(daemonPipe.readEnd.fileno, F_GETFL, 0);
       fcntl(daemonPipe.readEnd.fileno, F_SETFL, flags | O_NONBLOCK);
       dup2(daemonPipe.writeEnd.fileno, STDERR_FILENO);
-      
+
       log("Daemon started.");
-   
+
       // Starting thread that "syncs" logs.
       loggerThread = new Thread({ logger(stderrCopy); }).start();
 
@@ -218,7 +218,7 @@ package class Daemon
 
       // Workers
       workers.length = config.maxWorkers;
-      
+
       // We use a socketset to check for updates
       SocketSet ssRead = new SocketSet(config.listeners.length);
 
@@ -229,7 +229,7 @@ package class Daemon
          fi = checkWorkers(config);
 
          // This is a forked listener
-         if (fi.isThisAWorker) 
+         if (fi.isThisAWorker)
          {
             workers = null;
             return fi;
@@ -250,7 +250,7 @@ package class Daemon
 
          if (updates < 0) break;
          else if (updates == 0) continue;
-               
+
          if (exitRequested)
             break;
 
@@ -270,10 +270,10 @@ package class Daemon
                if (bytes > 0)
                {
                   // *D*ONE
-                  if (ack[0] == 'D') 
+                  if (ack[0] == 'D')
                   {
 
-                     if (w.socket !is null) 
+                     if (w.socket !is null)
                      {
                         w.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(0,0)));
                         w.socket.shutdown(SocketShutdown.BOTH);
@@ -284,7 +284,7 @@ package class Daemon
                      w.setStatus(WorkerState.State.IDLING);
                   }
                   // *S*TOPPED
-                  else if(ack[0] == 'S') w.setStatus(WorkerState.State.STOPPED);      
+                  else if(ack[0] == 'S') w.setStatus(WorkerState.State.STOPPED);
                }
             }
          }
@@ -295,7 +295,7 @@ package class Daemon
             if (updates == 0)
                break;
 
-            
+
             if (ssRead.isSet(listener.socket))
             {
                updates--;
@@ -304,7 +304,7 @@ package class Daemon
 
                // We have an incoming connection to handle
 
-               // First: check if any idling worker is available   
+               // First: check if any idling worker is available
                foreach(ref worker; workers)
                {
                   if (worker.status == WorkerState.State.IDLING)
@@ -338,12 +338,12 @@ package class Daemon
                   log("Waking up a sleeping worker.");
 
                   fi = createWorker(index<config.minWorkers);
-                  if (fi.isThisAWorker) 
+                  if (fi.isThisAWorker)
                   {
                      workers = null;
                      break;
                   }
-                  
+
                   workers[index] = WorkerState(fi.wi);
                   workers[index].setStatus(WorkerState.State.IDLING);
                   process(listener, workers[index]);
@@ -358,7 +358,7 @@ package class Daemon
             return fi;
          }
 
-         
+
       }
 
       foreach(ref listener; config.listeners)
@@ -371,8 +371,8 @@ package class Daemon
       return ForkInfo(false, WorkerInfo.init);
    }
 
-   private: 
-   
+   private:
+
    bool          exitRequested = false;
    bool          loggerExitRequested = false;
    Thread        loggerThread;
@@ -389,16 +389,16 @@ package class Daemon
 
       File realStdErr;
       realStdErr.fdopen(stdErrFd, "w");
-      
+
       string readBuffer(File file)
       {
          import std.stdio : write, stderr;
          import std.string : indexOf;
-         
+
          string output;
          char[4096] buffer;
          buffer = 0;
-         
+
          while(true)
          {
             import core.stdc.stdio : fgets;
@@ -426,7 +426,7 @@ package class Daemon
 
 
          foreach(ref ws; workers.filter!(x => x.isAlive))
-         { 
+         {
             if (maxfd < ws.wi.pipe.fileno) maxfd = ws.wi.pipe.fileno;
             FD_SET(ws.wi.pipe.fileno, &set);
          }
@@ -436,12 +436,12 @@ package class Daemon
          if (ret >= 0)
          {
             size_t changed = 0;
-            
+
             if (FD_ISSET(deamonLog.fileno, &set) == true)
             {
                import std.stdio : write, stderr;
                string output = readBuffer(deamonLog);
-               
+
                output
                .splitter("\n")
                .filter!(x => x.length > 0)
@@ -456,7 +456,7 @@ package class Daemon
                {
                   import std.stdio : write, stderr;
                   import std.string : indexOf;
-                  
+
                   size_t seed = ws.wi.pid;
 
                   auto r = ((seed*123467983)%15+1)     * 255/15;
@@ -483,7 +483,7 @@ package class Daemon
    void process(ref Listener li, ref WorkerState worker)
    {
       Socket s = li.socket.accept();
-    
+
       worker.setStatus(WorkerState.State.PROCESSING);
       worker.socket = s;
 
@@ -497,12 +497,12 @@ package class Daemon
 
       worker.wi.ipcSocket.send(header.raw);
       worker.wi.ipcSocket.send(request.raw);
-      
+
       // Send accepted socket thru ipc socket. That's magic!
       SocketTransfer.send(s.handle, worker.wi.ipcSocket);
    }
 
-   
+
    ForkInfo checkWorkers(DaemonConfigPtr config)
    {
 
@@ -513,7 +513,7 @@ package class Daemon
 
          import core.sys.posix.stdlib : kill, SIGTERM, SIGKILL;
 
-         if (!w.wi.ipcSocket.isAlive) 
+         if (!w.wi.ipcSocket.isAlive)
          {
             w.setStatus(WorkerState.State.INVALID);
             log("Killing ", w.wi.pid, ". Invalid state.");
@@ -523,28 +523,28 @@ package class Daemon
                kill(w.wi.pid, SIGTERM);
                w.setStatus(WorkerState.State.EXITING);
             }
-            else 
+            else
             {
                kill(w.wi.pid, SIGKILL);
                w.setStatus(WorkerState.State.STOPPED);
             }
          }
-         
+
       }
-      
+
 
       foreach(k, ref worker; workers)
       {
          if (worker.isAlive == true && worker.isTerminated)
             worker.setStatus(WorkerState.State.STOPPED);
-         
+
 
          // Enforce min workers count
          if (k < config.minWorkers && worker.status == WorkerState.State.STOPPED)
          {
             auto fi = createWorker(k<config.minWorkers);
             if (fi.isThisAWorker) return fi;
-            else 
+            else
             {
                workers[k] = WorkerState(fi.wi);
                workers[k].setStatus(WorkerState.State.IDLING);
@@ -562,7 +562,7 @@ package class Daemon
 
       WorkerInfo  wi;
       wi.persistent = persistent;
-      
+
       int forked = fork();
 
       if (forked == 0)
@@ -577,7 +577,7 @@ package class Daemon
          // We're not going to use these
          pipes.readEnd().close();
          sockets[1].close();
-         
+
          Daemon.workers[] = WorkerState.init;
          Daemon.workers.destroy;
          Daemon.workers = null;
@@ -585,7 +585,7 @@ package class Daemon
          wi.pid = thisProcessID();
          wi.ipcSocket = sockets[0];
          wi.pipe = pipes.writeEnd();
-         
+
          // stderr -> pipe
          // stdin <- /dev/null
          dup2(wi.pipe.fileno, STDERR_FILENO);
@@ -598,11 +598,11 @@ package class Daemon
          // We're not going to use these
          pipes.writeEnd.close();
          sockets[0].close();
-         
+
          wi.pipe = pipes.readEnd();
 
          import core.sys.posix.fcntl;
-         int flags = fcntl(wi.pipe.fileno, F_GETFL, 0); 
+         int flags = fcntl(wi.pipe.fileno, F_GETFL, 0);
          fcntl(wi.pipe.fileno, F_SETFL, flags | O_NONBLOCK);
 
          wi.pid = forked;
