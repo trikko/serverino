@@ -33,7 +33,7 @@ import std.algorithm : map, canFind, splitter, startsWith;
 import core.thread : Thread;
 import std.datetime : SysTime, Clock, dur, Duration, DateTime;
 import std.experimental.logger : log, warning, fatal, critical;
-import std.socket : Socket, SocketShutdown, socket_t, SocketOptionLevel, SocketOption, Linger, AddressFamily;
+import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel, SocketOption, Linger, AddressFamily;
 
 import serverino.common;
 import serverino.sockettransfer;
@@ -130,6 +130,7 @@ package class Worker
    bool       exitRequested = false;
    bool       persistent = false;
    SysTime    lastUpdate;
+   SysTime    timeout;
    Duration   maxWorkerLifetime;
    Duration   maxRequestTime;
    Duration   maxWorkerIdling;
@@ -187,6 +188,12 @@ package class Worker
             Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
+         }
+
+         if (worker.timeout != SysTime.init && Clock.currTime > worker.timeout)
+         {
+            worker.http.socket.shutdown(SocketShutdown.BOTH);
+            worker.http.socket.close();
          }
 
          Thread.yield();
@@ -316,6 +323,9 @@ package class Worker
             request._internal.clear();
             http.clear();
 
+            if (config.bufferSize != output._internal._bufferSize)
+               output.setBufferSize(config.bufferSize);
+
             keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
             lastUpdate = Clock.currTime;
          }
@@ -357,8 +367,7 @@ package class Worker
       bool			headersParsed = false;
       bool 			hasContentLength = false;
 
-      http.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, config.maxHttpWaiting);
-
+      timeout = (Clock.currTime + config.maxHttpWaiting);
       // FIXME: Support pipelining
       // Read data
 
@@ -500,7 +509,7 @@ package class Worker
       if (!http.socket.isAlive)
          return false;
 
-      http.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, Duration.zero);
+      timeout = SysTime.init;
 
       if (headersParsed)
       {
@@ -509,9 +518,8 @@ package class Worker
          import std.uni : sicmp;
 
          request._internal._httpVersion    = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-         request._internal._remoteAddress  = http.socket.remoteAddress.toAddrString;
-         request._internal._port           = http.socket.localAddress.toPortString.to!ushort;
-         request._internal._localAddress   = http.socket.localAddress.toAddrString;
+         request._internal._remoteAddress  = http.socket.remoteAddress;
+         request._internal._localAddress   = http.socket.localAddress;
          request._internal._data           = cast(char[])data;
          request._internal._rawHeaders     = headers.to!string;
          request._internal._rawRequestLine = requestLine.to!string;
@@ -544,7 +552,7 @@ package class Worker
 
          if (request._internal._parsingStatus == Request.ParsingStatus.OK)
          {
-            scope(exit) { output.flush(); }
+            scope(exit) { output.flush(true); }
 
             try
             {
@@ -858,9 +866,9 @@ struct Request
       output ~= "Request:\n";
       output ~= format("- Protocol: %s\n",_internal._isHttps?"https":"http");
       output ~= format("- Method: %s\n", method.to!string);
-      output ~= format("- Host: %s (%s)\n", host, localPort);
+      output ~= format("- Host: %s (%s)\n", host, localAddress.toPortString);
       output ~= format("- Uri: %s\n", uri);
-      output ~= format("- Remote Address: %s\n", remoteAddress);
+      output ~= format("- Remote Address: %s\n", remoteAddress.toAddrString);
 
       if (!_internal._user.empty)
          output ~= format("- Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
@@ -966,10 +974,6 @@ struct Request
 
    ///
    @safe @nogc @property nothrow public const(string) uri() const { return _internal._uri; }
-
-   ///
-   @safe @nogc @property nothrow public const(ushort) localPort() const { return _internal._port; }
-
 
    /// Which worker is processing this request?
    @safe @nogc @property nothrow public auto worker() const { return _internal._worker; }
@@ -1337,7 +1341,7 @@ struct Request
                if("user-agent" in _header) ua = _header["user-agent"];
                if("accept-language" in _header) al = _header["accept-language"];
 
-               auto sign = cast(string)sha224Of(ua ~ "_" ~ al ~ "_" ~ _remoteAddress ~ "_" ~ uuid).toHexString.toLower;
+               auto sign = cast(string)sha224Of(ua ~ "_" ~ al ~ "_" ~ _remoteAddress.toAddrString ~ "_" ~ uuid).toHexString.toLower;
 
                if (sign == signature) _sessionId = sessionId;
                else warning("Is someone trying to spoof sessionId? ", sessionId);
@@ -1384,12 +1388,9 @@ struct Request
       private string[string]  _header;
       private string[string]  _cookie;
 
-      private ushort _port;
       private string _uri;
       private string _method;
       private string _host;
-      private string _remoteAddress;
-      private string _localAddress;
       private string _postDataContentType;
       private bool   _isHttps;
       private string _worker;
@@ -1397,6 +1398,9 @@ struct Request
       private string _password;
       private string _sessionId;
       private size_t _uploadId;
+
+      private Address _remoteAddress;
+      private Address _localAddress;
 
       private string _rawQueryString;
       private string _rawHeaders;
@@ -1411,7 +1415,6 @@ struct Request
 
       void clear()
       {
-         _port    = 0;
          _form    = null;
          _data    = null;
          _get     = null;
@@ -1423,8 +1426,8 @@ struct Request
          _isHttps       = false;
          _method        = string.init;
          _host          = string.init;
-         _remoteAddress = string.init;
-         _localAddress  = string.init;
+         _remoteAddress = null;
+         _localAddress  = null;
          _user          = string.init;
          _password      = string.init;
          _sessionId     = string.init;
@@ -1453,7 +1456,7 @@ struct Output
 	public:
 
    /// Set buffer for data output (0 = disabled)
-   @safe void setOutputBufferSize(size_t sz = 0)
+   @safe void setBufferSize(size_t sz = 0)
    {
       if (_internal._dirty)
          throw new Exception("Can't change buffer size. Too late");
@@ -1652,7 +1655,7 @@ struct Output
       (
          req.header.read("user-agent", "NO-UA") ~ "_" ~
          req.header.read("accept-language", "NO-AL") ~ "_" ~
-         req.remoteAddress ~ "_" ~ uuid
+         req.remoteAddress.toAddrString ~ "_" ~ uuid
       ).toHexString.toLower;
 
       string sessionId = sign ~ "-" ~ uuid;
@@ -1768,12 +1771,14 @@ struct Output
          if (_internal.isBuffered()) _internal._sendBuffer ~= cast(const char[])data;
          else  _internal._http.send(data);
       }
+
+      flush();
    }
 
-   @safe void flush()
+   @safe void flush(const bool force = false)
    {
-      if (_internal.isBuffered())
-         _internal._http.send(_internal._sendBuffer.data);
+      if (_internal.isBuffered() && (force || _internal._sendBuffer.data.length >= _internal._bufferSize))
+            _internal._http.send(_internal._sendBuffer.data);
    }
 
    import std.array : Appender, appender;

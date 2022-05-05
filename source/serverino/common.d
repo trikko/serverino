@@ -81,6 +81,7 @@ struct ServerinoConfig
       sc.setMaxRequestSize();
       sc.setWorkerUser();
       sc.setWorkerGroup();
+      sc.setWorkerBufferSize();
       sc.setHttpTimeout();
 
       sc.disableKeepAlive();
@@ -114,6 +115,7 @@ struct ServerinoConfig
    @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }
    /// For example: "www-data"
    @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; }
+   @safe void setWorkerBufferSize(size_t sz = 0) { workerConfig.bufferSize = sz; }
 
    /// How long the socket will wait for a request after the connection?
    @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; }
@@ -252,6 +254,7 @@ package struct WorkerConfig
 
    bool        keepAlive;
    size_t      maxRequestSize;
+   size_t      bufferSize;
    string      user;
    string      group;
 
