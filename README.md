@@ -1,5 +1,5 @@
 # serverino
-* Ready-to-go https/https server
+* Ready-to-go http/https server
 * Multi-process
 * Dynamic number of workers
 * Zero dub dependencies
@@ -12,19 +12,19 @@ mixin ServerinoMain;
 void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
 ## Documentation you need
-* [Request](http://) - What user asked
-* [Output](http://) - Your reply
-* [ServerinoConfig](http://) - Server configuration
+* [Request](https://serverino.dpldocs.info/serverino.worker.Request.html) - What user asked
+* [Output](https://serverino.dpldocs.info/serverino.worker.Output.html) - Your reply
+* [ServerinoConfig](https://serverino.dpldocs.info/serverino.common.ServerinoConfig.html) - Server configuration
 
 ## Defining more than one endpoint
-Every function marked with ```@endpoint``` will be evaluated until something is sent to output. The calling order is defined by ```@priority```
+Every function marked with ```@endpoint``` is called until one writes something to output. The calling order is defined by ```@priority```
 
 ```d
 import serverino;
 mixin ServerinoMain;
 
 // This function will never block the execution of other endpoints since it doesn't write anything
-// In this case output is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
+// In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
 @priority(10) @endpoint void logger(Request req, Output output) 
 { 
    import std.experimental.logger; // std.experimental.logger works fine!
@@ -42,7 +42,7 @@ mixin ServerinoMain;
    output ~= "Hello world!";
 }
 
-// This function will be executed only if `hello(...)` doesn't touch output.
+// This function will be executed only if `hello(...)` doesn't write anything to output.
 @priority(-10000) @endpoint void notfound(const Request req, Output output) 
 {
    output.status = 404;
@@ -53,7 +53,7 @@ mixin ServerinoMain;
 ## @onServerInit UDA
 Use ```@onServerInit``` to configure your server
 ```d
-// Try also `setup(string args[])` if you need to read arguments passed to program
+// Try also `setup(string args[])` if you need to read arguments passed to your application
 @onServerInit auto setup()
 {
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
@@ -106,7 +106,7 @@ mixin ServerinoMain!(other, test); // Current module is always processed
 ```
 ## Enable https
 Follow [these instructions](https://git.causal.agency/libretls/about/) to install [libretls](https://git.causal.agency/libretls/).
-Enable "WithTLS" configuration for serverino.
+Enable ```WithTLS``` subconfiguration in your dub project.
 
 dub.sdl:
 ```sdl
