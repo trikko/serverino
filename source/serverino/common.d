@@ -118,7 +118,7 @@ struct ServerinoConfig
    @safe void setWorkerBufferSize(size_t sz = 0) { workerConfig.bufferSize = sz; }
 
    /// How long the socket will wait for a request after the connection?
-   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { workerConfig.maxHttpWaiting = dur; }
+   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; }
 
    /// Enable/Disable keep-alive for http/1.1
    @safe void enableKeepAlive(bool enable = true) { workerConfig.keepAlive = enable; }
@@ -263,9 +263,10 @@ package struct WorkerConfig
 
 package struct DaemonConfig
 {
-    size_t   minWorkers;
-    size_t   maxWorkers;
-    int      listenerBacklog;
+    Duration   maxHttpWaiting;
+    size_t     minWorkers;
+    size_t     maxWorkers;
+    int        listenerBacklog;
 
     Listener[]    listeners;
     CertDataPtr   certsData;

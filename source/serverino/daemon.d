@@ -31,7 +31,7 @@ import std.socket : linger, AddressFamily, socketPair, socket_t, Socket, Linger,
 import std.typecons : Tuple;
 import std.datetime : SysTime, Clock, dur;
 import core.thread : Thread, thread_detachInstance;
-import std.algorithm : filter, splitter, each;
+import std.algorithm : filter, splitter, each, map;
 import core.sys.posix.signal : sigset, SIGTERM, SIGINT, SIGKILL;
 import core.sys.posix.unistd : STDIN_FILENO, STDERR_FILENO, dup, dup2, fork;
 import std.string : format;
@@ -77,6 +77,8 @@ private struct SimpleList
 
    size_t insert(size_t e, bool prepend)
    {
+      count++;
+
       enum EOL = size_t.max;
 
       size_t selected = EOL;
@@ -138,6 +140,8 @@ private struct SimpleList
       {
          if (elements[t].v == e)
          {
+            count--;
+
             if (elements[t].prev == EOL) head = elements[t].next;
             else elements[elements[t].prev].next = elements[t].next;
 
@@ -160,12 +164,17 @@ private struct SimpleList
       return EOL;
    }
 
+   size_t length() { return count; }
    bool empty() { return head == size_t.max; }
+
+   private:
+
 
    SLElement[] elements;
    size_t head = size_t.max;
    size_t tail = size_t.max;
    size_t free = size_t.max;
+   size_t count = 0;
 }
 
 private struct KeepAliveState
@@ -176,11 +185,12 @@ private struct KeepAliveState
       FREE
    }
 
-   JobInfo  ji;
-   SysTime  updatedAt;
+   JobInfo     ji;
+   CoarseTime  timeout;
 
    State    status = State.FREE;
    size_t   listIdx;
+   bool     waiting = false;
 }
 
 private struct JobInfo
@@ -280,8 +290,12 @@ private struct WorkerState
 
       if (s!=status)
       {
-         Daemon.instance.workersLookup[status].remove(id);
-         Daemon.instance.workersLookup[s].insertBack(id);
+         with(Daemon.instance)
+         {
+            workersLookup[status].remove(id);
+            if (wi.persistent) workersLookup[s].insertFront(id);
+            else workersLookup[s].insertBack(id);
+         }
       }
 
       status = s;
@@ -311,7 +325,7 @@ package class Daemon
       return i;
    }
 
-   auto workersAlive()
+   auto ref workersAlive()
    {
       import std.range : chain;
       return chain(
@@ -321,7 +335,7 @@ package class Daemon
       );
    }
 
-   auto workersDead()
+   auto ref workersDead()
    {
       import std.range : chain;
       return chain(
@@ -424,6 +438,8 @@ package class Daemon
       SocketSet ssRead = new SocketSet(config.listeners.length);
 
       CoarseTime nextContextSwitch = CoarseTime.currTime + 2.dur!"seconds";
+      CoarseTime nextIdlingCheck = CoarseTime.zero();
+      size_t     maxIdlingWorkers = 0;
 
       ForkInfo fi;
       while(!exitRequested)
@@ -448,7 +464,6 @@ package class Daemon
          foreach(idx; workersAlive)
             ssRead.add(workers[idx].wi.ipcSocket);
 
-         import std.algorithm : map;
          foreach(ref kai; keepAliveLookup[KeepAliveState.State.WAITING].asRange.map!(x => keepAliveState[x]).filter!(x => x.ji.socket.isAlive))
             ssRead.add(kai.ji.socket);
 
@@ -509,7 +524,7 @@ package class Daemon
                      keepAliveLookup[KeepAliveState.State.FREE].remove(freeIdx);
                      keepAliveLookup[KeepAliveState.State.WAITING].insertBack(freeIdx);
 
-                     keepAliveState[freeIdx] = KeepAliveState(w.ji, Clock.currTime);
+                     keepAliveState[freeIdx] = KeepAliveState(w.ji, CoarseTime.currTime + config.maxHttpWaiting);
                      w.ji.socket = null;
                      w.setStatus(WorkerState.State.IDLING);
                   }
@@ -564,7 +579,7 @@ package class Daemon
 
                   log("Waking up a sleeping worker.");
 
-                  fi = createWorker(index<config.minWorkers);
+                  fi = createWorker(false);
                   if (fi.isThisAWorker)
                   {
                      workers = null;
@@ -588,6 +603,8 @@ package class Daemon
          SimpleList *kaWaiting = &keepAliveLookup[KeepAliveState.State.WAITING];
          SimpleList *kaFree = &keepAliveLookup[KeepAliveState.State.FREE];
 
+         CoarseTime now = CoarseTime.currTime;
+
          foreach(idx; kaWaiting.asRange)
          {
             auto kai = &keepAliveState[idx];
@@ -599,12 +616,10 @@ package class Daemon
                continue;
             }
 
-            // TODO: Check ka timeout
-            if (updates == 0)
-               continue;
-
-            if (ssRead.isSet(kai.ji.socket))
+            if (updates > 0 && ssRead.isSet(kai.ji.socket))
             {
+
+               kai.waiting = true;
                updates--;
 
                bool served = false;
@@ -641,7 +656,7 @@ package class Daemon
 
                   log("Waking up a sleeping worker.");
 
-                  fi = createWorker(index<config.minWorkers);
+                  fi = createWorker(false);
                   if (fi.isThisAWorker)
                   {
                      workers = null;
@@ -655,6 +670,14 @@ package class Daemon
                   reprocess(config.listeners[kai.ji.listenerIndex], workers[index], *kai);
                }
 
+            }
+            else if (!kai.waiting && now > kai.timeout)
+            {
+               kaWaiting.remove(idx);
+               kaFree.insertBack(idx);
+               kai.ji.socket.shutdown(SocketShutdown.BOTH);
+               kai.ji.socket.close();
+               kai.ji.socket = null;
             }
 
          }
@@ -883,22 +906,24 @@ package class Daemon
 
       }
 
-      foreach(k, ref worker; workers)
+      workersAlive.map!(x=>workers[x]).filter!(x => x.isTerminated).each!(x => x.setStatus(WorkerState.State.STOPPED));
+
+      while (
+         workersLookup[WorkerState.State.IDLING].length +
+         workersLookup[WorkerState.State.PROCESSING].length < config.minWorkers
+      )
       {
-         if (worker.isAlive == true && worker.isTerminated)
-            worker.setStatus(WorkerState.State.STOPPED);
+         auto dead = workersDead();
 
+         if (dead.empty) break;
 
-         // Enforce min workers count
-         if (k < config.minWorkers && worker.status == WorkerState.State.STOPPED)
+         auto idx = dead.front();
+         auto fi = createWorker(true);
+         if (fi.isThisAWorker) return fi;
+         else
          {
-            auto fi = createWorker(k<config.minWorkers);
-            if (fi.isThisAWorker) return fi;
-            else
-            {
-               workers[k] = WorkerState(k, fi.wi);
-               workers[k].setStatus(WorkerState.State.IDLING);
-            }
+            workers[idx] = WorkerState(idx, fi.wi);
+            workers[idx].setStatus(WorkerState.State.IDLING);
          }
       }
 
