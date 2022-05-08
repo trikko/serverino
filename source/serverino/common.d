@@ -34,7 +34,7 @@ import std.traits : ReturnType;
 
 package enum SERVERINO_MAJOR     = 0;
 package enum SERVERINO_MINOR     = 1;
-package enum SERVERINO_REVISION  = 0;
+package enum SERVERINO_REVISION  = 1;
 
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
@@ -84,7 +84,7 @@ struct ServerinoConfig
       sc.setWorkerBufferSize();
       sc.setHttpTimeout();
 
-      sc.disableKeepAlive();
+      sc.enableKeepAlive();
 
       return sc;
    }
@@ -94,7 +94,7 @@ struct ServerinoConfig
    /// Max number of workers
    @safe void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; }
    /// Min number of workers
-   @safe void setMinWorkers(size_t val = 3)  { daemonConfig.minWorkers = val; }
+   @safe void setMinWorkers(size_t val = 5)  { daemonConfig.minWorkers = val; }
 
    /// Same as setMaxWorkers(v); setMinWorkers(v);
    @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); }
@@ -115,7 +115,7 @@ struct ServerinoConfig
    @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }
    /// For example: "www-data"
    @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; }
-   @safe void setWorkerBufferSize(size_t sz = 0) { workerConfig.bufferSize = sz; }
+   @safe void setWorkerBufferSize(size_t sz = 1024) { workerConfig.bufferSize = sz; }
 
    /// How long the socket will wait for a request after the connection?
    @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; }
