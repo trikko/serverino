@@ -329,7 +329,7 @@ package class Worker
 
          wi.ipcSocket.blocking = false;
 
-         while(keepAlive) // CoarseClock.currTime < keepAliveEnd)
+         while(keepAlive)
          {
             auto received = wi.ipcSocket.receive(msg.raw);
             if (received > 0)
