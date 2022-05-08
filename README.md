@@ -12,9 +12,9 @@ mixin ServerinoMain;
 void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
 ## Documentation you need
-* [Request](http://) - What user asked
-* [Output](http://) - Your reply
-* [ServerinoConfig](http://) - Server configuration
+* [Request](https://serverino.dpldocs.info/serverino.worker.Request.html) - What user asked
+* [Output](https://serverino.dpldocs.info/serverino.worker.Output.html) - Your reply
+* [ServerinoConfig](https://serverino.dpldocs.info/serverino.common.ServerinoConfig.html) - Server configuration
 
 ## Defining more than one endpoint
 Every function marked with ```@endpoint``` is called until one writes something to output. The calling order is defined by ```@priority```
