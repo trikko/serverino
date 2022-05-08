@@ -291,6 +291,9 @@ package class Worker
             msg.validate();
          }
 
+         if (msg.data.command == "SWCH")
+            continue;
+
          IPCRequestMessage req;
          {
             auto received = wi.ipcSocket.receive(req.raw);
@@ -305,8 +308,12 @@ package class Worker
          import core.sys.posix.sys.socket : linger;
          socket_t socket_handler = cast(socket_t)SocketTransfer.receive(wi.ipcSocket);
          socket = new Socket(socket_handler, af);
-         socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(1,0)));
-         socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
+
+         if (msg.data.command == "RQST")
+         {
+            socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(1,0)));
+            socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
+         }
 
          if (req.data.isHttps) http.setSocket(socket, &tls[req.data.certIdx]);
          else http.setSocket(socket);
@@ -316,9 +323,22 @@ package class Worker
             break;
 
          bool keepAlive = true;
+         size_t maxRequest = 0;
 
-         while(keepAlive)
+         import core.time;
+
+         wi.ipcSocket.blocking = false;
+
+         while(keepAlive) // CoarseClock.currTime < keepAliveEnd)
          {
+            auto received = wi.ipcSocket.receive(msg.raw);
+            if (received > 0)
+            {
+               assert(received == msg.sizeof, "WRONG HEADER");
+               assert(msg.data.command == "SWCH", "Wrong command");
+               break;
+            }
+
             output._internal.clear();
             request._internal.clear();
             http.clear();
@@ -328,14 +348,17 @@ package class Worker
 
             keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
             lastUpdate = Clock.currTime;
+            maxRequest++;
          }
+
+         wi.ipcSocket.blocking = true;
 
          status = State.IDLING;
 
          // DO NOT CLOSE `Socket socket` HERE.
-         wi.ipcSocket.send("D"); // *D*ONE
 
-
+         if (keepAlive) wi.ipcSocket.send("A"); // KEEP *A*LIVE
+         else wi.ipcSocket.send("D"); // *D*ONE
       }
    }
 

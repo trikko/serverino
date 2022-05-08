@@ -35,11 +35,159 @@ import std.algorithm : filter, splitter, each;
 import core.sys.posix.signal : sigset, SIGTERM, SIGINT, SIGKILL;
 import core.sys.posix.unistd : STDIN_FILENO, STDERR_FILENO, dup, dup2, fork;
 import std.string : format;
+import core.time : MonoTimeImpl, ClockType;
 
 import serverino.sockettransfer;
 import serverino.common;
 import serverino : CustomLogger;
 
+alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
+
+private struct SimpleList
+{
+   private struct SLElement
+   {
+      size_t v;
+      size_t prev = size_t.max;
+      size_t next = size_t.max;
+   }
+
+   auto asRange()
+   {
+      struct Range
+      {
+        bool empty() {
+            return tail == size_t.max || elements[tail].next == head;
+        }
+
+         void popFront() { head = elements[head].next; if (head == size_t.max) tail = size_t.max; }
+         size_t front() { return elements[head].v; }
+
+         void popBack() { tail = elements[tail].prev;  if (tail == size_t.max) head = size_t.max; }
+         size_t back() { return elements[tail].v; }
+
+         private:
+         size_t head;
+         size_t tail;
+         SLElement[] elements;
+      }
+
+      return Range(head, tail, elements);
+   }
+
+   size_t insert(size_t e, bool prepend)
+   {
+      enum EOL = size_t.max;
+
+      size_t selected = EOL;
+
+      if (free == EOL)
+      {
+         elements ~= SLElement(e, EOL, EOL);
+         selected = elements.length - 1;
+      }
+      else {
+         selected = free;
+         elements[selected].v = e;
+         free = elements[selected].next;
+
+         if (free != EOL)
+            elements[free].prev = EOL;
+      }
+
+
+      if (head == EOL)
+      {
+         head = selected;
+         tail = selected;
+         elements[selected].next = EOL;
+         elements[selected].prev = EOL;
+      }
+      else
+      {
+         if (prepend)
+         {
+            size_t oldHead = head;
+            head = selected;
+            elements[selected].next = oldHead;
+            elements[selected].prev = EOL;
+            elements[oldHead].prev = selected;
+         }
+         else
+         {
+            size_t oldTail = tail;
+            tail = selected;
+            elements[selected].prev = oldTail;
+            elements[selected].next = EOL;
+            elements[oldTail].next = selected;
+         }
+      }
+
+      return selected;
+   }
+
+   size_t insertBack(size_t e) { return insert(e, false); }
+   size_t insertFront(size_t e) { return insert(e, true); }
+
+   size_t remove(size_t e)
+   {
+      enum EOL = size_t.max;
+
+      auto t = head;
+      while(t != EOL)
+      {
+         if (elements[t].v == e)
+         {
+            if (elements[t].prev == EOL) head = elements[t].next;
+            else elements[elements[t].prev].next = elements[t].next;
+
+            if (elements[t].next == EOL) tail = elements[t].prev;
+            else elements[elements[t].next].prev = elements[t].prev;
+
+            elements[t].prev = EOL;
+            elements[t].next = free;
+
+            if (free != EOL)
+               elements[free].prev = t;
+
+            free = t;
+            return t;
+         }
+
+         t = elements[t].next;
+      }
+
+      return EOL;
+   }
+
+   bool empty() { return head == size_t.max; }
+
+   SLElement[] elements;
+   size_t head = size_t.max;
+   size_t tail = size_t.max;
+   size_t free = size_t.max;
+}
+
+private struct KeepAliveState
+{
+   enum State
+   {
+      WAITING,
+      FREE
+   }
+
+   JobInfo  ji;
+   SysTime  updatedAt;
+
+   State    status = State.FREE;
+   size_t   listIdx;
+}
+
+private struct JobInfo
+{
+   Socket socket;
+   size_t listenerIndex;
+}
 
 private struct WorkerState
 {
@@ -53,11 +201,13 @@ private struct WorkerState
    }
 
    WorkerInfo  wi;
+   JobInfo     ji;
 
    SysTime     createdAt;
    SysTime     statusChangedAt;
    State       status = WorkerState.State.STOPPED;
-   Socket      socket;
+
+   size_t      id;
 
    bool isAlive() { return (status != State.INVALID && status != State.STOPPED); }
 
@@ -97,35 +247,49 @@ private struct WorkerState
 
       if (term == true)
       {
-         if(socket !is null)
+         with(ji)
          {
-            socket.blocking = false;
-            socket.shutdown(SocketShutdown.BOTH);
-            socket.close();
-            socket = null;
+            if(socket !is null)
+            {
+               socket.blocking = false;
+               socket.shutdown(SocketShutdown.BOTH);
+               socket.close();
+               socket = null;
+            }
          }
 
-         if(wi.ipcSocket !is null)
+         with(wi)
          {
-            wi.ipcSocket.blocking = false;
-            wi.ipcSocket.shutdown(SocketShutdown.BOTH);
-            wi.ipcSocket.close();
-            wi.ipcSocket = null;
+            if(ipcSocket !is null)
+            {
+               ipcSocket.blocking = false;
+               ipcSocket.shutdown(SocketShutdown.BOTH);
+               ipcSocket.close();
+               ipcSocket = null;
+            }
          }
       }
 
       return term;
    }
 
-   @safe nothrow void setStatus(State s)
+   @trusted void setStatus(State s)
    {
-      assert(s != status || s == State.PROCESSING);
+      import std.conv : to;
+      assert(s != status || s == State.PROCESSING, "Trying to change status from " ~ status.to!string ~ " to " ~ s.to!string);
+
+      if (s!=status)
+      {
+         Daemon.instance.workersLookup[status].remove(id);
+         Daemon.instance.workersLookup[s].insertBack(id);
+      }
 
       status = s;
       statusChangedAt = Clock.currTime();
    }
 
-   this(WorkerInfo wi) {
+   this(size_t id, WorkerInfo wi) {
+      this.id           = id;
       this.wi           = wi;
       createdAt         = Clock.currTime();
       statusChangedAt   = Clock.currTime();
@@ -147,8 +311,32 @@ package class Daemon
       return i;
    }
 
+   auto workersAlive()
+   {
+      import std.range : chain;
+      return chain(
+         workersLookup[WorkerState.State.IDLING].asRange,
+         workersLookup[WorkerState.State.PROCESSING].asRange,
+         workersLookup[WorkerState.State.EXITING].asRange
+      );
+   }
+
+   auto workersDead()
+   {
+      import std.range : chain;
+      return chain(
+         workersLookup[WorkerState.State.STOPPED].asRange,
+         workersLookup[WorkerState.State.INVALID].asRange
+      );
+   }
+
    ForkInfo wake(DaemonConfigPtr config)
    {
+
+      keepAliveState.length = 10;
+      foreach(x; 0..keepAliveState.length)
+         keepAliveLookup[KeepAliveState.State.FREE].insertBack(x);
+
       // Always kill workers on exit
       scope(failure)
       {
@@ -175,9 +363,13 @@ package class Daemon
 
             killing = false;
 
-            foreach(ref w; daemon.workers.filter!(w=>w.isAlive))
+            foreach(k; daemon.workersAlive)
+            {
+               auto w = &(daemon.workers[k]);
+
                if (!w.isTerminated)
                   killing = true;
+            }
          }
 
          daemon.exitRequested = true;
@@ -217,10 +409,21 @@ package class Daemon
       }
 
       // Workers
+      import std.traits : EnumMembers;
+      static foreach(e; EnumMembers!(WorkerState.State))
+      {
+         workersLookup[e] = SimpleList();
+      }
+
       workers.length = config.maxWorkers;
+      foreach(i; 0..workers.length)
+         workersLookup[WorkerState.State.STOPPED].insertBack(i);
+
 
       // We use a socketset to check for updates
       SocketSet ssRead = new SocketSet(config.listeners.length);
+
+      CoarseTime nextContextSwitch = CoarseTime.currTime + 2.dur!"seconds";
 
       ForkInfo fi;
       while(!exitRequested)
@@ -242,8 +445,12 @@ package class Daemon
          foreach(ref listener; config.listeners)
             ssRead.add(listener.socket);
 
-         foreach(ref w; workers.filter!(x => x.isAlive))
-            ssRead.add(w.wi.ipcSocket);
+         foreach(idx; workersAlive)
+            ssRead.add(workers[idx].wi.ipcSocket);
+
+         import std.algorithm : map;
+         foreach(ref kai; keepAliveLookup[KeepAliveState.State.WAITING].asRange.map!(x => keepAliveState[x]).filter!(x => x.ji.socket.isAlive))
+            ssRead.add(kai.ji.socket);
 
          // Check for new requests
          size_t updates = Socket.select(ssRead, null,null, 1.dur!"seconds");
@@ -254,10 +461,14 @@ package class Daemon
          if (exitRequested)
             break;
 
-         foreach(ref w; workers.filter!(x => x.isAlive))
+         bool switchRequired = false;
+
+         foreach(idx; workersAlive)
          {
             if (updates == 0)
                break;
+
+            auto w = &(workers[idx]);
 
             if (ssRead.isSet(w.wi.ipcSocket))
             {
@@ -272,15 +483,34 @@ package class Daemon
                   // *D*ONE
                   if (ack[0] == 'D')
                   {
-
-                     if (w.socket !is null)
+                     with(w.ji)
                      {
-                        w.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(0,0)));
-                        w.socket.shutdown(SocketShutdown.BOTH);
-                        w.socket.close();
-                        w.socket = null;
+                        if (socket !is null)
+                        {
+                           socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(0,0)));
+                           socket.shutdown(SocketShutdown.BOTH);
+                           socket.close();
+                           socket = null;
+                        }
                      }
 
+                     w.setStatus(WorkerState.State.IDLING);
+                  }
+                  // KEEP *A*LIVE
+                  else if (ack[0] == 'A')
+                  {
+                     if (keepAliveLookup[KeepAliveState.State.FREE].empty)
+                     {
+                        keepAliveLookup[KeepAliveState.State.FREE].insertBack(keepAliveState.length);
+                        keepAliveState.length++;
+                     }
+
+                     size_t freeIdx = keepAliveLookup[KeepAliveState.State.FREE].asRange.front;
+                     keepAliveLookup[KeepAliveState.State.FREE].remove(freeIdx);
+                     keepAliveLookup[KeepAliveState.State.WAITING].insertBack(freeIdx);
+
+                     keepAliveState[freeIdx] = KeepAliveState(w.ji, Clock.currTime);
+                     w.ji.socket = null;
                      w.setStatus(WorkerState.State.IDLING);
                   }
                   // *S*TOPPED
@@ -305,33 +535,30 @@ package class Daemon
                // We have an incoming connection to handle
 
                // First: check if any idling worker is available
-               foreach(ref worker; workers)
+               auto idling = workersLookup[WorkerState.State.IDLING].asRange;
+
+               if (!idling.empty)
                {
-                  if (worker.status == WorkerState.State.IDLING)
-                  {
-                     served = true;
-                     process(listener, worker);
-                     break;
-                  }
+                  served = true;
+                  process(listener, workers[idling.front]);
+                  continue;
                }
 
                // If not, we wake up a stopped worker, if available
                if (!served)
                {
                   size_t index = 0;
-                  foreach(k, ref worker; workers)
+                  auto dead = workersDead;
+                  if(!dead.empty)
                   {
-                     if (!worker.isAlive)
-                     {
-                        served = true;
-                        index = k;
-                        break;
-                     }
+                     served = true;
+                     index = dead.front;
                   }
 
                   if (!served)
                   {
                      // No free listeners found.
+                     switchRequired = true;
                      continue;
                   }
 
@@ -344,7 +571,7 @@ package class Daemon
                      break;
                   }
 
-                  workers[index] = WorkerState(fi.wi);
+                  workers[index] = WorkerState(index, fi.wi);
                   workers[index].setStatus(WorkerState.State.IDLING);
                   process(listener, workers[index]);
                }
@@ -358,6 +585,102 @@ package class Daemon
             return fi;
          }
 
+         SimpleList *kaWaiting = &keepAliveLookup[KeepAliveState.State.WAITING];
+         SimpleList *kaFree = &keepAliveLookup[KeepAliveState.State.FREE];
+
+         foreach(idx; kaWaiting.asRange)
+         {
+            auto kai = &keepAliveState[idx];
+
+            if (!kai.ji.socket.isAlive)
+            {
+               kaWaiting.remove(idx);
+               kaFree.insertBack(idx);
+               continue;
+            }
+
+            // TODO: Check ka timeout
+            if (updates == 0)
+               continue;
+
+            if (ssRead.isSet(kai.ji.socket))
+            {
+               updates--;
+
+               bool served = false;
+
+               // We have an incoming connection to handle
+
+               // First: check if any idling worker is available
+               auto idling = workersLookup[WorkerState.State.IDLING].asRange;
+               if (!idling.empty)
+               {
+                  served = true;
+                  kaWaiting.remove(idx);
+                  kaFree.insertBack(idx);
+                  reprocess(config.listeners[kai.ji.listenerIndex], workers[idling.front], *kai);
+                  continue;
+               }
+
+               // If not, we wake up a stopped worker, if available
+               if (!served)
+               {
+                  size_t index = 0;
+                  auto dead = workersDead;
+                  if(!dead.empty)
+                  {
+                     served = true;
+                     index = dead.front;
+                  }
+
+                  if (!served)
+                  {
+                     switchRequired = true;
+                     continue;
+                  }
+
+                  log("Waking up a sleeping worker.");
+
+                  fi = createWorker(index<config.minWorkers);
+                  if (fi.isThisAWorker)
+                  {
+                     workers = null;
+                     break;
+                  }
+
+                  kaWaiting.remove(idx);
+                  kaFree.insertBack(idx);
+                  workers[index] = WorkerState(index, fi.wi);
+                  workers[index].setStatus(WorkerState.State.IDLING);
+                  reprocess(config.listeners[kai.ji.listenerIndex], workers[index], *kai);
+               }
+
+            }
+
+         }
+
+         // We are in a forked process, exit from there.
+         if (fi.isThisAWorker)
+         {
+            return fi;
+         }
+
+         if (switchRequired)
+         {
+            if (CoarseTime.currTime > nextContextSwitch)
+            {
+               foreach(workerIdx; workersLookup[WorkerState.State.PROCESSING].asRange)
+               {
+                  WorkerState *w = &workers[workerIdx];
+                  IPCMessage header;
+                  header.data.command = "SWCH";
+                  w.wi.ipcSocket.send(header.raw);
+               }
+
+               nextContextSwitch = CoarseTime.currTime + 2.dur!"seconds";
+            }
+
+         }
 
       }
 
@@ -373,11 +696,18 @@ package class Daemon
 
    private:
 
-   bool          exitRequested = false;
-   bool          loggerExitRequested = false;
-   Thread        loggerThread;
-   WorkerState[] workers;
-   Pipe          daemonPipe;
+
+   bool           exitRequested = false;
+   bool           loggerExitRequested = false;
+   Thread         loggerThread;
+   WorkerState[]  workers;
+   Pipe           daemonPipe;
+
+
+   SimpleList[5] workersLookup;
+   SimpleList[2] keepAliveLookup;
+   KeepAliveState[] keepAliveState;
+
 
    this() { }
 
@@ -483,9 +813,10 @@ package class Daemon
    void process(ref Listener li, ref WorkerState worker)
    {
       Socket s = li.socket.accept();
-
       worker.setStatus(WorkerState.State.PROCESSING);
-      worker.socket = s;
+
+      worker.ji.socket = s;
+      worker.ji.listenerIndex = li.index;
 
       IPCMessage header;
       header.data.command = "RQST";
@@ -502,15 +833,35 @@ package class Daemon
       SocketTransfer.send(s.handle, worker.wi.ipcSocket);
    }
 
+   void reprocess(ref Listener li, ref WorkerState worker, ref KeepAliveState kai)
+   {
+      worker.setStatus(WorkerState.State.PROCESSING);
+      worker.ji.socket = kai.ji.socket;
+      worker.ji.listenerIndex = kai.ji.listenerIndex;
+
+      IPCMessage header;
+      header.data.command = "ALIV";
+
+      IPCRequestMessage request;
+      request.data.isHttps = li.isHttps;
+      request.data.isIPV4  = li.address.addressFamily == AddressFamily.INET;
+      request.data.certIdx = li.index;
+
+      worker.wi.ipcSocket.send(header.raw);
+      worker.wi.ipcSocket.send(request.raw);
+
+      // Send accepted socket thru ipc socket. That's magic!
+      SocketTransfer.send(worker.ji.socket.handle, worker.wi.ipcSocket);
+   }
+
 
    ForkInfo checkWorkers(DaemonConfigPtr config)
    {
 
       auto now = Clock.currTime();
-      foreach(k, ref w; workers)
+      foreach(k; workersAlive)
       {
-         if (!w.isAlive) continue;
-
+         auto w = &(workers[k]);
          import core.sys.posix.stdlib : kill, SIGTERM, SIGKILL;
 
          if (!w.wi.ipcSocket.isAlive)
@@ -532,7 +883,6 @@ package class Daemon
 
       }
 
-
       foreach(k, ref worker; workers)
       {
          if (worker.isAlive == true && worker.isTerminated)
@@ -546,7 +896,7 @@ package class Daemon
             if (fi.isThisAWorker) return fi;
             else
             {
-               workers[k] = WorkerState(fi.wi);
+               workers[k] = WorkerState(k, fi.wi);
                workers[k].setStatus(WorkerState.State.IDLING);
             }
          }
