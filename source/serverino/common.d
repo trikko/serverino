@@ -102,7 +102,7 @@ struct ServerinoConfig
    ///
    @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { workerConfig.maxWorkerLifetime = dur; }
    ///
-   @safe void setMaxWorkerIdling(Duration dur = 5.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }
+   @safe void setMaxWorkerIdling(Duration dur = 1.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }
    ///
    @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; }
 
@@ -296,7 +296,7 @@ package union IPCMessage
       bool valid =
       (
          data.magic == [0x19, 0x83, 0x05, 0x31] &&
-         data.command == "RQST"
+         (data.command == "RQST" || data.command == "ALIV" || data.command == "SWCH")
       );
 
       if (!valid)
