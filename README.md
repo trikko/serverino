@@ -54,7 +54,7 @@ mixin ServerinoMain;
 Use ```@onServerInit``` to configure your server
 ```d
 // Try also `setup(string args[])` if you need to read arguments passed to your application
-@onServerInit auto setup()
+@onServerInit ServerinoConfig setup()
 {
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
    sc.addListener("127.0.0.1", 8080);
@@ -120,7 +120,7 @@ dub.json
 
 Add a https listener:
 ```d
-@onServerInit auto setup()
+@onServerInit ServerinoConfig setup()
 {
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
    
