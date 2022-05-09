@@ -343,8 +343,8 @@ package class Worker
             request._internal.clear();
             http.clear();
 
-            if (config.bufferSize != output._internal._bufferSize)
-               output.setBufferSize(config.bufferSize);
+            output.setMinBufferSize(config.minBufferSize);
+            output.setMaxBufferSize(config.maxBufferSize);
 
             keepAlive = parseHttpRequest!Modules(config, req.data.isHttps);
             lastUpdate = Clock.currTime;
@@ -1477,16 +1477,23 @@ struct Output
 
 	public:
 
-   /// Set buffer for data output (0 = disabled)
-   @safe void setBufferSize(size_t sz = 0)
+   /// Set min (reserved) buffer length for data output
+   @safe void setMinBufferSize(size_t sz)
    {
       if (_internal._dirty)
          throw new Exception("Can't change buffer size. Too late");
 
-      _internal._bufferSize = sz;
+      _internal._minBufferSize = sz;
+      _internal._sendBuffer.reserve(_internal._minBufferSize, true);
+   }
 
-      if (sz>0)
-         _internal._sendBuffer.reserve(sz);
+   /// Set max buffer for data output (0 == disabled)
+   @safe void setMaxBufferSize(size_t sz)
+   {
+      if (_internal._dirty)
+         throw new Exception("Can't change buffer size. Too late");
+
+      _internal._maxBufferSize = sz;
    }
 
    /// Override timeout for this request
@@ -1588,9 +1595,8 @@ struct Output
       import std.uri : encode;
       import std.array : appender;
 
-      string output;
-      auto builder = appender(output);
-      builder.reserve(1024);
+      static OutputBuffer!char buffer;
+      buffer.reserve(1024, true);
 
       immutable string[short] StatusCode =
       [
@@ -1613,27 +1619,27 @@ struct Output
       else statusDescription = "Unknown";
 
       bool has_content_type = false;
-      builder.put(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
-      builder.put("server: serverino/%02d.%02d.%02d\r\n".format(SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION));
+      buffer.append(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
+      buffer.append("server: serverino/%02d.%02d.%02d\r\n".format(SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION));
 
-      if (!_internal._keepAlive) builder.put("connection: close\r\n");
-      else builder.put("connection: keep-alive\r\n");
+      if (!_internal._keepAlive) buffer.append("connection: close\r\n");
+      else buffer.append("connection: keep-alive\r\n");
 
       // send user-defined headers
       foreach(const ref header;_internal._headers)
       {
-         builder.put(format("%s: %s\r\n", header.key, header.value));
+         buffer.append(format("%s: %s\r\n", header.key, header.value));
          if (header.key == "content-type") has_content_type = true;
       }
 
       // Default content-type is text/html if not defined by user
       if (!has_content_type)
-         builder.put(format("content-type: text/html;charset=utf-8\r\n"));
+         buffer.append(format("content-type: text/html;charset=utf-8\r\n"));
 
       // If required, I add headers to write cookies
       foreach(Cookie c;_internal._cookies)
       {
-         builder.put(format("set-cookie: %s=%s", c.name.encode(), c.value.encode()));
+         buffer.append(format("set-cookie: %s=%s", c.name.encode(), c.value.encode()));
 
          if (!c.session)
          {
@@ -1647,19 +1653,21 @@ struct Output
                gmt.hour, gmt.minute, gmt.second
             );
 
-            builder.put(format("; Expires=%s", data));
+            buffer.append(format("; Expires=%s", data));
          }
 
-         if (!c.path.length == 0) builder.put(format("; path=%s", c.path));
-         if (!c.domain.length == 0) builder.put(format("; domain=%s", c.domain));
-         if (c.secure) builder.put(format("; Secure"));
-         if (c.httpOnly) builder.put(format("; HttpOnly"));
-         builder.put("\r\n");
+         if (!c.path.length == 0) buffer.append(format("; path=%s", c.path));
+         if (!c.domain.length == 0) buffer.append(format("; domain=%s", c.domain));
+         if (c.secure) buffer.append(format("; Secure"));
+         if (c.httpOnly) buffer.append(format("; HttpOnly"));
+         buffer.append("\r\n");
       }
 
-      builder.put("\r\n");
-      sendData(builder.data);
-     _internal._headersSent = true;
+      buffer.append("\r\n");
+      sendData(buffer.array);
+      _internal._headersSent = true;
+      buffer.clear();
+
    }
 
 
@@ -1785,12 +1793,12 @@ struct Output
 
       if (_internal._keepAlive && _internal._headersSent)
       {
-         if (_internal.isBuffered()) _internal._sendBuffer ~= format("%X\r\n%s\r\n", data.length, cast(const char[])data);
+         if (_internal.isBuffered()) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
          else _internal._http.send(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
       }
       else
       {
-         if (_internal.isBuffered()) _internal._sendBuffer ~= cast(const char[])data;
+         if (_internal.isBuffered()) _internal._sendBuffer.append(cast(const char[])data);
          else  _internal._http.send(data);
       }
 
@@ -1799,15 +1807,13 @@ struct Output
 
    @safe void flush(const bool force = false)
    {
-      if (_internal.isBuffered() && (force || _internal._sendBuffer.data.length >= _internal._bufferSize))
+      if (_internal.isBuffered() && (force || _internal._sendBuffer.length >= _internal._maxBufferSize))
       {
-         _internal._http.send(_internal._sendBuffer.data);
-         _internal._buffer.length = 0;
-         _internal._sendBuffer = appender(_internal._buffer);
+         _internal._http.send(_internal._sendBuffer.array);
+         _internal._sendBuffer.clear();
+         _internal._sendBuffer.reserve(_internal._minBufferSize, true);
       }
    }
-
-   import std.array : Appender, appender;
 
    struct OutputImpl
    {
@@ -1826,11 +1832,12 @@ struct Output
       private HttpStream*     _http;
 
       private size_t          _requestId;
-      private size_t          _bufferSize;
-      private Appender!string _sendBuffer;
+      private size_t          _minBufferSize;
+      private size_t          _maxBufferSize;
+      private OutputBuffer!char _sendBuffer;
       private string          _buffer;
 
-      @safe nothrow @nogc isBuffered() { return _bufferSize > 0; }
+      @safe nothrow @nogc isBuffered() { return _maxBufferSize > 0; }
 
       void clear()
       {
@@ -1843,9 +1850,9 @@ struct Output
          _cookies = null;
          _headers = null;
          _keepAlive = false;
-         _bufferSize = 0;
-         _buffer.length = 0;
-         _sendBuffer = appender(_buffer);
+         _sendBuffer.clear();
+         _minBufferSize = 0;
+         _maxBufferSize = size_t.max;
       }
    }
 
@@ -1926,4 +1933,30 @@ void tryUninit(Modules...)()
 
       }}
    }
+}
+
+private struct OutputBuffer(T)
+{
+   private:
+   T[]      data;
+   size_t   length;
+
+   public:
+
+   void append(const T[] newData)
+   {
+      if (data.length < length + newData.length)
+      {
+         data.length += (newData.length / (1024*16) + 1) * (1024*16);
+      }
+
+      data[length..length+newData.length] = newData[0..$];
+      length = length+newData.length;
+   }
+
+   void append(const T newData) { append((&newData)[0..1]); }
+   auto capacity() { return data.length; }
+   void clear() { length = 0; }
+   void reserve(size_t r, bool allowShrink = false) { if (r < data.length || allowShrink) data.length = (r / (1024*16) + 1) * (1024*16); }
+   auto array() { return data[0..length]; }
 }
