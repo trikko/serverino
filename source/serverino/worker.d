@@ -93,7 +93,7 @@ private struct HttpStream
    {
       hasWritten = true;
 
-      if (withTls) tls_write(ctx, &data[0], data.length);
+      if (withTls) tls_write(ctx, data.ptr, data.length);
       else socket.send(data);
    }
 
@@ -393,7 +393,6 @@ package class Worker
       timeout = (Clock.currTime + config.maxHttpWaiting);
       // FIXME: Support pipelining
       // Read data
-
       data.reserve = buffer.length*10;
 
       while(http.socket.isAlive)
