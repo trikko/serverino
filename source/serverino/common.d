@@ -34,7 +34,7 @@ import std.traits : ReturnType;
 
 package enum SERVERINO_MAJOR     = 0;
 package enum SERVERINO_MINOR     = 1;
-package enum SERVERINO_REVISION  = 1;
+package enum SERVERINO_REVISION  = 2;
 
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
