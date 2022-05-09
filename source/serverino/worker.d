@@ -1801,7 +1801,11 @@ struct Output
    @safe void flush(const bool force = false)
    {
       if (_internal.isBuffered() && (force || _internal._sendBuffer.data.length >= _internal._bufferSize))
-            _internal._http.send(_internal._sendBuffer.data);
+      {
+         _internal._http.send(_internal._sendBuffer.data);
+         _internal._buffer.length = 0;
+         _internal._sendBuffer = appender(_internal._buffer);
+      }
    }
 
    import std.array : Appender, appender;
