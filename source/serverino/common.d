@@ -33,8 +33,8 @@ import std.datetime : Duration, dur;
 import std.traits : ReturnType;
 
 package enum SERVERINO_MAJOR     = 0;
-package enum SERVERINO_MINOR     = 1;
-package enum SERVERINO_REVISION  = 2;
+package enum SERVERINO_MINOR     = 2;
+package enum SERVERINO_REVISION  = 0;
 
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
