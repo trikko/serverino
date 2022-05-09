@@ -1580,7 +1580,7 @@ struct Output
 	/// Force sending of headers.
 	@safe void sendHeaders()
    {
-      _internal._dirty = true;
+     _internal._dirty = true;
 
       if (_internal._headersSent)
          throw new Exception("Can't resend headers. Too late. Just sent.");
@@ -1735,7 +1735,7 @@ struct Output
    /// Set response status. Default is 200 (OK)
    @safe @property void status(ushort status)
    {
-     _internal._dirty = true;
+      _internal._dirty = true;
 
       if (_internal._headersSent)
          throw new Exception("Can't set status. Too late. Just sent.");
@@ -1758,7 +1758,7 @@ struct Output
    /// Ditto
    @safe void write(in void[] data)
    {
-     _internal._dirty = true;
+      _internal._dirty = true;
 
       if (!_internal._headersSent)
          sendHeaders();
