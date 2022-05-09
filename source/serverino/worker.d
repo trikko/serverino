@@ -568,7 +568,7 @@ package class Worker
          output._internal._keepAlive =
             config.keepAlive &&
             output._internal._httpVersion == HttpVersion.HTTP11 &&
-            sicmp(request.header.read("connection", "keep-alive"), "keep-alive") == 0;
+            sicmp(request.header.read("connection", "keep-alive").strip, "keep-alive") == 0;
 
          if (output._internal._keepAlive)
             output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
