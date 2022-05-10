@@ -11,13 +11,14 @@ void test_1(Request r, Output o) { o ~= "1"; }
 void test_2(Request r, Output o) { o ~= "2"; }
 
 @endpoint @priority(3)
-void test_3(Request r, Output o) { o ~= "3"; }
+void test_3(Output o) { o ~= "3"; }
 
 @endpoint @priority(2)
 void test_4(Request r, Output o) { o ~= "4"; }
 
 @endpoint @priority(4)
-void test_5(Request r, Output o) { return; }
+void test_5(Request r) { return; }
+
 
 unittest
 {
