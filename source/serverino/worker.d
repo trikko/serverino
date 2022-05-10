@@ -883,7 +883,7 @@ struct Request
 
       string output;
       output ~= format("Worker: #%s\n", worker.to!string);
-      output ~= format("Build ID: %s\n", buildVersion);
+      output ~= format("Build ID: %s\n", buildId);
       output ~= "\n";
       output ~= "Request:\n";
       output ~= format("- Protocol: %s\n",_internal._isHttps?"https":"http");
@@ -1053,7 +1053,7 @@ struct Request
    }
 
    /// Every time you compile the app this value will change
-   enum buildVersion = simpleNotSecureCompileTimeHash();
+   enum buildId = simpleNotSecureCompileTimeHash();
 
 	///
    @safe @property @nogc nothrow public Method method() const
