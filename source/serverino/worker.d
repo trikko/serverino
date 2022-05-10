@@ -867,7 +867,7 @@ enum HttpVersion
 struct Request
 {
    /// Print request data
-   @safe string dump(bool html = true) const
+   @safe string dump()(bool html = true) const
    {
       import std.string : replace;
       string d = toString();
@@ -878,12 +878,12 @@ struct Request
    }
 
    /// ditto
-   @safe string toString() const
+   @safe string toString()() const
    {
 
       string output;
       output ~= format("Worker: #%s\n", worker.to!string);
-      output ~= format("Build Version: %s\n", buildVersion);
+      output ~= format("Build ID: %s\n", buildVersion);
       output ~= "\n";
       output ~= "Request:\n";
       output ~= format("- Protocol: %s\n",_internal._isHttps?"https":"http");
@@ -1021,35 +1021,35 @@ struct Request
    /// Current sessionId, if set and valid.
    @safe @nogc @property nothrow public auto sessionId() const { return _internal._sessionId; }
 
-   static private string simpleNotSecureCompileTimeHash()
+   static private string simpleNotSecureCompileTimeHash(string seed = "")
    {
-      // A stupid and simple hash function I create.
-      // CTFE likes it.
-      // It's more or less another way to represent a timestamp :)
+      // Definetely not a secure hash function
+      // Created just to give a unique ID to each build.
 
-      string h,h2;
+      char[16] h = "SimpleNotSecure!";
+      char[32] h2;
 
-      auto s = __TIMESTAMP__.representation;
-      auto hex = "0123456789abcdef".representation;
+      auto  s = (seed ~ "_" ~  __TIMESTAMP__).representation;
+      static immutable hex = "0123456789abcdef".representation;
 
       ulong sc = 104_059;
 
-      foreach_reverse(c; s)
+      foreach_reverse(idx, c; s)
       {
          sc += 1+(cast(ushort)c);
          sc *= 79_193;
-         h ~= cast(char)(sc%255);
+         h[15-idx%16] ^= cast(char)(sc%255);
       }
 
-      foreach(c; h)
+      foreach(idx, c; h)
       {
          sc += 1+(cast(ushort)c);
          sc *= 96_911;
-         h2 ~= hex[(sc%256)/16];
-         h2 ~= hex[(sc%256)%16];
+         h2[idx*2] = hex[(sc%256)/16];
+         h2[idx*2+1]= hex[(sc%256)%16];
       }
 
-      return h2;
+      return h2.dup;
    }
 
    /// Every time you compile the app this value will change
