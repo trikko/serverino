@@ -315,14 +315,13 @@ package class Daemon
    package:
    alias ForkInfo = Tuple!(bool, "isThisAWorker", WorkerInfo, "wi");
 
+   __gshared Daemon _instance = null;
+
    static auto instance()
    {
-      __gshared Daemon i = null;
-
-      if (i is null)
-         i = new Daemon();
-
-      return i;
+      if (_instance is null)
+         _instance = new Daemon();
+      return _instance;
    }
 
    auto ref workersAlive()
@@ -344,9 +343,9 @@ package class Daemon
       );
    }
 
+
    ForkInfo wake(DaemonConfigPtr config)
    {
-
       keepAliveState.length = 10;
       foreach(x; 0..keepAliveState.length)
          keepAliveLookup[KeepAliveState.State.FREE].insertBack(x);
@@ -361,9 +360,8 @@ package class Daemon
          }
       }
 
-      extern(C) void uninit(int value)
+      extern(C) void uninit(int value = 0)
       {
-
          import core.sys.posix.stdlib : kill, SIGTERM;
 
          Daemon daemon = Daemon.instance;
@@ -386,25 +384,29 @@ package class Daemon
             }
          }
 
+         daemon._instance = null;
          daemon.exitRequested = true;
          daemon.loggerExitRequested = true;
+
       }
 
       sigset(SIGINT, &uninit);
       sigset(SIGTERM, &uninit);
 
       // Redirecting stderr to a pipe.
-      import core.sys.posix.fcntl;
-      daemonPipe = pipe();
-      int stderrCopy = dup(STDERR_FILENO);
-      int flags = fcntl(daemonPipe.readEnd.fileno, F_GETFL, 0);
-      fcntl(daemonPipe.readEnd.fileno, F_SETFL, flags | O_NONBLOCK);
-      dup2(daemonPipe.writeEnd.fileno, STDERR_FILENO);
+      version(unittest) { }
+      else
+      {
+         import core.sys.posix.fcntl;
+         daemonPipe = pipe();
+         int stderrCopy = dup(STDERR_FILENO);
+         int flags = fcntl(daemonPipe.readEnd.fileno, F_GETFL, 0);
+         fcntl(daemonPipe.readEnd.fileno, F_SETFL, flags | O_NONBLOCK);
+         dup2(daemonPipe.writeEnd.fileno, STDERR_FILENO);
+         loggerThread = new Thread({ logger(stderrCopy); }).start();
+      }
 
       log("Daemon started.");
-
-      // Starting thread that "syncs" logs.
-      loggerThread = new Thread({ logger(stderrCopy); }).start();
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
@@ -713,12 +715,19 @@ package class Daemon
          listener.socket.close();
       }
 
+      uninit(0);
+
       // Exiting
       return ForkInfo(false, WorkerInfo.init);
    }
 
-   private:
+   void shutdown()
+   {
+      import core.thread;
+      exitRequested = true;
+   }
 
+   private:
 
    bool           exitRequested = false;
    bool           loggerExitRequested = false;
@@ -947,7 +956,8 @@ package class Daemon
 
          // These thread don't exist in child process.
          // Druntime doesn't know that.
-         thread_detachInstance(loggerThread);
+         version(unittest) { }
+         else thread_detachInstance(loggerThread);
 
          // We're not going to use these
          pipes.readEnd().close();

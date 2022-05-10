@@ -84,7 +84,7 @@ template ServerinoLoop(Modules...)
    import std.meta : AliasSeq;
    import std.traits : moduleName;
 
-   alias allModules = AliasSeq!(mixin(moduleName!main), Modules);
+   alias allModules = AliasSeq!(mixin(moduleName!mainServerinoLoop), Modules);
 
    static foreach(m; allModules)
       static assert(__traits(isModule, m), "All ServerinoMain params must be modules");
