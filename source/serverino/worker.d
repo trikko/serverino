@@ -952,8 +952,12 @@ struct Request
 		Get, ///
       Post, ///
       Head, ///
-      Delete, ///
       Put, ///
+      Delete, ///
+      Connect, ///
+      Options, ///
+      Patch, ///
+      Trace, ///
       Unknown = -1 ///
 	}
 
@@ -1065,6 +1069,10 @@ struct Request
 			case "HEAD": return Method.Head;
 			case "PUT": return Method.Put;
 			case "DELETE": return Method.Delete;
+         case "CONNECT": return Method.Connect;
+         case "OPTIONS": return Method.Options;
+         case "PATCH": return Method.Patch;
+         case "TRACE": return Method.Trace;
          default: return Method.Unknown;
 		}
 	}
@@ -1148,21 +1156,13 @@ struct Request
          {
             auto first = h.indexOf(":");
             if (first < 0) continue;
-
-            _header[h[0..first].toLower] = h[first+1..$];
+            _header[h[0..first].toLower] = h[first+1..$].strip;
          }
 
          _worker = myPID;
 
-         {
-            import std.array : array, join;
-            if ("host" in _header) _host = _header["host"];
 
-            auto colon = _host.lastIndexOf(':') >= 0;
-
-            if (colon >= 0)
-               _host.length = colon;
-         }
+         if ("host" in _header) _host = _header["host"];
 
          // Read get params
          if (!_rawQueryString.empty)
@@ -1396,9 +1396,9 @@ struct Request
       }
 
       void clearFiles() {
-         import std.file : remove;
+         import std.file : remove, exists;
          foreach(f; _form)
-            try {remove(f.path); } catch(Exception e) { }
+            try {if (exists(f.path)) remove(f.path); } catch(Exception e) { }
       }
 
       ~this() { clearFiles(); }
@@ -1437,6 +1437,8 @@ struct Request
 
       void clear()
       {
+         clearFiles();
+
          _form    = null;
          _data    = null;
          _get     = null;
@@ -1462,8 +1464,6 @@ struct Request
          _postDataContentType = string.init;
 
          _parsingStatus = ParsingStatus.OK;
-
-         clearFiles();
       }
    }
 
