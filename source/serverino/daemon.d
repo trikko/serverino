@@ -315,8 +315,6 @@ package class Daemon
    package:
    alias ForkInfo = Tuple!(bool, "isThisAWorker", WorkerInfo, "wi");
 
-   __gshared Daemon _instance = null;
-
    static auto instance()
    {
       if (_instance is null)
@@ -635,7 +633,7 @@ package class Daemon
                   served = true;
                   kaWaiting.remove(idx);
                   kaFree.insertBack(idx);
-                  reprocess(config.listeners[kai.ji.listenerIndex], workers[idling.front], *kai);
+                  process(config.listeners[kai.ji.listenerIndex], workers[idling.front], *kai);
                   continue;
                }
 
@@ -669,7 +667,7 @@ package class Daemon
                   kaFree.insertBack(idx);
                   workers[index] = WorkerState(index, fi.wi);
                   workers[index].setStatus(WorkerState.State.IDLING);
-                  reprocess(config.listeners[kai.ji.listenerIndex], workers[index], *kai);
+                  process(config.listeners[kai.ji.listenerIndex], workers[index], *kai);
                }
 
             }
@@ -736,9 +734,11 @@ package class Daemon
    Pipe           daemonPipe;
 
 
-   SimpleList[5] workersLookup;
-   SimpleList[2] keepAliveLookup;
-   KeepAliveState[] keepAliveState;
+   SimpleList[5]     workersLookup;
+   SimpleList[2]     keepAliveLookup;
+   KeepAliveState[]  keepAliveState;
+
+   __gshared Daemon  _instance = null;
 
 
    this() { }
@@ -850,6 +850,20 @@ package class Daemon
       worker.ji.socket = s;
       worker.ji.listenerIndex = li.index;
 
+      transferRequest(li, worker);
+   }
+
+   void process(ref Listener li, ref WorkerState worker, ref KeepAliveState kai)
+   {
+      worker.setStatus(WorkerState.State.PROCESSING);
+      worker.ji.socket = kai.ji.socket;
+      worker.ji.listenerIndex = kai.ji.listenerIndex;
+
+      transferRequest(li, worker);
+   }
+
+   void transferRequest(ref Listener li, ref WorkerState worker)
+   {
       IPCMessage header;
       header.data.command = "RQST";
 
@@ -862,30 +876,8 @@ package class Daemon
       worker.wi.ipcSocket.send(request.raw);
 
       // Send accepted socket thru ipc socket. That's magic!
-      SocketTransfer.send(s.handle, worker.wi.ipcSocket);
-   }
-
-   void reprocess(ref Listener li, ref WorkerState worker, ref KeepAliveState kai)
-   {
-      worker.setStatus(WorkerState.State.PROCESSING);
-      worker.ji.socket = kai.ji.socket;
-      worker.ji.listenerIndex = kai.ji.listenerIndex;
-
-      IPCMessage header;
-      header.data.command = "ALIV";
-
-      IPCRequestMessage request;
-      request.data.isHttps = li.isHttps;
-      request.data.isIPV4  = li.address.addressFamily == AddressFamily.INET;
-      request.data.certIdx = li.index;
-
-      worker.wi.ipcSocket.send(header.raw);
-      worker.wi.ipcSocket.send(request.raw);
-
-      // Send accepted socket thru ipc socket. That's magic!
       SocketTransfer.send(worker.ji.socket.handle, worker.wi.ipcSocket);
    }
-
 
    ForkInfo checkWorkers(DaemonConfigPtr config)
    {
