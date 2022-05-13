@@ -1,4 +1,4 @@
-# serverino
+# serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http/https server
 * Multi-process
 * Dynamic number of workers
