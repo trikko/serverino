@@ -348,8 +348,7 @@ package class Daemon
       foreach(x; 0..keepAliveState.length)
          keepAliveLookup[KeepAliveState.State.FREE].insertBack(x);
 
-      // Always kill workers on exit
-      scope(failure)
+      void killWorkers()
       {
          foreach(ref w; workers)
          {
@@ -358,13 +357,17 @@ package class Daemon
          }
       }
 
+      // Always kill workers on exit
+      scope(failure) { killWorkers(); }
+
       extern(C) void uninit(int value = 0)
       {
          import core.sys.posix.stdlib : kill, SIGTERM;
 
          Daemon daemon = Daemon.instance;
-         SysTime t = Clock.currTime;
 
+
+         SysTime t = Clock.currTime;
          bool killing = true;
          while(killing)
          {
@@ -713,6 +716,7 @@ package class Daemon
          listener.socket.close();
       }
 
+      killWorkers();
       uninit(0);
 
       // Exiting
