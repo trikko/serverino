@@ -301,7 +301,7 @@ package union IPCMessage
       bool valid =
       (
          data.magic == [0x19, 0x83, 0x05, 0x31] &&
-         (data.command == "RQST" || data.command == "ALIV" || data.command == "SWCH")
+         (data.command == "RQST" || data.command == "SWCH")
       );
 
       if (!valid)
