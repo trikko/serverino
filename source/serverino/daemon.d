@@ -467,8 +467,8 @@ package class Daemon
          foreach(idx; workersAlive)
             ssRead.add(workers[idx].wi.ipcSocket);
 
-         foreach(ref kai; keepAliveLookup[KeepAliveState.State.WAITING].asRange.map!(x => keepAliveState[x]).filter!(x => x.ji.socket.isAlive))
-            ssRead.add(kai.ji.socket);
+         foreach(ref kas; keepAliveLookup[KeepAliveState.State.WAITING].asRange.map!(x => keepAliveState[x]).filter!(x => x.ji.socket.isAlive))
+            ssRead.add(kas.ji.socket);
 
          // Check for new requests
          size_t updates = Socket.select(ssRead, null,null, 1.dur!"seconds");
@@ -610,19 +610,19 @@ package class Daemon
 
          foreach(idx; kaWaiting.asRange)
          {
-            auto kai = &keepAliveState[idx];
+            auto kas = &keepAliveState[idx];
 
-            if (!kai.ji.socket.isAlive)
+            if (!kas.ji.socket.isAlive)
             {
                kaWaiting.remove(idx);
                kaFree.insertBack(idx);
                continue;
             }
 
-            if (updates > 0 && ssRead.isSet(kai.ji.socket))
+            if (updates > 0 && ssRead.isSet(kas.ji.socket))
             {
 
-               kai.waiting = true;
+               kas.waiting = true;
                updates--;
 
                bool served = false;
@@ -636,7 +636,7 @@ package class Daemon
                   served = true;
                   kaWaiting.remove(idx);
                   kaFree.insertBack(idx);
-                  process(config.listeners[kai.ji.listenerIndex], workers[idling.front], *kai);
+                  process(config.listeners[kas.ji.listenerIndex], workers[idling.front], kas);
                   continue;
                }
 
@@ -670,17 +670,17 @@ package class Daemon
                   kaFree.insertBack(idx);
                   workers[index] = WorkerState(index, fi.wi);
                   workers[index].setStatus(WorkerState.State.IDLING);
-                  process(config.listeners[kai.ji.listenerIndex], workers[index], *kai);
+                  process(config.listeners[kas.ji.listenerIndex], workers[index], kas);
                }
 
             }
-            else if (!kai.waiting && now > kai.timeout)
+            else if (!kas.waiting && now > kas.timeout)
             {
                kaWaiting.remove(idx);
                kaFree.insertBack(idx);
-               kai.ji.socket.shutdown(SocketShutdown.BOTH);
-               kai.ji.socket.close();
-               kai.ji.socket = null;
+               kas.ji.socket.shutdown(SocketShutdown.BOTH);
+               kas.ji.socket.close();
+               kas.ji.socket = null;
             }
 
          }
@@ -846,22 +846,20 @@ package class Daemon
 
    }
 
-   void process(ref Listener li, ref WorkerState worker)
-   {
-      Socket s = li.socket.accept();
-      worker.setStatus(WorkerState.State.PROCESSING);
-
-      worker.ji.socket = s;
-      worker.ji.listenerIndex = li.index;
-
-      transferRequest(li, worker);
-   }
-
-   void process(ref Listener li, ref WorkerState worker, ref KeepAliveState kai)
+   void process(ref Listener li, ref WorkerState worker, KeepAliveState *kas = null)
    {
       worker.setStatus(WorkerState.State.PROCESSING);
-      worker.ji.socket = kai.ji.socket;
-      worker.ji.listenerIndex = kai.ji.listenerIndex;
+
+      if (kas is null)
+      {
+         worker.ji.socket = li.socket.accept();
+         worker.ji.listenerIndex = li.index;
+      }
+      else
+      {
+         worker.ji.socket = kas.ji.socket;
+         worker.ji.listenerIndex = kas.ji.listenerIndex;
+      }
 
       transferRequest(li, worker);
    }
