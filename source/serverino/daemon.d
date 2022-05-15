@@ -471,7 +471,13 @@ package class Daemon
             ssRead.add(kas.ji.socket);
 
          // Check for new requests
-         size_t updates = Socket.select(ssRead, null,null, 1.dur!"seconds");
+         size_t updates;
+
+         try { updates = Socket.select(ssRead, null,null, 1.dur!"seconds"); }
+         catch (SocketException se) {
+            import std.experimental.logger : critical;
+            warning("Exception: ", se.msg);
+         }
 
          if (updates < 0) break;
          else if (updates == 0) continue;
@@ -852,7 +858,16 @@ package class Daemon
 
       if (kas is null)
       {
-         worker.ji.socket = li.socket.accept();
+         try { worker.ji.socket = li.socket.accept(); }
+         catch (SocketException se) {
+            import std.experimental.logger : critical;
+            warning("Exception: ", se.msg);
+
+            worker.ji.socket = null;
+            worker.setStatus(WorkerState.State.IDLING);
+            return;
+         }
+
          worker.ji.listenerIndex = li.index;
       }
       else
