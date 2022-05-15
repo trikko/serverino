@@ -441,6 +441,15 @@ package class Daemon
                loggerThread.join();
             }
 
+            foreach(ref l; config.listeners)
+            {
+               if (l.socket !is null)
+               {
+                  l.socket.close();
+                  l.socket.shutdown(SocketShutdown.BOTH);
+               }
+            }
+
             exit(EXIT_FAILURE);
          }
       }
