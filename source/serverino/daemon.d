@@ -27,7 +27,7 @@ module serverino.daemon;
 
 import std.process : thisProcessID, Pipe, pipe;
 import std.experimental.logger : log, info;
-import std.socket : linger, AddressFamily, socketPair, socket_t, Socket, Linger, SocketSet, SocketOption, SocketOptionLevel, TcpSocket, SocketShutdown;
+import std.socket : linger, AddressFamily, socketPair, socket_t, Socket, Linger, SocketSet, SocketOption, SocketOptionLevel, TcpSocket, SocketShutdown, SocketException;
 import std.typecons : Tuple;
 import std.datetime : SysTime, Clock, dur;
 import core.thread : Thread, thread_detachInstance;
@@ -472,10 +472,9 @@ package class Daemon
 
          // Check for new requests
          size_t updates;
-
          try { updates = Socket.select(ssRead, null,null, 1.dur!"seconds"); }
          catch (SocketException se) {
-            import std.experimental.logger : critical;
+            import std.experimental.logger : warning;
             warning("Exception: ", se.msg);
          }
 
@@ -860,7 +859,7 @@ package class Daemon
       {
          try { worker.ji.socket = li.socket.accept(); }
          catch (SocketException se) {
-            import std.experimental.logger : critical;
+            import std.experimental.logger : warning;
             warning("Exception: ", se.msg);
 
             worker.ji.socket = null;
