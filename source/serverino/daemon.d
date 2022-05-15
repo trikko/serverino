@@ -419,10 +419,30 @@ package class Daemon
          listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(1,0)));
          listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
-         listener.socket.bind(listener.address);
-         listener.socket.listen(config.listenerBacklog);
+         try
+         {
+            listener.socket.bind(listener.address);
+            listener.socket.listen(config.listenerBacklog);
 
-         info("Listening on %s://%s/".format(listener.isHttps?"https":"http", listener.socket.localAddress.toString));
+            info("Listening on %s://%s/".format(listener.isHttps?"https":"http", listener.socket.localAddress.toString));
+         }
+         catch (SocketException se)
+         {
+            import std.experimental.logger : critical;
+            import core.stdc.stdlib : exit, EXIT_FAILURE;
+            import std.stdio : stderr;
+
+            critical("Can't listen on %s://%s/. Are you allowed to listen on this port? Is port already used by another process?".format(listener.isHttps?"https":"http", listener.address.toString));
+
+            stderr.flush;
+            if (loggerThread !is null)
+            {
+               loggerExitRequested = true;
+               loggerThread.join();
+            }
+
+            exit(EXIT_FAILURE);
+         }
       }
 
       // Workers
