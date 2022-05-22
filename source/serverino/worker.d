@@ -1363,7 +1363,7 @@ struct Request
                if("user-agent" in _header) ua = _header["user-agent"];
                if("accept-language" in _header) al = _header["accept-language"];
 
-               auto sign = cast(string)sha224Of(ua ~ "_" ~ al ~ "_" ~ _remoteAddress.toAddrString ~ "_" ~ uuid).toHexString.toLower;
+               auto sign = cast(string)sha224Of(ua ~ "_" ~ al ~ "_" ~ _remoteAddress.toAddrString ~ "_" ~ uuid).toHexString.dup.toLower;
 
                if (sign == signature) _sessionId = sessionId;
                else warning("Is someone trying to spoof sessionId? ", sessionId);
@@ -1686,7 +1686,7 @@ struct Output
          req.header.read("user-agent", "NO-UA") ~ "_" ~
          req.header.read("accept-language", "NO-AL") ~ "_" ~
          req.remoteAddress.toAddrString ~ "_" ~ uuid
-      ).toHexString.toLower;
+      ).toHexString.dup.toLower;
 
       string sessionId = sign ~ "-" ~ uuid;
 
@@ -1758,7 +1758,7 @@ struct Output
    * output ~= "Hello world";
    * --------------------
    */
-	@safe void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
+	void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
 
    /// Write data
    @safe void write(string data = string.init) { write(data.representation); }

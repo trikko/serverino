@@ -26,16 +26,15 @@ OTHER DEALINGS IN THE SOFTWARE.
 /// Common defs for workers and daemon
 module serverino.common;
 
+package enum SERVERINO_MAJOR     = 0;
+package enum SERVERINO_MINOR     = 2;
+package enum SERVERINO_REVISION  = 2;
+
 import core.sys.posix.unistd : pid_t;
 import std.socket : Socket, InternetAddress, Address;
 import std.stdio : File;
 import std.datetime : Duration, dur;
 import std.traits : ReturnType;
-
-package enum SERVERINO_MAJOR     = 0;
-package enum SERVERINO_MINOR     = 2;
-package enum SERVERINO_REVISION  = 1;
-
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
 
