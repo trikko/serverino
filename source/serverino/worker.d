@@ -25,6 +25,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 /// All about worker
 module serverino.worker;
+//version = debugRequest;
 
 import std.conv : to;
 import std.string : format, representation, indexOf, lastIndexOf, toLower, toStringz, strip;
@@ -89,9 +90,9 @@ private struct HttpStream
       send(format("HTTP/1.1 %s\r\nConnection: close\r\n\r\n%s\n", s, s).representation);
    }
 
-   @trusted void send(const void[] data)
+   @trusted void send(const void[] data, bool setDirty = true)
    {
-      hasWritten = true;
+      hasWritten |= setDirty;
 
       if (withTls) tls_write(ctx, data.ptr, data.length);
       else socket.send(data);
@@ -168,7 +169,7 @@ package class Worker
 
          if (Clock.currTime - worker.lastUpdate > maxT && cas(&worker.status, State.PROCESSING, State.KILLING))
          {
-            log("Worker killed. Reason: MAX_REQUEST_TIME"); stderr.flush();
+            warning("Worker killed. Reason: MAX_REQUEST_TIME. See ServerinoConfig.setMaxWorkerLifetime()"); stderr.flush();
             Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
@@ -176,7 +177,7 @@ package class Worker
 
          if (Clock.currTime - started > worker.maxWorkerLifetime && cas(&worker.status, State.IDLING, State.KILLING))
          {
-            log("Worker stopped. Reason: MAX_WORKER_LIFETIME"); stderr.flush();
+            warning("Worker stopped. Reason: MAX_WORKER_LIFETIME. See ServerinoConfig.setMaxWorkerLifetime()"); stderr.flush();
             Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
@@ -184,7 +185,7 @@ package class Worker
 
          if (!worker.persistent && Clock.currTime - worker.lastUpdate > worker.maxWorkerIdling && cas(&worker.status, State.IDLING, State.KILLING))
          {
-            log("Worker stopped. Reason: MAX_WORKER_IDLING"); stderr.flush();
+            warning("Worker stopped. Reason: MAX_WORKER_IDLING. See ServerinoConfig.setMaxWorkerIdling()"); stderr.flush();
             Thread.sleep(1.dur!"msecs");
             kill(thisProcessID, SIGTERM);
             break;
@@ -192,8 +193,11 @@ package class Worker
 
          if (worker.timeout != SysTime.init && Clock.currTime > worker.timeout)
          {
+            warning("Worker stopped. Reason: HTTP_TIMEOUT. See ServerinoConfig.setHttpTimeout()"); stderr.flush();
+            worker.http.sendError("408 Request Timeout");
             worker.http.socket.shutdown(SocketShutdown.BOTH);
             worker.http.socket.close();
+            worker.timeout = SysTime.init;
          }
 
          Thread.yield();
@@ -370,272 +374,307 @@ package class Worker
    bool parseHttpRequest(Modules...)(WorkerConfigPtr config, bool isHttps)
    {
 
-      scope(failure)
-      {
-         warning("Exception during http request parsing");
-         http.sendError("500 Internal Server Error");
-      }
+      version(debugRequest) log("-- START RECEIVING");
 
-      ubyte[16*1024] 	buffer;
-      ubyte[]			   data;
-      size_t			   contentLength = 0;
-
-      char[]			method;
-      char[]			path;
-      char[]			httpVersion;
-
-      char[]			requestLine;
-      char[]			headers;
-
-      bool			headersParsed = false;
-      bool 			hasContentLength = false;
-
-      timeout = (Clock.currTime + config.maxHttpWaiting);
-      // FIXME: Support pipelining
-      // Read data
-      data.reserve = buffer.length*10;
-
-      while(http.socket.isAlive)
+      try
       {
 
-         auto received = http.receive(buffer);
-         if (received <= 0) return false;
+         ubyte[32*1024] 	buffer;
+         ubyte[]			   data;
+         size_t			   contentLength = 0;
 
-         data ~= buffer[0..received];
+         char[]			method;
+         char[]			path;
+         char[]			httpVersion;
 
-         // Too much data read
-         if (data.length > config.maxRequestSize)
+         char[]			requestLine;
+         char[]			headers;
+
+         bool			headersParsed = false;
+         bool 			hasContentLength = false;
+
+         timeout = (Clock.currTime + config.maxHttpWaiting);
+
+         // FIXME: Support pipelining
+         // Read data
+         data.reserve = buffer.length*10;
+
+         while(http.socket.isAlive)
          {
-            http.sendError("413 Request Entity Too Large");
-            return false;
-         }
 
-         // If we have content length, we read just what declared.
-         if (hasContentLength && data.length >= contentLength)
-         {
-            data.length = contentLength;
-            break;
-         }
-
-         // Have we finished with headers?
-         if (!headersParsed)
-         {
-            headers = cast(char[]) data;
-            auto headersEnd = headers.indexOf("\r\n\r\n");
-
-            // Headers completed?
-            if (headersEnd > 0)
+            auto received = http.receive(buffer);
+            if (received <= 0)
             {
-               headers.length = headersEnd;
-               data = data[headersEnd+4..$];
-               headersParsed = true;
+               version(debugRequest) log("-- RECEIVED < 0. TOTAL: ", data.length);
+               return false;
+            }
 
-               auto headersLines = headers.splitter("\r\n");
+            data ~= buffer[0..received];
 
-               if (headersLines.empty)
+            // Too much data read
+            if (data.length > config.maxRequestSize)
+            {
+               version(debugRequest) log("-- REQUEST TOO LARGE: ", data.length, " > ", config.maxRequestSize);
+               http.sendError("413 Request Entity Too Large");
+               return false;
+            }
+
+            // If we have content length, we read just what declared.
+            if (hasContentLength && data.length >= contentLength)
+            {
+               version(debugRequest) log("-- READ ", contentLength, " OUT OF ", data.length);
+               data.length = contentLength;
+               break;
+            }
+
+            // Have we finished with headers?
+            if (!headersParsed)
+            {
+               headers = cast(char[]) data;
+               auto headersEnd = headers.indexOf("\r\n\r\n");
+
+               // Headers completed?
+               if (headersEnd > 0)
                {
-                  warning("HTTP Request: empty request");
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
+                  version(debugRequest) log("-- HEADERS COMPLETED");
+                  headers.length = headersEnd;
+                  data = data[headersEnd+4..$];
+                  headersParsed = true;
 
-               requestLine = headersLines.front;
+                  version(debugRequest) log(headers);
 
-               if (requestLine.length < 14)
-               {
-                  warning("HTTP request line too short: ", requestLine);
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
+                  auto headersLines = headers.splitter("\r\n");
 
-               auto fields = requestLine.splitter(" ");
-               size_t popped = 0;
-
-               if (!fields.empty)
-               {
-                  method = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
-
-               if (!fields.empty)
-               {
-                  path = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
-
-               if (!fields.empty)
-               {
-                  httpVersion = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
-
-               if (popped != 3 || !fields.empty)
-               {
-                  warning("HTTP request invalid: ", requestLine);
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
-
-               if (path.startsWith("http://") || path.startsWith("https://"))
-               {
-                  warning("Can't use absolute uri");
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
-
-               if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
-               {
-                  warning("HTTP request bad http version: ", httpVersion);
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
-
-               if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
-               {
-                  warning("HTTP method unknown: ", method);
-                  http.sendError("400 Bad Request");
-                  return false;
-               }
-
-               headersLines.popFront;
-               foreach(const ref l; headersLines)
-               {
-                  auto firstColon = l.indexOf(':');
-                  if (firstColon > 0 && l[0..firstColon].toLower == "content-length")
+                  if (headersLines.empty)
                   {
-                     contentLength = l[firstColon+1..$].strip.to!size_t;
-                     hasContentLength = true;
+                     warning("HTTP Request: empty request");
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  requestLine = headersLines.front;
+
+                  if (requestLine.length < 14)
+                  {
+                     warning("HTTP request line too short: ", requestLine);
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  auto fields = requestLine.splitter(" ");
+                  size_t popped = 0;
+
+                  if (!fields.empty)
+                  {
+                     method = fields.front;
+                     fields.popFront;
+                     popped++;
+                  }
+
+                  if (!fields.empty)
+                  {
+                     path = fields.front;
+                     fields.popFront;
+                     popped++;
+                  }
+
+                  if (!fields.empty)
+                  {
+                     httpVersion = fields.front;
+                     fields.popFront;
+                     popped++;
+                  }
+
+                  if (popped != 3 || !fields.empty)
+                  {
+                     warning("HTTP request invalid: ", requestLine);
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  if (path.startsWith("http://") || path.startsWith("https://"))
+                  {
+                     warning("Can't use absolute uri");
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
+                  {
+                     warning("HTTP request bad http version: ", httpVersion);
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
+                  {
+                     warning("HTTP method unknown: ", method);
+                     http.sendError("400 Bad Request");
+                     return false;
+                  }
+
+                  headersLines.popFront;
+
+                  bool expectContinue = false;
+
+                  foreach(const ref l; headersLines)
+                  {
+                     auto firstColon = l.indexOf(':');
+                     if (firstColon > 0)
+
+                     switch(l[0..firstColon].toLower)
+                     {
+                        case "content-length":
+                           contentLength = l[firstColon+1..$].strip.to!size_t;
+                           hasContentLength = true;
+                           break;
+
+                        case "expect":
+                           if (l[firstColon+1..$].strip.toLower == "100-continue")
+                              expectContinue = true;
+                           break;
+
+                        default:
+                     }
+                  }
+
+                  // If no content-length, we don't read body.
+                  if (contentLength == 0)
+                  {
+                     version(debugRequest) log("-- NO CONTENT LENGTH, SKIP DATA");
+                     data.length = 0;
                      break;
                   }
-               }
-
-               // If no content-length, we don't read body.
-               if (contentLength == 0)
-               {
-                  data.length = 0;
-                  break;
-               }
-               else if (data.length >= contentLength)
-               {
-                  data.length = contentLength;
-                  break;
-               }
-
-            }
-         }
-      }
-
-      if (!http.socket.isAlive)
-         return false;
-
-      timeout = SysTime.init;
-
-      if (headersParsed)
-      {
-         import std.regex : ctRegex, matchFirst;
-         import std.algorithm : max;
-         import std.uni : sicmp;
-
-         request._internal._httpVersion    = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-         request._internal._remoteAddress  = http.socket.remoteAddress;
-         request._internal._localAddress   = http.socket.localAddress;
-         request._internal._data           = cast(char[])data;
-         request._internal._rawHeaders     = headers.to!string;
-         request._internal._rawRequestLine = requestLine.to!string;
-         request._internal._isHttps        = isHttps;
-
-         auto uriRegex = ctRegex!(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`, "g");
-         auto matches = path.to!string.matchFirst(uriRegex);
-
-         if (!matches[2].empty || !matches[4].empty)
-         {
-            warning("HTTP Request with absolute uri");
-            http.sendError("400 Bad Request");
-            return false;
-         }
-
-         request._internal._uri            = matches[5];
-         request._internal._rawQueryString = matches[7];
-         request._internal._method         = method.to!string;
-         request._internal.process();
-
-         output._internal._httpVersion = request._internal._httpVersion;
-
-         output._internal._keepAlive =
-            config.keepAlive &&
-            output._internal._httpVersion == HttpVersion.HTTP11 &&
-            sicmp(request.header.read("connection", "keep-alive").strip, "keep-alive") == 0;
-
-         if (output._internal._keepAlive)
-            output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
-
-         if (request._internal._parsingStatus == Request.ParsingStatus.OK)
-         {
-            scope(exit) { output.flush(true); }
-
-            try
-            {
-               callHandlers!Modules(request, output);
-
-               if (!output._internal._dirty && !output.headersSent)
-               {
-                  http.sendError("404 Not Found");
-                  return false;
-               }
-               else
-               {
-                  if (!output._internal._headersSent)
-                     output.sendHeaders();
-
-                  if (output._internal._keepAlive)
+                  else if (data.length >= contentLength)
                   {
-                     output.sendData([]);
-                     return true;
+                     version(debugRequest) log("-- DATA ALREADY READ.");
+                     data.length = contentLength;
+                     break;
                   }
-
-                  return false;
+                  else if (expectContinue) http.send("HTTP/1.1 100 continue\r\n\r\n", false);
                }
             }
-
-            // Unhandled Exception escaped from user code
-            catch (Exception e)
-            {
-               if (!output.headersSent)
-                  http.sendError("500 Internal Server Error");
-
-               critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg));
-               critical(e.info);
-            }
-
-            // Even worse.
-            catch (Throwable t)
-            {
-               if (!output.headersSent)
-                  http.sendError("500 Internal Server Error");
-
-               critical(format("%s:%s Throwable: %s", t.file, t.line, t.msg));
-               critical(t.info);
-
-               // Rethrow
-               throw t;
-            }
          }
-         else
-         {
-            if (!output.headersSent)
-                  http.sendError("400 Bad Request");
 
-            critical("Parsing error:", request._internal._parsingStatus);
+         version(debugRequest) log("-- SOCKET ALIVE: ", http.socket.isAlive);
+
+         if (!http.socket.isAlive)
+            return false;
+
+         timeout = SysTime.init;
+
+         if (headersParsed)
+         {
+            import std.regex : ctRegex, matchFirst;
+            import std.algorithm : max;
+            import std.uni : sicmp;
+
+            request._internal._httpVersion    = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
+            request._internal._remoteAddress  = http.socket.remoteAddress;
+            request._internal._localAddress   = http.socket.localAddress;
+            request._internal._data           = cast(char[])data;
+            request._internal._rawHeaders     = headers.to!string;
+            request._internal._rawRequestLine = requestLine.to!string;
+            request._internal._isHttps        = isHttps;
+
+            auto uriRegex = ctRegex!(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`, "g");
+            auto matches = path.to!string.matchFirst(uriRegex);
+
+            if (!matches[2].empty || !matches[4].empty)
+            {
+               warning("HTTP Request with absolute uri");
+               http.sendError("400 Bad Request");
+               return false;
+            }
+
+            request._internal._uri            = matches[5];
+            request._internal._rawQueryString = matches[7];
+            request._internal._method         = method.to!string;
+            request._internal.process();
+
+            output._internal._httpVersion = request._internal._httpVersion;
+
+            output._internal._keepAlive =
+               config.keepAlive &&
+               output._internal._httpVersion == HttpVersion.HTTP11 &&
+               sicmp(request.header.read("connection", "keep-alive").strip, "keep-alive") == 0;
+
+            if (output._internal._keepAlive)
+               output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
+
+            version(debugRequest) log("-- PARSING STATUS: ", request._internal._parsingStatus);
+            version(debugRequest) log("-- REQ: ", request);
+
+            if (request._internal._parsingStatus == Request.ParsingStatus.OK)
+            {
+               scope(exit) { output.flush(true); }
+
+               try
+               {
+                  callHandlers!Modules(request, output);
+
+                  if (!output._internal._dirty && !output.headersSent)
+                  {
+                     http.sendError("404 Not Found");
+                     return false;
+                  }
+                  else
+                  {
+                     if (!output._internal._headersSent)
+                        output.sendHeaders();
+
+                     if (output._internal._keepAlive)
+                     {
+                        output.sendData([]);
+                        return true;
+                     }
+
+                     return false;
+                  }
+               }
+
+               // Unhandled Exception escaped from user code
+               catch (Exception e)
+               {
+                  if (!output.headersSent)
+                     http.sendError("500 Internal Server Error");
+
+                  critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg));
+                  critical(e.info);
+               }
+
+               // Even worse.
+               catch (Throwable t)
+               {
+                  if (!output.headersSent)
+                     http.sendError("500 Internal Server Error");
+
+                  critical(format("%s:%s Throwable: %s", t.file, t.line, t.msg));
+                  critical(t.info);
+
+                  // Rethrow
+                  throw t;
+               }
+            }
+            else
+            {
+               if (!output.headersSent)
+                     http.sendError("400 Bad Request");
+
+               critical("Parsing error:", request._internal._parsingStatus);
+            }
+
+         }
+         else if (data.length > 0)
+         {
+            http.sendError("400 Bad Request");
+            critical("Can't parse http headers");
          }
 
       }
-      else if (data.length > 0)
+      catch(Exception e)
       {
-         http.sendError("400 Bad Request");
-         critical("Can't parse http headers");
+         critical("Error during http parsing", e);
       }
 
       return false;
