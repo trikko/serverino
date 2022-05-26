@@ -587,7 +587,42 @@ package class Worker
                return false;
             }
 
-            request._internal._uri            = matches[5];
+            // Just to prevent uri attack like
+            // GET /../../non_public_file
+            auto normalize(string uri)
+            {
+               import std.range : retro, join;
+               import std.algorithm : filter;
+               import std.array : array;
+               import std.typecons : tuple;
+               size_t skips = 0;
+               string norm = uri
+                  .splitter('/')
+                  .retro
+                  .map!(
+                        (x)
+                        {
+                           if (x == "..") skips++;
+                           else if(x != ".")
+                           {
+                              if (skips == 0) return tuple(x, true);
+                              else skips--;
+                           }
+
+                           return tuple(x, false);
+                        }
+                  )
+                  .filter!(x => x[1] == true)
+                  .map!(x => x[0])
+                  .array
+                  .retro
+                  .join('/');
+
+                  if (norm.startsWith("/")) return norm;
+                  else return "/" ~ norm;
+            }
+
+            request._internal._uri            = normalize(matches[5]);
             request._internal._rawQueryString = matches[7];
             request._internal._method         = method.to!string;
             request._internal.process();
