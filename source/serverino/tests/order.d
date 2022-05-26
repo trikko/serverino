@@ -22,7 +22,10 @@ void test_4(Request r, Output o) { history ~= 4; }
 void test_5(Request r, Output o) { history ~= 5; }
 
 @endpoint @priority(-30)
-void test_6(Request r, Output o) { o ~= history; }
+void test_6(Request r, Output o) { import std.conv:to; o ~= history; o ~= "\n" ~ r.route().to!string; history.length = 0; }
+
+@endpoint @priority(-50)
+void test_7(Request r, Output o) { o ~= "This will not be called."; }
 
 unittest
 {
@@ -32,5 +35,6 @@ unittest
     runOnBackgroundThread();
     scope(exit) terminateBackgroundThread();
 
-    assert(get("http://localhost:8080/") == "[1, 5, 3, 4, 2]");
+    assert(get("http://localhost:8080/") == "[1, 5, 3, 4, 2]\n" ~ `["serverino.tests.order.test_1", "serverino.tests.order.test_5", "serverino.tests.order.test_3", "serverino.tests.order.test_4", "serverino.tests.order.test_2"]`);
+    assert(get("http://localhost:8080/") == "[1, 5, 3, 4, 2]\n" ~ `["serverino.tests.order.test_1", "serverino.tests.order.test_5", "serverino.tests.order.test_3", "serverino.tests.order.test_4", "serverino.tests.order.test_2"]`);
 }

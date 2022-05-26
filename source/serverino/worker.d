@@ -841,6 +841,8 @@ package class Worker
                   static if (__traits(compiles, f(request, output))) f(request, output);
                   else static if (__traits(compiles, f(request))) f(request);
                   else f(output);
+
+                  request._internal._route ~= ff.mod ~ "." ~ ff.name;
                }
 
                if (output._internal._dirty) return true;
@@ -870,6 +872,8 @@ package class Worker
                   static if (__traits(compiles, f(request, output))) f(request, output);
                   else static if (__traits(compiles, f(request))) f(request);
                   else f(output);
+
+                  request._internal._route ~= untaggedHandlers[0].mod ~ "." ~ untaggedHandlers[0].name;
                }
             }
          }
@@ -1098,6 +1102,9 @@ struct Request
 
    /// Current sessionId, if set and valid.
    @safe @nogc @property nothrow public auto sessionId() const { return _internal._sessionId; }
+
+   /// The sequence of endpoints called so far
+   @safe @nogc @property nothrow public auto route() const { return _internal._route; }
 
    static private string simpleNotSecureCompileTimeHash(string seed = "")
    {
@@ -1502,6 +1509,8 @@ struct Request
       private string _rawHeaders;
       private string _rawRequestLine;
 
+      private string[]  _route;
+
       private HttpVersion _httpVersion;
 
       private FormData[string]   _form;
@@ -1538,6 +1547,9 @@ struct Request
          _postDataContentType = string.init;
 
          _parsingStatus = ParsingStatus.OK;
+
+         _route.length = 0;
+         _route.reserve(10);
       }
    }
 
