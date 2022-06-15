@@ -28,7 +28,7 @@ module serverino.common;
 
 package enum SERVERINO_MAJOR     = 0;
 package enum SERVERINO_MINOR     = 2;
-package enum SERVERINO_REVISION  = 2;
+package enum SERVERINO_REVISION  = 3;
 
 import core.sys.posix.unistd : pid_t;
 import std.socket : Socket, InternetAddress, Address;
