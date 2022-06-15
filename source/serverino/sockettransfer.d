@@ -25,14 +25,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.sockettransfer;
 
-
-import std.socket : Socket, socket_t, cmsghdr, msghdr,
-   sendmsg, recvmsg, iovec,
-   CMSG_FIRSTHDR, CMSG_SPACE, CMSG_DATA, CMSG_LEN,
-   SOL_SOCKET, SCM_RIGHTS;
-
 version(darwin)
 {
+   import std.socket : Socket, socket_t,
+   iovec, SOL_SOCKET, SCM_RIGHTS;
+
+   alias socklen_t = uint;
+   alias ssize_t = uint;
+
    struct msghdr
    {
       void*     msg_name;
@@ -66,9 +66,17 @@ version(darwin)
    }
 
    extern(C) {
-      ssize_t recvmsg(int, scope msghdr*, int);
+      ssize_t recvmsg(int, scope msghdr*, int); 
       ssize_t sendmsg(int, const scope msghdr*, int);
    }
+
+}
+else
+{
+   import std.socket : Socket, socket_t, cmsghdr, msghdr,
+   sendmsg, recvmsg, iovec,
+   CMSG_FIRSTHDR, CMSG_SPACE, CMSG_DATA, CMSG_LEN,
+   SOL_SOCKET, SCM_RIGHTS;
 
 }
 
