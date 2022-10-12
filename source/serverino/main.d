@@ -60,7 +60,23 @@ class CustomLogger : Logger
       if(payload.logLevel >= LogLevel.critical)
          msg = "\x1b[1;31m" ~ msg ~ "\x1b[0m";
 
-      auto intro = (environment.get("SERVERINO_DAEMON") != null)?("[" ~ format("%06d", thisProcessID) ~ "]"):"*";
+      string intro;
+
+      if (environment.get("SERVERINO_DAEMON") == null) intro = "\x1b[1m★\x1b[0m ";
+      else {
+         import std.stdio : write, stderr;
+         import std.string : indexOf;
+
+         size_t seed = thisProcessID;
+
+         auto r = ((seed*123467983)%15+1)     * 255/15;
+         auto g = ((r*seed*123479261)%15+1)   * 255/15;
+         auto b = ((g*seed*123490957)%15+1)   * 255/15;
+
+         intro = text("\x1b[38;2;", r, ";", g, ";", b,"m■\x1b[0m ");
+      }
+
+      intro ~= format("[%06d]", thisProcessID);
       auto str = text(intro, " ", LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",format("%04d", payload.line), "] ", msg, "\n");
       stderr.write(str);
    }
