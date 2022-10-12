@@ -103,10 +103,14 @@ struct ServerinoConfig
    ///
    @safe ref ServerinoConfig setMaxRequestSize(size_t bytes = 1024*1024*10) return     { daemonConfig.maxRequestSize = bytes;  return this;}
 
+   version(Windows) { }
+   else
+   {
    /// For example: "www-data"
    @safe ref ServerinoConfig setWorkerUser(string s = string.init) return { workerConfig.user = s; return this; }
    /// For example: "www-data"
    @safe ref ServerinoConfig setWorkerGroup(string s = string.init) return { workerConfig.group = s; return this;}
+   }
 
    /// How long the socket will wait for a request after the connection?
    @safe ref ServerinoConfig setHttpTimeout(Duration dur = 1.dur!"seconds") return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
