@@ -110,6 +110,7 @@ struct Worker
 
       }
 
+      tryInit!Modules();
 
       // STDIN < /dev/null
       // STDERR > STDOUT
@@ -453,43 +454,50 @@ struct Worker
 
                   if (!output._internal._dirty && !output.headersSent)
                   {
-                     //http.sendError("404 Not Found");
-                     return false;
+                     output.status = 404;
+                     output ~= "404 Not found";
                   }
-                  else
+
+                  if (!output._internal._headersSent)
+                     output.sendHeaders();
+
+                  if (output._internal._keepAlive)
                   {
-                     if (!output._internal._headersSent)
-                        output.sendHeaders();
-
-                     if (output._internal._keepAlive)
-                     {
-                        output.sendData([]);
-
-                        return true;
-                     }
-
-                     return false;
+                     output.sendData([]);
+                     return true;
                   }
+
+                  return false;
+
                }
 
                // Unhandled Exception escaped from user code
                catch (Exception e)
                {
-                  //if (!output.headersSent)
-                  //   http.sendError("500 Internal Server Error");
-
                   critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg));
-                  critical(e.info);
+                  critical(format("-------\n%s",e.info));
+
+                  if (!output.headersSent)
+                  {
+                     output.status = 500;
+                     output ~= "500 Internal Server Error";
+
+                     if (output._internal._keepAlive)
+                     {
+                        output.sendData([]);
+                        return true;
+                     }
+
+                     return false;
+                  }
+
                }
 
                // Even worse.
                catch (Throwable t)
                {
-                  //if (!output.headersSent)
-                  //   http.sendError("500 Internal Server Error");
-
                   critical(format("%s:%s Throwable: %s", t.file, t.line, t.msg));
-                  critical(t.info);
+                  critical(format("-------\n%s",t.info));
 
                   // Rethrow
                   throw t;
@@ -497,8 +505,19 @@ struct Worker
             }
             else
             {
-               //if (!output.headersSent)
-               //      http.sendError("400 Bad Request");
+               if (!output.headersSent)
+               {
+                  output.status = 400;
+                  output ~= "400 Bad Request";
+
+                  if (output._internal._keepAlive)
+                  {
+                     output.sendData([]);
+                     return true;
+                  }
+
+                  return false;
+               }
 
                critical("Parsing error:", request._internal._parsingStatus);
             }
@@ -677,12 +696,6 @@ struct Worker
          }
       }
       else static assert(0, "Please add at least one endpoint. Try this: `void hello(Request req, Output output) { output ~= req.dump(); }`");
-
-      if (!output._internal._dirty)
-      {
-         output.status = 404;
-         output ~= "404 Not found";
-      }
    }
 
    char[]      mem;
@@ -699,3 +712,39 @@ struct Worker
 
    __gshared         requestId = 0;
 }
+
+
+void tryInit(Modules...)()
+{
+   import std.traits : getSymbolsByUDA, isFunction;
+
+   static foreach(m; Modules)
+   {
+      static foreach(f;  getSymbolsByUDA!(m, onWorkerStart))
+      {{
+         static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerStart but it is not a function");
+
+         static if (__traits(compiles, f())) f();
+         else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerStart but it is not callable");
+
+      }}
+   }
+}
+
+void tryUninit(Modules...)()
+{
+   import std.traits : getSymbolsByUDA, isFunction;
+
+   static foreach(m; Modules)
+   {
+      static foreach(f;  getSymbolsByUDA!(m, onWorkerStop))
+      {{
+         static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerStop but it is not a function");
+
+         static if (__traits(compiles, f())) f();
+         else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerStop but it is not callable");
+
+      }}
+   }
+}
+
