@@ -23,8 +23,24 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-module serverino;
+module tagged;
 
-public import serverino.main;
-public import serverino.config;
-public import serverino.inputoutput;
+import serverino;
+import std.conv : to;
+
+int[] history;
+
+@endpoint
+void test_1(Request r, Output o) { if (r.uri == "/error") return; history ~= 1; o ~= "1"; }
+
+@endpoint @priority(-1)
+void test_2(Request r, Output o) { if (r.uri == "/error") return; history ~= 2; o ~= "2"; }
+
+@endpoint @priority(3)
+void test_3(Request r, Output o) { if (r.uri == "/error") return; history ~= 3; o ~= history.to!string; }
+
+@endpoint @priority(2)
+void test_4(Request r, Output o) { if (r.uri == "/error") return;  history ~= 4; o ~= "4"; }
+
+@endpoint @priority(4)
+void test_5(Request r) { history ~= 5; return; }

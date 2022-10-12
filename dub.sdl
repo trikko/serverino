@@ -4,12 +4,13 @@ authors "Andrea Fontana"
 copyright "Copyright © 2022, Andrea Fontana"
 license "MIT"
 
-configuration "NoTLS" {
-    targetType "library"
+configuration "lib" {
+   targetType "library"
 }
 
-configuration "WithTLS" {
-    targetType "library"
-	versions "WithTLS"
-	libs "tls"
-}
+sourcePaths "source"
+
+subPackage "./init-exec"
+subPackage "./test-1"
+
+dependency ":init-exec" version="*"

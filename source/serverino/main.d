@@ -25,7 +25,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.main;
 
-import serverino.common;
+import serverino;
 
 import std.experimental.logger : Logger, LogLevel;
 import std.stdio : File, stderr;
@@ -41,6 +41,9 @@ class CustomLogger : Logger
    @trusted
    override void writeLogMsg(ref LogEntry payload)
    {
+      import std.process : environment, thisProcessID;
+      import std.conv : to;
+
       enum LLSTR = [
          LogLevel.all : "[\x1b[1ml\x1b[0m]", LogLevel.trace : "[\x1b[1;32mt\x1b[0m]",
          LogLevel.info : "[\x1b[1;32mi\x1b[0m]", LogLevel.warning : "[\x1b[1;33mw\x1b[0m]",
@@ -49,6 +52,7 @@ class CustomLogger : Logger
 
       import std.path : baseName;
       import std.conv : text;
+      import std.format : format;
 
       string t = payload.timestamp.toISOExtString;
       string msg = payload.msg;
@@ -56,9 +60,9 @@ class CustomLogger : Logger
       if(payload.logLevel >= LogLevel.critical)
          msg = "\x1b[1;31m" ~ msg ~ "\x1b[0m";
 
-
-      auto str = text(LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",payload.line, "] ", msg);
-      stderr.writeln(str);
+      auto intro = (environment.get("SERVERINO_DAEMON") != null)?("[" ~ format("%06d", thisProcessID) ~ "]"):"*";
+      auto str = text(intro, " ", LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",format("%04d", payload.line), "] ", msg, "\n");
+      stderr.write(str);
    }
 
    private File outputStream;
@@ -70,11 +74,9 @@ template ServerinoMain(Modules...)
 
    int main(string[] args)
    {
+
       import std.experimental.logger : sharedLog, LogLevel;
-
-      sharedLog = new CustomLogger(sharedLog.logLevel);
       sharedLog.logLevel = LogLevel.all;
-
       return mainServerinoLoop(args);
    }
 }
@@ -118,6 +120,9 @@ template ServerinoLoop(Modules...)
 
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
+   import std.experimental.logger.core;
+   sharedLog = new CustomLogger(LogLevel.all);
+
    if (config.returnCode != 0)
       return config.returnCode;
 
@@ -128,33 +133,11 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
 
    // Let's wake up the daemon
    import serverino.daemon;
-   Daemon.ForkInfo fi;
+   import serverino.worker;
+   import std.process : environment;
 
-   {
-      fi = Daemon.instance.wake(daemonConfig);
-      Daemon.instance.destroy();
-   }
-
-   // Daemon was forked to invoke a worker
-   if (fi.isThisAWorker)
-   {
-      // Close all opened files
-      {
-         import std.string : lastIndexOf;
-         import std.file : dirEntries, SpanMode;
-         import std.algorithm : map, filter, each;
-         import std.conv : to;
-         import core.sys.posix.unistd : close;
-
-         dirEntries("/dev/fd", SpanMode.shallow)
-         .map!(x => x.name[x.name.lastIndexOf('/')+1..$].to!int)
-         .filter!(x => x != fi.wi.pipe.fileno && x != cast(int)(fi.wi.ipcSocket.handle) && x > 2)
-         .each!( x => close(x) );
-      }
-
-      import serverino.worker;
-      Worker.instance.wake!Modules(workerConfig, fi.wi);
-   }
+   if (environment.get("SERVERINO_DAEMON") == null) Daemon.instance.wake(daemonConfig);
+	else Worker.instance.wake!Modules(workerConfig);
 
    return 0;
 }

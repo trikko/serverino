@@ -22,9 +22,28 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
+module serverino.databuffer;
 
-module serverino;
+package struct DataBuffer(T)
+{
+   private:
+   T[]      _data;
+   size_t   _length;
 
-public import serverino.main;
-public import serverino.config;
-public import serverino.inputoutput;
+   public:
+   void append(const T[] new_data)
+   {
+      if (_data.length < _length + new_data.length)
+         _data.length += (new_data.length / (1024*16) + 1) * (1024*16);
+
+      _data[_length.._length+new_data.length] = new_data[0..$];
+      _length = _length+new_data.length;
+   }
+
+   void append(const T new_data) { append((&new_data)[0..1]); }
+   auto capacity() { return _data.length; }
+   void clear() { _length = 0; }
+   void reserve(size_t r, bool allowShrink = false) { if (r < _data.length || allowShrink) _data.length = (r / (1024*16) + 1) * (1024*16); }
+   auto array() { return _data[0.._length]; }
+   size_t length() { return _length;}
+}

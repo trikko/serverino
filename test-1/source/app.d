@@ -1,10 +1,39 @@
-module serverino.tests.json;
+/*
+Copyright (c) 2022 Andrea Fontana
 
-version(unittest):
-import serverino.tests.common;
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+module app;
+
+import serverino;
+import serverino.tests;
+import tagged;
+
 import std;
 
-@endpoint
+mixin ServerinoTest!tagged;
+
+@endpoint @priority(5)
 void json(Request r, Output o)
 {
     if (r.uri != "/json/dump/test") return;
@@ -38,13 +67,50 @@ void json(Request r, Output o)
     o ~= v.toPrettyString();
 }
 
-unittest
-{
-    mixin ServerinoTest;
-    runOnBackgroundThread();
-    scope(exit) terminateBackgroundThread();
 
-    {
+@endpoint @priority(5)
+void test_1(Request r, Output o)
+{
+    if (r.uri == "/401")
+        o.status = 401;
+}
+
+@endpoint @priority(5)
+void test_2(Request r, Output o)
+{
+    if (r.uri != "/test_get") return;
+
+    o.addHeader("content-type", "text-plain");
+    o ~= r.get.read("hello", "world");
+    o ~= r.get.read("hllo", "world");
+}
+
+@endpoint @priority(5)
+void test_3(Request r, Output o)
+{
+    if (r.uri != "/long") return;
+
+    import core.thread;
+
+    Thread.sleep(2000.dur!"msecs");
+
+}
+
+@onServerInit
+ServerinoConfig conf()
+{
+	return ServerinoConfig
+		.create()
+        .setMaxRequestTime(1.dur!"seconds")
+        .setMaxRequestSize(2000)
+		.addListener("0.0.0.0", 8080)
+		.addListener("0.0.0.0", 8081)
+		.setWorkers(4);
+}
+
+void test()
+{
+   {
         string content;
 
         auto http = HTTP("http://myuser:mypassword@localhost:8080/json/dump/test?hello=123&world");
@@ -142,6 +208,49 @@ Content-Disposition: form-data; name=\"field1\"\r
         assert(j["form-file"].array.map!(x=>x.str).array.sort.array == []);
     }
 
+   {
+      assert(get("http://localhost:8080") == "[5, 3]");
+   }
 
+   assert(get("http://localhost:8080/test_get?hello=123") == "123world");
+    assert(get("http://localhost:8081/test_get?hello=123") == "123world");
+
+    {
+        auto http = HTTP("http://localhost:8080/401");
+        http.perform();
+        assert(http.statusLine.code == 401);
+    }
+
+
+    {
+        string body;
+        auto http = HTTP("http://localhost:8080/error");
+        http.onReceive = (ubyte[] data) { body ~= data; return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 404);
+    }
+
+    {
+        auto http = HTTP("http://localhost:8080/long");
+        http.onReceive = (ubyte[] data) { return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 504);
+    }
+
+    {
+        auto http = HTTP("http://localhost:8080/test_get");
+        http.postData = "hello".repeat(5000).join.to!string;
+        http.onReceive = (ubyte[] data) { return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 413);
+    }
+
+    {
+        auto http = HTTP("http://localhost:8080/test_get");
+        http.postData = "hello".repeat(100).join.to!string;
+        http.onReceive = (ubyte[] data) { return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 200);
+    }
 
 }

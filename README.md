@@ -25,17 +25,17 @@ mixin ServerinoMain;
 
 // This function will never block the execution of other endpoints since it doesn't write anything
 // In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
-@priority(10) @endpoint void logger(Request req, Output output) 
-{ 
+@priority(10) @endpoint void logger(Request req, Output output)
+{
    import std.experimental.logger; // std.experimental.logger works fine!
    log(req.uri);
 }
 
 // This endpoint (default priority == 0) handles the homepage
 // Request and Output can be used in @safe code
-@safe 
-@endpoint void hello(Request req, Output output) 
-{ 
+@safe
+@endpoint void hello(Request req, Output output)
+{
    // Skip this endpoint if uri is not "/"
    if (req.uri != "/") return;
 
@@ -43,7 +43,7 @@ mixin ServerinoMain;
 }
 
 // This function will be executed only if `hello(...)` doesn't write anything to output.
-@priority(-10000) @endpoint void notfound(const Request req, Output output) 
+@priority(-10000) @endpoint void notfound(const Request req, Output output)
 {
    output.status = 404;
    output ~= "Not found";
@@ -59,9 +59,9 @@ Use ```@onServerInit``` to configure your server
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
    sc.addListener("127.0.0.1", 8080);
    sc.addListener("127.0.0.1", 8081);
-   sc.setWorkers(2); 
+   sc.setWorkers(2);
    // etc...
-   
+
    return sc;
 }
 
@@ -70,7 +70,7 @@ Use ```@onServerInit``` to configure your server
 ## @onWorkerStart, @onWorkerStop UDAs
 
 ```d
-/+ 
+/+
  When a worker is created, this function is called.
  Useful to init database connection & everything else.
 +/
@@ -123,15 +123,15 @@ Add a https listener:
 @onServerInit ServerinoConfig setup()
 {
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
-   
+
    // https. Probably you need to run server as *root* to access cert files.
    // Please run workers as unprivileged user using setWorkerUser/setWorkerGroup
    // sc.setWorkerUser("www-data"); sc.setWorkerGroup("www-data");
    sc.addListener("127.0.0.1", 8082, "path-to-your/cert.pem", "path-to-your/privkey.pem");
-   
+
    // http if you don't set certs
    sc.addListener("127.0.0.1", 8083);
-  
+
    return sc;
 }
 ```

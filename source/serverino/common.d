@@ -23,300 +23,359 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/// Common defs for workers and daemon
 module serverino.common;
 
-package enum SERVERINO_MAJOR     = 0;
-package enum SERVERINO_MINOR     = 2;
-package enum SERVERINO_REVISION  = 2;
+import std.datetime : MonoTimeImpl, ClockType;
 
-import core.sys.posix.unistd : pid_t;
-import std.socket : Socket, InternetAddress, Address;
+alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
+
 import std.stdio : File;
-import std.datetime : Duration, dur;
-import std.traits : ReturnType;
 
-public struct priority { long priority; } /// UDA. Set @endpoint priority
+public static int SERVERINO_MAJOR = 0;
+public static int SERVERINO_MINOR = 3;
+public static int SERVERINO_REVISION = 0;
 
-public enum endpoint;         /// UDA. Attach @endpoint to functions worker should call
-public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached are called when worker is started
-public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
-public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
 
-/++
-   Struct used to setup serverino.
-   You must return this struct from a function with @onServerInit UDA attached.
----
-@onServerInit
-auto configure()
+version(Windows)
 {
-   auto config = ServerinoConfig.create();
-   config.setWorkers(5);
+	import core.sys.windows.winsock2;
+	import std.socket;
 
-   return config;
+	struct sockaddr_un
+	{
+		ushort sun_family;     /* AF_UNIX */
+		byte[108] sun_path;  /* pathname */
+	}
+
+	class UnixAddress: Address
+		{
+		protected:
+			socklen_t _nameLen;
+
+			struct
+			{
+			align (1):
+				sockaddr_un sun;
+				char unused = '\0'; // placeholder for a terminating '\0'
+			}
+
+			this() pure nothrow @nogc
+			{
+				sun.sun_family = 1;
+				sun.sun_path = '?';
+				_nameLen = sun.sizeof;
+			}
+
+			override void setNameLen(socklen_t len) @trusted
+			{
+				if (len > sun.sizeof)
+						throw new SocketParameterException("Not enough socket address storage");
+				_nameLen = len;
+			}
+
+		public:
+			override @property sockaddr* name() return
+			{
+				return cast(sockaddr*)&sun;
+			}
+
+			override @property const(sockaddr)* name() const return
+			{
+				return cast(const(sockaddr)*)&sun;
+			}
+
+			override @property socklen_t nameLen() @trusted const
+			{
+				return _nameLen;
+			}
+
+			this(scope const(char)[] path) @trusted pure
+			{
+				import std.exception : enforce;
+				enforce(path.length <= sun.sun_path.sizeof, new SocketParameterException("Path too long"));
+				sun.sun_family = 1;
+				sun.sun_path.ptr[0 .. path.length] = (cast(byte[]) path)[];
+				_nameLen = cast(socklen_t)
+						{
+							auto len = sockaddr_un.init.sun_path.offsetof + path.length;
+							// Pathname socket address must be terminated with '\0'
+							// which must be included in the address length.
+							if (sun.sun_path.ptr[0])
+							{
+								sun.sun_path.ptr[path.length] = 0;
+								++len;
+							}
+							return len;
+						}();
+			}
+
+			this(sockaddr_un addr) pure nothrow @nogc
+			{
+				assert(addr.sun_family == 1);
+				sun = addr;
+			}
+
+			@property string path() @trusted const pure
+			{
+				auto len = _nameLen - sockaddr_un.init.sun_path.offsetof;
+				if (len == 0)
+						return null; // An empty path may be returned from getpeername
+				// For pathname socket address we need to strip off the terminating '\0'
+				if (sun.sun_path.ptr[0])
+						--len;
+				return (cast(const(char)*) sun.sun_path.ptr)[0 .. len].idup;
+			}
+
+			override string toString() const pure
+			{
+				return path;
+			}
+		}
 }
----
-++/
-struct ServerinoConfig
+
+class Channel
 {
+	this(File from, File to)
+	{
+		this.to = to;
+		this.from = from;
+	}
 
-   public:
+	void write(S...)(S args) { to.write(args); }
+	void writeln(S...)(S args) { to.writeln(args); }
 
-   @disable this();
+	void rawWrite(T)(in T[] buffer) { to.rawWrite(buffer); }
 
-   /// Create a new instance of ServerinoConfig
-   static ServerinoConfig create()
+	void flush() { to.flush(); }
+
+	S readln(S = string)(dchar terminator = '\n') { return from.readln!S(terminator); }
+
+	T[] rawRead(T)(in T[] buffer) { return from.rawRead(buffer); }
+
+	package:
+
+	File to;
+	File from;
+}
+
+
+package struct SimpleList
+{
+   private struct SLElement
    {
-      ServerinoConfig sc = ServerinoConfig.init;
-
-      sc.setReturnCode();
-      sc.setMaxWorkers();
-      sc.setMinWorkers();
-      sc.setMaxWorkerLifetime();
-      sc.setMaxWorkerIdling();
-      sc.setListenerBacklog();
-
-      sc.setMaxRequestTime();
-      sc.setMaxRequestSize();
-      sc.setWorkerUser();
-      sc.setWorkerGroup();
-      sc.setWorkerMinBufferSize();
-      sc.setWorkerMaxBufferSize();
-      sc.setHttpTimeout();
-
-      sc.enableKeepAlive();
-
-      return sc;
+      size_t v;
+      size_t prev = size_t.max;
+      size_t next = size_t.max;
    }
 
-   /// Every value != 0 is used to terminate server immediatly.
-   @safe void setReturnCode(int retCode = 0) { returnCode = retCode; }
-   /// Max number of workers
-   @safe void setMaxWorkers(size_t val = 5)  { daemonConfig.maxWorkers = val; }
-   /// Min number of workers
-   @safe void setMinWorkers(size_t val = 5)  { daemonConfig.minWorkers = val; }
-
-   /// Same as setMaxWorkers(v); setMinWorkers(v);
-   @safe void setWorkers(size_t val) { setMinWorkers(val); setMaxWorkers(val); }
-
-   ///
-   @safe void setMaxWorkerLifetime(Duration dur = 1.dur!"hours")  { workerConfig.maxWorkerLifetime = dur; }
-   ///
-   @safe void setMaxWorkerIdling(Duration dur = 1.dur!"minutes")  { workerConfig.maxWorkerIdling = dur; }
-   ///
-   @safe void setListenerBacklog(int val = 20)                    { daemonConfig.listenerBacklog = val; }
-
-   ///
-   @safe void setMaxRequestTime(Duration dur = 5.dur!"seconds")   { workerConfig.maxRequestTime = dur; }
-   ///
-   @safe void setMaxRequestSize(size_t bytes = 1024*1024*10)      { workerConfig.maxRequestSize = bytes; }
-
-   /// For example: "www-data"
-   @safe void setWorkerUser(string s = string.init)  { workerConfig.user = s; }
-   /// For example: "www-data"
-   @safe void setWorkerGroup(string s = string.init) { workerConfig.group = s; }
-
-   @safe void setWorkerMinBufferSize(size_t sz = 1024*64)    { workerConfig.minBufferSize = sz; }
-   @safe void setWorkerMaxBufferSize(size_t sz = 1024*1024)  { workerConfig.maxBufferSize = sz; }
-
-   /// How long the socket will wait for a request after the connection?
-   @safe void setHttpTimeout(Duration dur = 1.dur!"seconds") { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; }
-
-   /// Enable/Disable keep-alive for http/1.1
-   @safe void enableKeepAlive(bool enable = true) { workerConfig.keepAlive = enable; }
-   @safe void disableKeepAlive() { enableKeepAlive(false); }
-
-   /// Add a new listener. Https protocol is used if certPath and privkeyPath are set.
-   @safe void addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, string certPath = string.init, string privkeyPath = string.init)
+   auto asRange()
    {
-
-      if (certPath.length > 0 || privkeyPath.length > 0)
+      struct Range
       {
-         version(WithTLS) { }
-         else { assert(0, "TLS is disabled. Use config=WithTLS with dub or set version=WithTLS."); }
+        bool empty() {
+            return tail == size_t.max || elements[tail].next == head;
+        }
+
+         void popFront() { head = elements[head].next; if (head == size_t.max) tail = size_t.max; }
+         size_t front() { return elements[head].v; }
+
+         void popBack() { tail = elements[tail].prev;  if (tail == size_t.max) head = size_t.max; }
+         size_t back() { return elements[tail].v; }
+
+         private:
+         size_t head;
+         size_t tail;
+         SLElement[] elements;
       }
 
-      enum LISTEN_IPV4 = (p == ListenerProtocol.IPV4 || p == ListenerProtocol.BOTH);
-      enum LISTEN_IPV6 = (p == ListenerProtocol.IPV6 || p == ListenerProtocol.BOTH);
-
-      static if(LISTEN_IPV4) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new InternetAddress(address, port), certPath, privkeyPath);
-      static if(LISTEN_IPV6) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new Internet6Address(address, port), certPath, privkeyPath);
+      return Range(head, tail, elements);
    }
 
-   ///
-   enum ListenerProtocol
+   size_t insert(size_t e, bool prepend)
    {
-      IPV4,
-      IPV6,
-      BOTH
-   }
+      count++;
 
-   package:
+      enum EOL = size_t.max;
 
-   void validate()
-   {
-      if (daemonConfig.minWorkers == 0 || daemonConfig.minWorkers > 1024)
-         throw new Exception("Configuration error. Must be 1 <= minWorkers <= 1024");
+      size_t selected = EOL;
 
-      if (daemonConfig.minWorkers > daemonConfig.maxWorkers)
-         throw new Exception("Configuration error. Must be minWorkers <= maxWorkers");
-
-      if (daemonConfig.maxWorkers == 0 || daemonConfig.maxWorkers > 1024)
-         throw new Exception("Configuration error. Must be 1 <= maxWorkers <= 1024");
-
-      if (daemonConfig.listeners.length == 0)
-         addListener("0.0.0.0", 8080);
-
-      foreach(idx, const l; daemonConfig.listeners)
+      if (free == EOL)
       {
-         if (l.isHttps)
+         elements ~= SLElement(e, EOL, EOL);
+         selected = elements.length - 1;
+      }
+      else {
+         selected = free;
+         elements[selected].v = e;
+         free = elements[selected].next;
+
+         if (free != EOL)
+            elements[free].prev = EOL;
+      }
+
+
+      if (head == EOL)
+      {
+         head = selected;
+         tail = selected;
+         elements[selected].next = EOL;
+         elements[selected].prev = EOL;
+      }
+      else
+      {
+         if (prepend)
          {
-            import std.file : exists, readText;
-
-            if (!exists(l.certPath))
-               throw new Exception("Configuration error. " ~ l.certPath ~ " can't be read.");
-
-            if (!exists(l.privkeyPath))
-               throw new Exception("Configuration error. " ~ l.privkeyPath ~ " can't be read.");
-
-
-            import std.string : representation;
-
-            certsData[idx] = CertData
-            (
-               readText(l.certPath).representation,
-               readText(l.privkeyPath).representation
-            );
+            size_t oldHead = head;
+            head = selected;
+            elements[selected].next = oldHead;
+            elements[selected].prev = EOL;
+            elements[oldHead].prev = selected;
+         }
+         else
+         {
+            size_t oldTail = tail;
+            tail = selected;
+            elements[selected].prev = oldTail;
+            elements[selected].next = EOL;
+            elements[oldTail].next = selected;
          }
       }
 
-      daemonConfig.certsData = &certsData;
-      workerConfig.certsData = &certsData;
+      return selected;
    }
 
-   DaemonConfig       daemonConfig;
-   WorkerConfig       workerConfig;
-   CertData[size_t]   certsData;
+   size_t insertBack(size_t e) { return insert(e, false); }
+   size_t insertFront(size_t e) { return insert(e, true); }
 
-   int returnCode;
-}
-
-// To avoid errors/mistakes copying data around
-import std.typecons : Typedef;
-package alias DaemonConfigPtr = Typedef!(DaemonConfig*);
-package alias WorkerConfigPtr = Typedef!(WorkerConfig*);
-package alias CertDataPtr     = Typedef!(CertData[size_t]*);
-
-package struct Listener
-{
-   @safe:
-
-   @disable this();
-
-   this(size_t index, Address address, string certPath = string.init, string privkeyPath = string.init)
+   size_t remove(size_t e)
    {
-      this.address = address;
-      this.privkeyPath = privkeyPath;
-      this.certPath = certPath;
-      this.index = index;
+      enum EOL = size_t.max;
+
+      auto t = head;
+      while(t != EOL)
+      {
+         if (elements[t].v == e)
+         {
+            count--;
+
+            if (elements[t].prev == EOL) head = elements[t].next;
+            else elements[elements[t].prev].next = elements[t].next;
+
+            if (elements[t].next == EOL) tail = elements[t].prev;
+            else elements[elements[t].next].prev = elements[t].prev;
+
+            elements[t].prev = EOL;
+            elements[t].next = free;
+
+            if (free != EOL)
+               elements[free].prev = t;
+
+            free = t;
+            return t;
+         }
+
+         t = elements[t].next;
+      }
+
+      return EOL;
    }
 
-   bool isHttps() const { return certPath.length > 0; }
+   size_t length() { return count; }
+   bool empty() { return head == size_t.max; }
 
-   Address  address;
-   string   certPath;
-   string   privkeyPath;
-   size_t   index;
+   private:
 
-   Socket   socket;
+
+   SLElement[] elements;
+   size_t head = size_t.max;
+   size_t tail = size_t.max;
+   size_t free = size_t.max;
+   size_t count = 0;
 }
 
-package struct CertData
+class ProcessInfo
 {
-   @safe this(const (ubyte[]) cert, const (ubyte[]) privkey)
-   {
-      this.certData.length = cert.length;
-      this.privkeyData.length = privkey.length;
+	this(int pid) { this.pid =  pid; }
 
-      this.certData[] = cert[];
-      this.privkeyData[] = privkey[];
-   }
+	int  id() { return this.pid; }
 
-   ubyte[] certData;
-   ubyte[] privkeyData;
-}
+	bool isValid() { return pid >= 0; }
+	bool isRunning() { return !isTerminated; }
+	bool isTerminated()
+	{
+		version(Posix)
+		{
+			import core.sys.posix.signal : kill;
+			import core.stdc.errno : errno, ESRCH;
 
-package struct WorkerConfig
-{
+			kill(pid, 0);
 
-   Duration    maxRequestTime;
-   Duration    maxHttpWaiting;
-   Duration    maxWorkerLifetime;
-   Duration    maxWorkerIdling;
+			return (errno == ESRCH);
+		}
+		else
+		{
+			import core.sys.windows.winbase : STILL_ACTIVE, GetExitCodeProcess;
+			import core.sys.windows.windef : LPDWORD;
 
-   bool        keepAlive;
-   size_t      maxRequestSize;
-   size_t      minBufferSize;
-   size_t      maxBufferSize;
-   string      user;
-   string      group;
+			if (processHandle)
+			{
+				int ec;
+				GetExitCodeProcess(processHandle, cast(LPDWORD)&ec);
+				return(ec != STILL_ACTIVE);
+			}
+			else return false;
+		}
+	}
 
-   CertDataPtr certsData;
-}
+	void kill()
+	{
+		version (Posix)
+		{
+			import core.sys.posix.signal : kill, SIGTERM;
+			kill(pid, SIGTERM);
+		}
+		else
+		{
+			import core.sys.windows.winbase : TerminateProcess;
+			import core.sys.windows.windef : HANDLE;
 
-package struct DaemonConfig
-{
-    Duration   maxHttpWaiting;
-    size_t     minWorkers;
-    size_t     maxWorkers;
-    int        listenerBacklog;
+			TerminateProcess(processHandle, 1);
+		}
+	}
 
-    Listener[]    listeners;
-    CertDataPtr   certsData;
-}
+	~this()
+	{
+		version(Windows)
+		{
+			if (processHandle != null)
+			{
+				import core.sys.windows.winbase : CloseHandle;
+				CloseHandle(processHandle);
+			}
+		}
+	}
 
-package struct WorkerInfo
-{
-   bool     persistent;
-   pid_t    pid;
-   Socket   ipcSocket;
-   File     pipe;
-}
+	@disable this();
 
-package union IPCMessage
-{
-   struct Data
-   {
-      ubyte[4]    magic = [0x19, 0x83, 0x05, 0x31];
-      char[4]     command = "NOOP";
-      size_t      payload = 0;
-   }
 
-   Data                 data;
-   ubyte[Data.sizeof]   raw;
+	version(Windows)
+	{
+		import core.sys.windows.windef : HANDLE;
 
-   void validate()
-   {
-      bool valid =
-      (
-         data.magic == [0x19, 0x83, 0x05, 0x31] &&
-         (data.command == "RQST" || data.command == "SWCH")
-      );
+		HANDLE processHandle()
+		{
+			import core.sys.windows.winbase : OpenProcess;
+			import core.sys.windows.windef : PROCESS_QUERY_INFORMATION, PROCESS_ALL_ACCESS, FALSE;
 
-      if (!valid)
-         throw new Exception("Invalid message");
-   }
-}
+			if (_processHandle == null)
+				_processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 
-package union IPCRequestMessage
-{
-   struct Data
-   {
-      bool    isHttps;
-      bool    isIPV4;
-      size_t  certIdx;
-   }
+			return _processHandle;
+		}
 
-   Data                 data;
-   ubyte[Data.sizeof]   raw;
+		HANDLE _processHandle = null;
+	}
+
+	private:
+		int pid = -1;
 }

@@ -23,8 +23,36 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-module serverino;
+module serverino.tests;
 
-public import serverino.main;
-public import serverino.config;
-public import serverino.inputoutput;
+template ServerinoTest(Modules...)
+{
+   mixin ServerinoLoop!Modules;
+
+   void main(string[] args)
+   {
+      import serverino.daemon;
+      import core.thread;
+
+      if (environment.get("SERVERINO_DAEMON") == null)
+      {
+         new Thread({
+            import serverino.daemon;
+            import core.thread;
+
+            scope(exit) Daemon.instance.shutdown();
+            while(!Daemon.isReady) { Thread.sleep(10.dur!"msecs");}
+
+            try { test(); writeln("All tests passed!"); }
+            catch (Throwable t)
+            {
+               writeln("Test failed");
+               writeln(t);
+            }
+
+         }).start();
+      }
+
+      mainServerinoLoop(args);
+   }
+}
