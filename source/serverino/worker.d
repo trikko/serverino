@@ -77,7 +77,11 @@ struct Worker
       output._internal = new Output.OutputImpl();
 
 
-      version(linux)
+      version(Windows)
+      {
+         log("Worker started.");
+      }
+      else
       {
          import core.sys.posix.pwd;
          import core.sys.posix.grp;
