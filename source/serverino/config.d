@@ -92,9 +92,9 @@ struct ServerinoConfig
    @safe ref ServerinoConfig setWorkers(size_t val) return { setMinWorkers(val); setMaxWorkers(val); return this; }
 
    ///
-   @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 1.dur!"hours") return  { workerConfig.maxWorkerLifetime = dur; return this; }
+   @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 6.dur!"hours") return  { workerConfig.maxWorkerLifetime = dur; return this; }
    ///
-   @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.dur!"minutes") return  { workerConfig.maxWorkerIdling = dur; return this; }
+   @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.dur!"hours") return  { workerConfig.maxWorkerIdling = dur; return this; }
    ///
    @safe ref ServerinoConfig setListenerBacklog(int val = 256) return                   { daemonConfig.listenerBacklog = val; return this; }
 
