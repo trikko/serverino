@@ -64,7 +64,7 @@ struct Worker
       {
          import std.path : buildPath;
          import std.file : tempDir;
-         char[] socketAddress = environment.get("SERVERINO_SOCKET");
+         char[] socketAddress = cast(char[]) environment.get("SERVERINO_SOCKET");
       }
 
       assert(socketAddress.length > 0);
