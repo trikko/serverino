@@ -72,8 +72,14 @@ struct ServerinoConfig
 
       sc.setMaxRequestTime();
       sc.setMaxRequestSize();
+
+      version(Windows) { }
+      else
+      {
       sc.setWorkerUser();
       sc.setWorkerGroup();
+      }
+
       sc.setHttpTimeout();
 
       sc.enableKeepAlive();
