@@ -193,20 +193,13 @@ struct Daemon
       workerEnvironment["SERVERINO_DAEMON"] = thisProcessID.to!string;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
 
-      // TODO: Redirect log
-
       log("Daemon started.");
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
       {
          listener.socket = new TcpSocket(listener.address.addressFamily);
-
-         // Close socket as soon as possibile and make ports available again.
-         //import core.sys.posix.sys.socket : linger;
-         //listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, Linger(linger(1,0)));
          listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
-         //listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.TCP_NODELAY, true);
 
          try
          {
@@ -226,10 +219,7 @@ struct Daemon
             {
                if (l.socket !is null)
                {
-                  // FIXME: SONO INVERTITI??
-                  l.socket.close();
                   l.socket.shutdown(SocketShutdown.BOTH);
-
                }
             }
 
@@ -292,8 +282,6 @@ struct Daemon
             warning("Exception: ", se.msg);
          }
 
-
-         // FIXME: Controllare una volta al secondo
          MonoTime now = MonoTime.currTime;
          {
             static MonoTime lastCheck = MonoTime.zero;
@@ -304,19 +292,20 @@ struct Daemon
                {
                   auto responder = Responder.instances[idx];
 
-                  if (responder.status == Responder.State.ASSIGNED || responder.status == Responder.State.READING_BODY || responder.status == Responder.State.READING_HEADERS )
+                  // Keep-alive timeout hit.
+                  if (responder.status == Responder.State.KEEP_ALIVE && now - responder.lastRequest > 5.dur!"seconds")
+                  {
+                     responder.reset();
+                  }
+
+                  // Http timeout hit.
+                  else if (responder.status == Responder.State.ASSIGNED || responder.status == Responder.State.READING_BODY || responder.status == Responder.State.READING_HEADERS )
                   {
                      if (responder.lastRecv != MonoTime.zero && now - responder.lastRecv > config.maxHttpWaiting)
                      {
                         warning("Responder closed. [REASON: http timeout]");
                         responder.reset();
                      }
-                  }
-
-                  if (responder.status == Responder.State.KEEP_ALIVE && now - responder.lastRequest > 5.dur!"seconds")
-                  {
-                     //warning("Responder closed. [REASON: Keep alive timeout]");
-                     responder.reset();
                   }
                }
             }
@@ -353,8 +342,7 @@ struct Daemon
                   w.setStatus(WorkerInfo.State.STOPPED);
                   w.clear();
 
-                  // SOCKET CHIUSO LATO CLIENT log ("EMPTY LEN: ", bytes);
-
+                  // User closed socket.
                   if (r !is null && r.socket !is null && r.socket.isAlive)
                      r.socket.shutdown(SocketShutdown.BOTH);
                }
@@ -365,12 +353,6 @@ struct Daemon
                      r.isKeepAlive = *(cast(bool*)(buffer.ptr));
                      r.setResponseLength(*(cast(size_t*)buffer[bool.sizeof..bool.sizeof + size_t.sizeof]));
                      r.write(cast(char[])buffer[bool.sizeof + size_t.sizeof..bytes]);
-
-/*
-                     log("KEEP ALIVE?", r.isKeepAlive);
-                     log("RLEN: ", r.responseLength);
-                     log("COMP: ", r.completed);
-*/
                   }
                   else
                   {
@@ -380,8 +362,6 @@ struct Daemon
                   if (r.completed)
                   {
                      r.detachWorker();
-                     //info("status", r.status);
-                     //info("worker", w.status);
 
                      if (r.status != Responder.State.KEEP_ALIVE)
                         r.reset();
@@ -449,7 +429,6 @@ struct Daemon
 
             if (ssRead.isSet(listener.socket))
             {
-               // log("NEW CONN");
                updates--;
 
                // We have an incoming connection to handle
@@ -462,15 +441,12 @@ struct Daemon
                else
                {
                   responder = new Responder(config);
-                  // log("NEW RESPONDER");
                }
 
                responder.lastRecv = now;
 
                auto nextId = requestId++;
-               // log("ASSIGN TO RESPONDER: ", responder.id, " > ", nextId);
                responder.assignSocket(listener.socket.accept(), nextId);
-               // log("ASSIGNED ", nextId);
             }
          }
 
