@@ -71,7 +71,15 @@ package class WorkerInfo
 
       string socketAddress = "SERVERINO_SOCKET/" ~ uuid;
       Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-      s.bind(new UnixAddress("\0%s".format(socketAddress)));
+
+      version(linux) s.bind(new UnixAddress("\0%s".format(socketAddress)));
+      else
+      {
+         import std.path : buildPath;
+         import std.file : tempDir;
+         s.bind(new UnixAddress(buildPath(tempDir, uuid)));
+      }
+
       s.listen(1);
 
       auto env = Daemon.instance.workerEnvironment.dup;

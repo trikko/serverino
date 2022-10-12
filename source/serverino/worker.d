@@ -58,7 +58,14 @@ struct Worker
       import std.format : format;
 
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
-      char[] socketAddress = char(0) ~ cast(char[])environment.get("SERVERINO_SOCKET");
+
+      version(linux) char[] socketAddress = char(0) ~ cast(char[])environment.get("SERVERINO_SOCKET");
+      else
+      {
+         import std.path : buildPath;
+         import std.file : tempDir;
+         char[] socketAddress = buildPath(tempDir, uuid);
+      }
 
       assert(socketAddress.length > 0);
 
