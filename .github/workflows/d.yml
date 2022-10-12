@@ -30,8 +30,8 @@ jobs:
     - name: 'Build & Test'
       run: |
         # Build the project, with its main file included, without unittests
-        dub build serverino:test-1 --compiler=dmd
+        dub build serverino:test-1 --compiler=ldc2
         # Build and run tests, as defined by `unittest` configuration
         # In this mode, `mainSourceFile` is excluded and `version (unittest)` are included
         # See https://dub.pm/package-format-json.html#configurations
-        dub run serverino:test-1 --compiler=dmd
+        dub run serverino:test-1 --compiler=ldc2
