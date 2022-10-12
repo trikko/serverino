@@ -69,15 +69,20 @@ package class WorkerInfo
 
       auto uuid = randomUUID().toString();
 
-      string socketAddress = "SERVERINO_SOCKET/" ~ uuid;
-      Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
 
-      version(linux) s.bind(new UnixAddress("\0%s".format(socketAddress)));
+      version(linux)
+      {
+         string socketAddress = "SERVERINO_SOCKET/" ~ uuid;
+         Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+         s.bind(new UnixAddress("\0%s".format(socketAddress)));
+      }
       else
       {
          import std.path : buildPath;
          import std.file : tempDir;
-         s.bind(new UnixAddress(buildPath(tempDir, uuid)));
+         string socketAddress = buildPath(tempDir, uuid);
+         Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+         s.bind(new UnixAddress(socketAddress));
       }
 
       s.listen(1);
