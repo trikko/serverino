@@ -38,7 +38,7 @@ import std.format : format;
 import std.socket;
 import std.array : array;
 import std.algorithm : filter;
-import std.datetime : SysTime, Clock, dur, MonoTime;
+import std.datetime : SysTime, Clock, dur;
 
 package class WorkerInfo
 {
@@ -286,9 +286,9 @@ struct Daemon
             warning("Exception: ", se.msg);
          }
 
-         MonoTime now = MonoTime.currTime;
+         CoarseTime now = CoarseTime.currTime;
          {
-            static MonoTime lastCheck = MonoTime.zero;
+            static CoarseTime lastCheck = CoarseTime.zero;
 
             if (now-lastCheck >= 1.dur!"seconds")
             {
@@ -305,7 +305,7 @@ struct Daemon
                   // Http timeout hit.
                   else if (responder.status == Responder.State.ASSIGNED || responder.status == Responder.State.READING_BODY || responder.status == Responder.State.READING_HEADERS )
                   {
-                     if (responder.lastRecv != MonoTime.zero && now - responder.lastRecv > config.maxHttpWaiting)
+                     if (responder.lastRecv != CoarseTime.zero && now - responder.lastRecv > config.maxHttpWaiting)
                      {
                         warning("Responder closed. [REASON: http timeout]");
                         responder.reset();

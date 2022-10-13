@@ -30,7 +30,6 @@ import serverino.databuffer;
 import serverino.daemon : WorkerInfo;
 import serverino.config : DaemonConfigPtr;
 import std.socket;
-import std.datetime : MonoTime;
 
 
 import std.string : toLower, strip, join;
@@ -177,7 +176,7 @@ package class Responder
       wi.channel.send((cast(char*)&len)[0..uint.sizeof] ~ current.data ~ current.body);
 
       requestsQueue = requestsQueue[1..$];
-      lastRequest = MonoTime.currTime;
+      lastRequest = CoarseTime.currTime;
    }
 
    void write()
@@ -483,8 +482,8 @@ package class Responder
    WorkerInfo        assignedWorker;
    char[]            leftover;
 
-   MonoTime          lastRecv    = MonoTime.zero;
-   MonoTime          lastRequest = MonoTime.zero;
+   CoarseTime          lastRecv    = CoarseTime.zero;
+   CoarseTime          lastRequest = CoarseTime.zero;
 
    static SimpleList          alive;
    static SimpleList          dead;

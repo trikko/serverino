@@ -32,7 +32,7 @@ import std.experimental.logger : log, warning, info, fatal, critical;
 import std.process : environment;
 import std.stdio : FILE;
 import std.socket;
-import std.datetime : MonoTime, dur;
+import std.datetime : dur;
 import std.string : toStringz, indexOf, strip, toLower, empty;
 import std.algorithm : splitter, startsWith, map;
 import std.range : assumeSorted;
@@ -136,11 +136,11 @@ struct Worker
       import core.stdc.stdlib : exit;
       import core.atomic : cas;
 
-      __gshared MonoTime processedStartedAt = MonoTime.zero;
+      __gshared CoarseTime processedStartedAt = CoarseTime.zero;
       __gshared bool justSent = false;
 
       new Thread({
-         while(processedStartedAt == MonoTime.zero || MonoTime.currTime - processedStartedAt < config.maxRequestTime)
+         while(processedStartedAt == CoarseTime.zero || CoarseTime.currTime - processedStartedAt < config.maxRequestTime)
             Thread.sleep(1.dur!"seconds");
 
          warning("Request timeout.");
@@ -153,7 +153,7 @@ struct Worker
             output._internal.clear();
             output.sendData(res);
             ka[0] = false;
-            processedStartedAt = MonoTime.zero;
+            processedStartedAt = CoarseTime.zero;
             sz[0] = output._internal._sendBuffer.array.length;
 
             channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._sendBuffer.array);
@@ -163,7 +163,7 @@ struct Worker
          exit(0);
       }).start();
 
-      startedAt = MonoTime.currTime;
+      startedAt = CoarseTime.currTime;
       while(true)
       {
          import std.string : chomp;
@@ -177,7 +177,7 @@ struct Worker
          bool[1] ka;
 
          //log("WAITING");
-         idlingAt = MonoTime.currTime;
+         idlingAt = CoarseTime.currTime;
 
          import serverino.databuffer;
 
@@ -199,7 +199,7 @@ struct Worker
                if (recv == -1)
                {
 
-                  auto tm = MonoTime.currTime;
+                  auto tm = CoarseTime.currTime;
                   if (tm - idlingAt > config.maxWorkerIdling)
                   {
                      info("Killing worker. [REASON: maxWorkerIdling]");
@@ -238,9 +238,9 @@ struct Worker
          }
 
          requestId++;
-         processedStartedAt = MonoTime.currTime;
+         processedStartedAt = CoarseTime.currTime;
          ka[0] = parseHttpRequest!Modules(config, data.array);
-         processedStartedAt = MonoTime.zero;
+         processedStartedAt = CoarseTime.zero;
          sz[0] = output._internal._sendBuffer.array.length;
 
          if (cas(&justSent, false, true))
@@ -728,8 +728,8 @@ struct Worker
    Request           request;
    Output            output;
 
-   MonoTime          startedAt;
-   MonoTime          idlingAt;
+   CoarseTime          startedAt;
+   CoarseTime          idlingAt;
 
    Socket            channel;
 
