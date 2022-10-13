@@ -114,7 +114,7 @@ mixin ServerinoMain!(other, test); // Current module is always processed
 ```
 
 ## Shielding the whole thing
-I would not put serverino into the wild. For use in production I suggest you shield it under nginx.
+I would not put serverino into the wild. For use in production I suggest you to shield serverino under nginx, for example.
 It's pretty easy. Just add these lines inside your nginx configuration:
 
 ```
