@@ -190,6 +190,7 @@ struct Worker
 
          while(sizeRead == false || size > data.length)
          {
+            recv = -1;
             while(recv == -1)
             {
                recv = channel.receive(buffer);
@@ -225,7 +226,8 @@ struct Worker
                }
             }
 
-            if (sizeRead == false)
+            if (recv == 0) break;
+            else if (sizeRead == false)
             {
                size = *(cast(uint*)(buffer[0..uint.sizeof].ptr));
                data.reserve(size);
