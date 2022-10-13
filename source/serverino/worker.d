@@ -231,6 +231,14 @@ struct Worker
             else data.append(buffer[0..recv]);
          }
 
+         if(data.array.length == 0)
+         {
+            tryUninit!Modules();
+            warning("Killing worker. [REASON: daemon dead?]");
+            channel.close();
+            exit(0);
+         }
+
          requestId++;
          processedStartedAt = CoarseTime.currTime;
          ka[0] = parseHttpRequest!Modules(config, data.array);
