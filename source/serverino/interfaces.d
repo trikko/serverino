@@ -792,20 +792,22 @@ struct Output
          addHeader("Content-Type", header);
       }
 
-      ubyte[1024*32] buffer;
+      ubyte[] buffer;
+      buffer.length = fs;
       File toSend = File(path, "r");
 
-      sendHeaders();
-      while(true)
+      auto bytesRead = toSend.rawRead(buffer);
+
+      if (bytesRead.length != fs)
       {
-         auto bytesRead = toSend.rawRead(buffer);
-
-         if (bytesRead.length <= 0)
-            break;
-
-         sendData(buffer[0..bytesRead.length]);
+         _internal._status = 500;
+         sendHeaders();
+         sendData("HTTP/1.1 500 Internal server error\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n500 Internal server error");
+         return false;
       }
 
+      sendHeaders();
+      sendData(bytesRead);
       return true;
     }
 
