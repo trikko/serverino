@@ -208,12 +208,12 @@ package struct WorkerConfig
 
 package struct DaemonConfig
 {
-    size_t      maxRequestSize;
-   Duration   maxHttpWaiting;
-    Duration   keepAliveTimeout;
-    size_t     minWorkers;
-    size_t     maxWorkers;
-    int        listenerBacklog;
+   size_t      maxRequestSize;
+   Duration    maxHttpWaiting;
+   Duration    keepAliveTimeout;
+   size_t      minWorkers;
+   size_t      maxWorkers;
+   int         listenerBacklog;
 
-    Listener[]    listeners;
+   Listener[]  listeners;
 }
