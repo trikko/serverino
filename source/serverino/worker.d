@@ -177,45 +177,62 @@ struct Worker
          //log("WAITING");
          idlingAt = MonoTime.currTime;
 
+         import serverino.databuffer;
 
+         //TODO: Gestire richiesta > 32kb (buffer.length)
+         uint size;
+         bool sizeRead = false;
          ptrdiff_t recv = -1;
+         static DataBuffer!ubyte data;
+         data.clear();
 
-         while(recv == -1)
+         while(sizeRead == false || size > data.length)
          {
-            recv = channel.receive(buffer);
-
-            import core.stdc.stdlib;
-
-            if (recv == -1)
+            while(recv == -1)
             {
+               recv = channel.receive(buffer);
+               import core.stdc.stdlib;
 
-               auto tm = MonoTime.currTime;
-               if (tm - idlingAt > config.maxWorkerIdling)
+               if (recv == -1)
                {
-                  info("Killing worker. [REASON: maxWorkerIdling]");
-                  channel.close();
-                  exit(0);
-               }
-               else if (tm - startedAt > config.maxWorkerLifetime)
-               {
-                  info("Killing worker. [REASON: maxWorkerLifetime]");
-                  channel.close();
-                  exit(0);
-               }
 
-               continue;
+                  auto tm = MonoTime.currTime;
+                  if (tm - idlingAt > config.maxWorkerIdling)
+                  {
+                     info("Killing worker. [REASON: maxWorkerIdling]");
+                     channel.close();
+                     exit(0);
+                  }
+                  else if (tm - startedAt > config.maxWorkerLifetime)
+                  {
+                     info("Killing worker. [REASON: maxWorkerLifetime]");
+                     channel.close();
+                     exit(0);
+                  }
+
+                  continue;
+               }
+               else if (recv < 0)
+               {
+                  warning("Killing worker. [REASON: socket error]");
+                  channel.close();
+                  exit(cast(int)recv);
+               }
             }
-            else if (recv < 0)
+
+            if (sizeRead == false)
             {
-               warning("Killing worker. [REASON: socket error]");
-               channel.close();
-               exit(cast(int)recv);
+               size = *(cast(uint*)(buffer[0..uint.sizeof].ptr));
+               data.reserve(size);
+               data.append(buffer[uint.sizeof..recv]);
+               sizeRead = true;
             }
+            else data.append(buffer[0..recv]);
          }
 
          requestId++;
          processedStartedAt = MonoTime.currTime;
-         ka[0] = parseHttpRequest!Modules(config, buffer[0..recv]);
+         ka[0] = parseHttpRequest!Modules(config, data.array);
          processedStartedAt = MonoTime.zero;
          sz[0] = output._internal._sendBuffer.array.length;
          //info("worker: keepalive? ", ka[0]);
