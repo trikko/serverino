@@ -45,6 +45,6 @@ void main(string[] args)
 	string sourceFolder = buildPath(getcwd(), "source");
 	mkdir(sourceFolder);
 
-	string appFilePath = buildPath(sourceFolder, "main.d");
+	string appFilePath = buildPath(sourceFolder, "app.d");
 	write(appFilePath, example);
 }
