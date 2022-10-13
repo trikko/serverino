@@ -222,7 +222,12 @@ package class Responder
 
          if (sent == Socket.ERROR)
          {
-            if(!wouldHaveBlocked) log("Socket error on write. ", lastSocketError);
+            if(!wouldHaveBlocked)
+            {
+               log("Socket error on write. ", lastSocketError);
+               reset();
+               return;
+            }
             else sendBuffer.append(data);
          }
          else

@@ -795,6 +795,7 @@ struct Output
       ubyte[1024*32] buffer;
       File toSend = File(path, "r");
 
+      sendHeaders();
       while(true)
       {
          auto bytesRead = toSend.rawRead(buffer);
@@ -802,8 +803,7 @@ struct Output
          if (bytesRead.length <= 0)
             break;
 
-         auto data = buffer[0..bytesRead.length];
-
+         sendData(buffer[0..bytesRead.length]);
       }
 
       return true;

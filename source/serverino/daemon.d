@@ -253,7 +253,7 @@ struct Daemon
 
       while(!exitRequested)
       {
-         // Create workers if needed. Kills old workers, freezed ones, etc.
+                  // Create workers if needed. Kills old workers, freezed ones, etc.
          checkWorkers(config);
 
          ready = true;
@@ -329,10 +329,17 @@ struct Daemon
 
             WorkerInfo w = WorkerInfo.instances[idx];
             Responder r = w.assignedResponder;
+
             if (ssRead.isSet(w.channel))
             {
-
                updates--;
+
+               if (r is null)
+               {
+                  w.pi.kill();
+                  w.setStatus(WorkerInfo.State.STOPPED);
+                  continue;
+               }
 
                ubyte[32*1024] buffer;
                auto bytes = w.channel.receive(buffer);
@@ -352,16 +359,17 @@ struct Daemon
                }
                else
                {
+                  if (r is null)
+                  {
+                     continue;
+                  }
                   if (r.responseLength == 0)
                   {
                      r.isKeepAlive = *(cast(bool*)(buffer.ptr));
                      r.setResponseLength(*(cast(size_t*)buffer[bool.sizeof..bool.sizeof + size_t.sizeof]));
                      r.write(cast(char[])buffer[bool.sizeof + size_t.sizeof..bytes]);
                   }
-                  else
-                  {
-                     r.write(cast(char[])buffer[0..bytes]);
-                  }
+                  else r.write(cast(char[])buffer[0..bytes]);
 
                   if (r.completed)
                   {

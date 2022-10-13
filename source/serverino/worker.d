@@ -234,7 +234,10 @@ struct Worker
          if(data.array.length == 0)
          {
             tryUninit!Modules();
-            warning("Killing worker. [REASON: daemon dead?]");
+
+            if (daemonProcess.isTerminated()) warning("Killing worker. [REASON: daemon dead?]");
+            else warning("Killing worker. [REASON: socket closed?]");
+
             channel.close();
             exit(0);
          }
