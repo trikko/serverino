@@ -114,7 +114,7 @@ mixin ServerinoMain!(other, test); // Current module is always processed
 ```
 
 ## Shielding the whole thing
-I would not put serverino into the wild. For use in production I suggest you to shield serverino under nginx, for example.
+I would not put serverino into the wild. For using in production I suggest shielding serverino under nginx.
 It's pretty easy. Just add these lines inside your nginx configuration:
 
 ```
@@ -125,6 +125,7 @@ server {
    location /your_path/ {
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
+      
       proxy_pass http://localhost:8080;
    }
    ...
@@ -132,7 +133,7 @@ server {
 }
 ```
 
-If you want to enable keepalive (between nginx and serverino) you must use an upstream instead:
+If you want to enable keepalive (between nginx and serverino) you must use an upstream:
 
 ```
 upstream your_upstream_name {
@@ -146,11 +147,12 @@ server {
    listen [::]:80 default_server;
 
    location /your_path/ {
-      proxy_pass http://your_upstream_name;
       proxy_set_header Connection "";
       proxy_http_version 1.1;
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
+      
+      proxy_pass http://your_upstream_name;
     }
     
     ...
