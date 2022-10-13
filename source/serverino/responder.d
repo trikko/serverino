@@ -119,7 +119,6 @@ package class Responder
          this.requestId = format("%06s", requestId);
 
       status = State.ASSIGNED;
-      //if (s is null) log("[R:" ~ this.requestId ~ "] " ~ "DISASSIGN");
 
       if (s is null && this.socket !is null)
       {
@@ -139,7 +138,6 @@ package class Responder
 
    void reset()
    {
-      //log("[R:" ~ requestId ~ "] " ~ "RESET!");
       if (socket !is null)
       {
          socket.shutdown(SocketShutdown.BOTH);
@@ -271,7 +269,7 @@ package class Responder
 
       if (bytesRead == 0)
       {
-         // Connessione chiusa!
+         // Connection closed.
          status = State.READY;
          reset();
          return;
@@ -281,8 +279,6 @@ package class Responder
          assert(0, "wouldHaveBlocked");
       }
 
-
-      //log("READ", bytesRead);
       auto bufferRead = buffer[0..bytesRead];
 
       if (leftover.length)
@@ -398,11 +394,7 @@ package class Responder
                      char[] value = cast(char[])row[headerColon+1..$].strip;
 
                      if (key == "expect" && value.toLower == "100-continue") request.expect100 = true;
-                     else if (key == "connection")
-                     {
-                        //info("connection header:", value.toLower);
-                        request.connection = cast(ProtoRequest.Connection)value.toLower;
-                     }
+                     else if (key == "connection") request.connection = cast(ProtoRequest.Connection)value.toLower;
                      else
                      try { if (key == "content-length") request.contentLength = value.to!size_t; }
                      catch (Exception e) { request.isValid = false; return (char[]).init; }
