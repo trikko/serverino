@@ -800,8 +800,6 @@ struct Output
 
       if (bytesRead.length != fs)
       {
-         _internal._status = 500;
-         sendHeaders();
          sendData("HTTP/1.1 500 Internal server error\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n500 Internal server error");
          return false;
       }
