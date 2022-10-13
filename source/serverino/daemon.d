@@ -189,7 +189,7 @@ struct Daemon
 
    void wake(DaemonConfigPtr config)
    {
-      import serverino.interface : Request;
+      import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
       import std.stdio;
 
