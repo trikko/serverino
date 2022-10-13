@@ -34,7 +34,7 @@ mixin ServerinoMain;
 void dump(Request request, Output output)
 {
 	// Probably you want to delete this spam.
-	info("Hello, log! There's a new incoming request.");
+	info("Hello, log! There's a new incoming request. Url: ", request.uri);
 
 	output ~= request.dump(true);
 }
