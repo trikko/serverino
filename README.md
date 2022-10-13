@@ -27,7 +27,7 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 * [ServerinoConfig](https://serverino.dpldocs.info/serverino.common.ServerinoConfig.html) - Server configuration
 
 ## Defining more than one endpoint
-Every function marked with ```@endpoint``` is called until one writes something to output. The calling order is defined by ```@priority```
+**Every function marked with ```@endpoint``` is called until one writes something to output**. The calling order is defined by ```@priority```
 
 ```d
 import serverino;
