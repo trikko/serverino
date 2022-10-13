@@ -27,7 +27,7 @@ module serverino.worker;
 
 import serverino.common;
 import serverino.config;
-import serverino.inputoutput;
+import serverino.interfaces;
 import std.experimental.logger : log, warning, info, fatal, critical;
 import std.process : environment;
 import std.stdio : FILE;

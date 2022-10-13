@@ -27,4 +27,4 @@ module serverino;
 
 public import serverino.main;
 public import serverino.config;
-public import serverino.inputoutput;
+public import serverino.interfaces;
