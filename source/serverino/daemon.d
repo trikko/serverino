@@ -203,7 +203,7 @@ struct Daemon
       foreach(ref listener; config.listeners)
       {
          listener.socket = new TcpSocket(listener.address.addressFamily);
-         listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
+         version(Windows) { } else { listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true); }
 
          try
          {
