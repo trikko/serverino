@@ -104,6 +104,8 @@ template ServerinoLoop(Modules...)
 
    alias allModules = AliasSeq!(mixin(moduleName!mainServerinoLoop), Modules);
 
+   static assert (moduleName!mainServerinoLoop != "main", "Please, don't use `main` as module name.");
+
    static foreach(m; allModules)
       static assert(__traits(isModule, m), "All ServerinoMain params must be modules");
 
