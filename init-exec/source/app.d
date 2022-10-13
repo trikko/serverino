@@ -10,7 +10,7 @@ import std.experimental.logger : info, log, warning, critical;
 mixin ServerinoMain;
 
 // Optional. This is used to config serverino.
-// See: https://serverino.dpldocs.info/serverino.common.ServerinoConfig.html
+// See: https://serverino.dpldocs.info/serverino.config.ServerinoConfig.html
 @onServerInit ServerinoConfig configure()
 {
 	return ServerinoConfig
