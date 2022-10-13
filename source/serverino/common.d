@@ -132,32 +132,6 @@ version(Windows)
 		}
 }
 
-class Channel
-{
-	this(File from, File to)
-	{
-		this.to = to;
-		this.from = from;
-	}
-
-	void write(S...)(S args) { to.write(args); }
-	void writeln(S...)(S args) { to.writeln(args); }
-
-	void rawWrite(T)(in T[] buffer) { to.rawWrite(buffer); }
-
-	void flush() { to.flush(); }
-
-	S readln(S = string)(dchar terminator = '\n') { return from.readln!S(terminator); }
-
-	T[] rawRead(T)(in T[] buffer) { return from.rawRead(buffer); }
-
-	package:
-
-	File to;
-	File from;
-}
-
-
 package struct SimpleList
 {
    private struct SLElement

@@ -112,23 +112,17 @@ struct Worker
 
       }
 
-      tryInit!Modules();
-
-      // STDIN < /dev/null
-      // STDERR > STDOUT
-
+      // Prevent read from stding
       {
-         import core.stdc.stdio : FILE, freopen;
-         import std.stdio : File, stdin, stderr;
+         import std.stdio : stdin;
 
          version(Windows)  auto nullSink = fopen("NUL", "r");
          version(Posix)    auto nullSink = fopen("/dev/null", "r");
 
          dup2(fileno(nullSink), fileno(stdin.getFP));
-         //dup2(fileno(stdout.getFP),fileno(stderr.getFP));
-
-         //channel = new Channel(fromDaemon, toDaemon);
       }
+
+      tryInit!Modules();
 
       import std.string : chomp;
 
