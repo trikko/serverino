@@ -76,11 +76,11 @@ package class ProtoRequest
 
    char[]   method;
    char[]   path;
-   char[]   body;
 
    Connection  connection = Connection.Unknown;
    HttpVersion httpVersion = HttpVersion.Unknown;
 
+   char[]   body;
    char[]   data;
 }
 
@@ -102,7 +102,7 @@ package class Responder
    this(DaemonConfigPtr config) {
       id = instances.length;
       instances ~= this;
-      lookup[false].insertBack(id);
+      dead.insertBack(id);
       this.config = config;
    }
 
@@ -120,14 +120,14 @@ package class Responder
 
       if (s is null && this.socket !is null)
       {
-         lookup[true].remove(id);
-         lookup[false].insertFront(id);
+         alive.remove(id);
+         dead.insertFront(id);
       }
 
       if (s !is null && this.socket is null)
       {
-         lookup[false].remove(id);
-         lookup[true].insertFront(id);
+         dead.remove(id);
+         alive.insertFront(id);
          s.blocking = false;
       }
 
@@ -140,7 +140,6 @@ package class Responder
       if (socket !is null)
       {
          socket.shutdown(SocketShutdown.BOTH);
-         socket.close();
          assignSocket(null, ulong.max);
       }
 
@@ -169,23 +168,21 @@ package class Responder
 
       wi.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestsQueue[0];
-      wi.channel.send(current.data ~ current.body);
+
+      uint len = cast(uint)(current.data.length + current.body.length);
+      wi.channel.send((cast(char*)&len)[0..uint.sizeof] ~ current.data ~ current.body);
+
       requestsQueue = requestsQueue[1..$];
       lastRequest = MonoTime.currTime;
    }
 
    void write()
    {
-
-      log("[R:" ~ requestId ~ "] " ~ "SENDBUFFER");
       auto maxToSend = bufferSent + 32*1024;
       if (maxToSend > sendBuffer.length) maxToSend = sendBuffer.length;
 
       if (maxToSend == 0)
-      {
-         warning("[R:" ~ requestId ~ "] " ~ "Empty buffer!");
          return;
-      }
 
       auto sent = socket.send(sendBuffer.array[bufferSent..maxToSend]);
 
@@ -193,8 +190,6 @@ package class Responder
       {
          if(!wouldHaveBlocked)
             log("[R:" ~ requestId ~ "] " ~ "ERRORE SOCKET");
-         else
-            log("[R:" ~ requestId ~ "] " ~ "BLOCCATO");
       }
       else
       {
@@ -204,15 +199,15 @@ package class Responder
          {
             bufferSent = 0;
             sendBuffer.clear();
+
+            if (!isKeepAlive)
+                  reset();
          }
       }
    }
 
    void write(char[] data)
    {
-      if (!isKeepAlive)
-         status = State.READY;
-
       if (socket is null)
       {
          status = State.ERROR;
@@ -220,31 +215,28 @@ package class Responder
          return;
       }
 
-      //log("TO WRITE:", data.length);
       if (sendBuffer.length == 0)
       {
-         //log("NOBUFFER");
          auto sent = socket.send(data);
 
          if (sent == Socket.ERROR)
          {
-            if(!wouldHaveBlocked)
-               log("[R:" ~ requestId ~ "] " ~ "ERRORE SOCKET");
-            else
-               log("[R:" ~ requestId ~ "] " ~ "BLOCCATO");
+            if(!wouldHaveBlocked) log("Socket error on write. ", lastSocketError);
+            else sendBuffer.append(data);
          }
-         else if (sent < data.length)
+         else
          {
-            sendBuffer.append(data[sent..data.length]);
+            responseSent += sent;
+            if (sent < data.length) sendBuffer.append(data[sent..data.length]);
+            else
+            {
+               if (!isKeepAlive)
+                  reset();
+            }
          }
-
-         //log("SENT", sent);
-
-         responseSent += sent;
       }
       else
       {
-         //log("BUFFER");
          sendBuffer.append(data);
          write();
       }
@@ -259,9 +251,9 @@ package class Responder
          requestsQueue ~= new ProtoRequest();
          status = State.READING_HEADERS;
       }
-      //else assert(status == State.READING_BODY, "[R:" ~ requestId ~ "] " ~ "Wrong responder state: " ~ status.to!string);
 
       auto request = requestsQueue[$-1];
+      request.data.reserve(32*1024);
 
       char[32*1024] buffer;
       auto bytesRead = socket.receive(buffer);
@@ -269,9 +261,8 @@ package class Responder
       if (bytesRead < 0)
       {
          status = State.READY;
-         log("[R:" ~ requestId ~ "] " ~ "READ NON RIUSCITA " ~ bytesRead.to!string);
+         log("Socket error on read. ", lastSocketError);
          reset();
-         log("[R:" ~ requestId ~ "] " ~ "RESET");
          return;
       }
 
@@ -284,7 +275,7 @@ package class Responder
       }
       else if (bytesRead == Socket.ERROR && wouldHaveBlocked)
       {
-         log("[R:" ~ requestId ~ "] " ~ "BLOCK: impossible");
+         assert(0, "wouldHaveBlocked");
       }
 
 
@@ -404,12 +395,12 @@ package class Responder
                      char[] value = cast(char[])row[headerColon+1..$].strip;
 
                      if (key == "expect" && value.toLower == "100-continue") request.expect100 = true;
-                     if (key == "connection")
+                     else if (key == "connection")
                      {
                         //info("connection header:", value.toLower);
                         request.connection = cast(ProtoRequest.Connection)value.toLower;
                      }
-
+                     else
                      try { if (key == "content-length") request.contentLength = value.to!size_t; }
                      catch (Exception e) { request.isValid = false; return (char[]).init; }
 
@@ -428,25 +419,18 @@ package class Responder
 
                   if (request.connection == ProtoRequest.Connection.Unknown)
                   {
-                     if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11)
-                     {
-                        cast(ProtoRequest.Connection)request.connection = ProtoRequest.Connection.KeepAlive;
-                        //info("[R:" ~ requestId ~ "] " ~ "connection: keep-alive (def http11)");
-                     }
-                     else{
-                        request.connection = cast(ProtoRequest.Connection)ProtoRequest.Connection.Close;
-                        //info("[R:" ~ requestId ~ "] " ~ "connection: close (def http10)");
-                     }
+                     if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11) request.connection = ProtoRequest.Connection.KeepAlive;
+                     else request.connection = ProtoRequest.Connection.Close;
                   }
-
 
                   if (request.contentLength != 0)
                   {
+                     request.body.reserve(request.contentLength);
                      request.isValid = false;
                      status = State.READING_BODY;
 
                      if (request.expect100)
-                        socket.send(cast(char[])request.httpVersion ~ " 100 continue\r\n\r\n");
+                        socket.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
                   }
                   else
                   {
@@ -459,7 +443,9 @@ package class Responder
          }
          else if (status == State.READING_BODY)
          {
-            request.body ~= leftover ~ bufferRead;
+            request.body ~= leftover;
+            request.body ~= bufferRead;
+
             leftover.length = 0;
 
             if (request.body.length >= request.contentLength)
@@ -496,6 +482,7 @@ package class Responder
    MonoTime          lastRecv    = MonoTime.zero;
    MonoTime          lastRequest = MonoTime.zero;
 
-   static SimpleList[bool]    lookup;
+   static SimpleList          alive;
+   static SimpleList          dead;
    static Responder[]         instances;
 }
