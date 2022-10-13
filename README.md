@@ -1,9 +1,11 @@
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
-* Ready-to-go http server in a few seconds.
-* Multi-platform (Linux/Windows/MacOS)
+* Ready-to-go http server
+* Cross-platform (Linux/Windows/MacOS)
 * Multi-process
 * Dynamic number of workers
 * Zero dependencies
+* Build & start your project in a few seconds
+
 
 ## Create and run your first serverino
 ```
