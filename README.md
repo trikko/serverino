@@ -1,9 +1,11 @@
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
-* Ready-to-go http server in less than a minute.
-* Multi-platform (Linux/Windows/MacOS)
+* Ready-to-go http server
+* Cross-platform (Linux/Windows/MacOS)
 * Multi-process
 * Dynamic number of workers
 * Zero dependencies
+* Build & start your project in a few seconds
+
 
 ## Create and run your first serverino
 ```
@@ -111,4 +113,51 @@ import serverino;
 import test, other;
 
 mixin ServerinoMain!(other, test); // Current module is always processed
+```
+
+## Shielding the whole thing
+I would not put serverino into the wild. For using in production I suggest shielding serverino under nginx.
+It's pretty easy. Just add these lines inside your nginx configuration:
+
+```
+server {
+   listen 80 default_server;
+   listen [::]:80 default_server;
+   
+   location /your_path/ {
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      
+      proxy_pass http://localhost:8080;
+   }
+   ...
+   ...
+}
+```
+
+If you want to enable keepalive (between nginx and serverino) you must use an upstream:
+
+```
+upstream your_upstream_name {
+  server localhost:8080;
+  keepalive 64;
+}
+
+
+server {
+   listen 80 default_server;
+   listen [::]:80 default_server;
+
+   location /your_path/ {
+      proxy_set_header Connection "";
+      proxy_http_version 1.1;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      
+      proxy_pass http://your_upstream_name;
+    }
+    
+    ...
+    ...
+ }
 ```
