@@ -237,8 +237,8 @@ struct Daemon
       foreach(i; 0..config.maxWorkers)
          new WorkerInfo();
 
-      Responder.lookup[true] = SimpleList();
-      Responder.lookup[false] = SimpleList();
+      Responder.alive = SimpleList();
+      Responder.dead = SimpleList();
 
       foreach(idx; 0..128)
          new Responder(config);
@@ -265,7 +265,7 @@ struct Daemon
          foreach(idx; workersAlive)
             ssRead.add(WorkerInfo.instances[idx].channel);
 
-         foreach(idx; Responder.lookup[true].asRange)
+         foreach(idx; Responder.alive.asRange)
          {
             ssRead.add(Responder.instances[idx].socket);
 
@@ -288,7 +288,7 @@ struct Daemon
 
             if (now-lastCheck >= 1.dur!"seconds")
             {
-               foreach(idx; Responder.lookup[true].asRange)
+               foreach(idx; Responder.alive.asRange)
                {
                   auto responder = Responder.instances[idx];
 
@@ -372,7 +372,7 @@ struct Daemon
          }
 
 
-         foreach(idx; Responder.lookup[true].asRange)
+         foreach(idx; Responder.alive.asRange)
          {
             auto responder = Responder.instances[idx];
 
@@ -435,7 +435,7 @@ struct Daemon
                Responder responder;
 
                // First: check if any idling worker is available
-               auto idling = Responder.lookup[false].asRange;
+               auto idling = Responder.dead.asRange;
 
                if (!idling.empty) responder = Responder.instances[idling.front];
                else
