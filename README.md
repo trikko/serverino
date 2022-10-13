@@ -7,7 +7,7 @@
 * Build & start your project in a few seconds
 
 
-## Create and run your first serverino
+## Quickstart
 ```
 dub init your_fabulous_project -t serverino
 cd your_fabulous_project
