@@ -38,7 +38,6 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 
 import serverino.databuffer;
 import serverino.common;
-import serverino.databuffer;
 
 /// A cookie
 struct Cookie
@@ -712,7 +711,6 @@ struct Request
    }
 
    package RequestImpl* _internal;
-   private size_t       _requestId;
 }
 
 /// Your reply.
@@ -824,6 +822,7 @@ struct Output
 
       static DataBuffer!char buffer;
       buffer.reserve(1024, true);
+      buffer.clear();
 
       immutable string[short] StatusCode =
       [
@@ -1055,6 +1054,5 @@ struct Output
    }
 
    package OutputImpl* _internal;
-   size_t      _requestId;
 }
 
