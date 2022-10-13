@@ -1,5 +1,5 @@
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
-* Ready-to-go http server in less than a minute.
+* Ready-to-go http server in a few seconds.
 * Multi-platform (Linux/Windows/MacOS)
 * Multi-process
 * Dynamic number of workers
