@@ -1,16 +1,23 @@
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
-* Ready-to-go http/https server
+* Ready-to-go http server in less than a minute.
+* Multi-platform (Linux/Windows/MacOS)
 * Multi-process
 * Dynamic number of workers
-* Zero dub dependencies
-* Just one C dependency (optional, if you use https)
+* Zero dependencies
 
-## A simple webserver in three lines
+## Create and run your first serverino
+```
+dub init example -t serverino
+dub run
+```
+
+## A simple webserver in just three lines
 ```d
 import serverino;
 mixin ServerinoMain;
 void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
+
 ## Documentation you need
 * [Request](https://serverino.dpldocs.info/serverino.worker.Request.html) - What user asked
 * [Output](https://serverino.dpldocs.info/serverino.worker.Output.html) - Your reply
@@ -103,35 +110,4 @@ import serverino;
 import test, other;
 
 mixin ServerinoMain!(other, test); // Current module is always processed
-```
-## Enable https
-Follow [these instructions](https://git.causal.agency/libretls/about/) to install [libretls](https://git.causal.agency/libretls/).
-Enable ```WithTLS``` subconfiguration in your dub project.
-
-dub.sdl:
-```sdl
-subConfiguration "serverino" "WithTLS"
-```
-
-dub.json
-```json
-"subConfigurations" : { "serverino" : "WithTLS" }
-```
-
-Add a https listener:
-```d
-@onServerInit ServerinoConfig setup()
-{
-   ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
-
-   // https. Probably you need to run server as *root* to access cert files.
-   // Please run workers as unprivileged user using setWorkerUser/setWorkerGroup
-   // sc.setWorkerUser("www-data"); sc.setWorkerGroup("www-data");
-   sc.addListener("127.0.0.1", 8082, "path-to-your/cert.pem", "path-to-your/privkey.pem");
-
-   // http if you don't set certs
-   sc.addListener("127.0.0.1", 8083);
-
-   return sc;
-}
 ```
