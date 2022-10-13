@@ -28,19 +28,21 @@ module serverino.worker;
 import serverino.common;
 import serverino.config;
 import serverino.inputoutput;
-
-import std.experimental.logger;
-
+import std.experimental.logger : log, warning, info, fatal, critical;
 import std.process : environment;
-
 import std.stdio : FILE;
+import std.socket;
+import std.datetime : MonoTime, dur;
+import std.string : toStringz, indexOf, strip, toLower, empty;
+import std.algorithm : splitter, startsWith, map;
+import std.range : assumeSorted;
+import std.format : format;
+import std.conv : to;
+
 extern(C) int dup(int a);
 extern(C) int dup2(int a, int b);
 extern(C) int fileno(FILE *stream);
 
-//import serverino.sockettransfer;
-import std.socket;
-import std;
 
 struct Worker
 {
@@ -130,9 +132,9 @@ struct Worker
 
       import std.string : chomp;
 
-      import core.thread;
+      import core.thread : Thread;
       import core.stdc.stdlib : exit;
-      import core.atomic;
+      import core.atomic : cas;
 
       __gshared MonoTime processedStartedAt = MonoTime.zero;
       __gshared bool justSent = false;
@@ -191,7 +193,7 @@ struct Worker
             while(recv == -1)
             {
                recv = channel.receive(buffer);
-               import core.stdc.stdlib;
+               import core.stdc.stdlib : exit;
 
                if (recv == -1)
                {
@@ -200,12 +202,14 @@ struct Worker
                   if (tm - idlingAt > config.maxWorkerIdling)
                   {
                      info("Killing worker. [REASON: maxWorkerIdling]");
+                     tryUninit!Modules();
                      channel.close();
                      exit(0);
                   }
                   else if (tm - startedAt > config.maxWorkerLifetime)
                   {
                      info("Killing worker. [REASON: maxWorkerLifetime]");
+                     tryUninit!Modules();
                      channel.close();
                      exit(0);
                   }
@@ -214,6 +218,7 @@ struct Worker
                }
                else if (recv < 0)
                {
+                  tryUninit!Modules();
                   warning("Killing worker. [REASON: socket error]");
                   channel.close();
                   exit(cast(int)recv);
@@ -235,8 +240,7 @@ struct Worker
          ka[0] = parseHttpRequest!Modules(config, data.array);
          processedStartedAt = MonoTime.zero;
          sz[0] = output._internal._sendBuffer.array.length;
-         //info("worker: keepalive? ", ka[0]);
-         //log("SZ: ", sz[0]);
+
          if (cas(&justSent, false, true))
             channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._sendBuffer.array);
       }

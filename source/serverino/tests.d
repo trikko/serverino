@@ -32,7 +32,7 @@ template ServerinoTest(Modules...)
    void main(string[] args)
    {
       import serverino.daemon;
-      import core.thread;
+      import core.thread : Thread;
 
       if (environment.get("SERVERINO_DAEMON") == null)
       {

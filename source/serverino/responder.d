@@ -30,9 +30,13 @@ import serverino.databuffer;
 import serverino.daemon : WorkerInfo;
 import serverino.config : DaemonConfigPtr;
 import std.socket;
-import std;
+import std.datetime : MonoTime;
 
-import std.experimental.logger;
+
+import std.string : toLower, strip, join;
+import std.conv : text, to;
+import std.format : format;
+import std.experimental.logger : log, info, warning;
 
 extern(C) long syscall(long number, ...);
 

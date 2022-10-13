@@ -5,6 +5,8 @@ immutable example =
 `module app;
 
 import serverino;
+import std.experimental.logger : info, log, warning, critical;
+
 mixin ServerinoMain;
 
 // Optional. This is used to config serverino.
@@ -22,7 +24,7 @@ mixin ServerinoMain;
 // See: https://github.com/trikko/serverino#onworkerstart-onworkerstop-udas
 @onWorkerStart void start()
 {
-   // db = connect_to_db(...);
+	// db = connect_to_db(...);
 }
 */
 
@@ -31,6 +33,9 @@ mixin ServerinoMain;
 // See: https://github.com/trikko/serverino#defining-more-than-one-endpoint
 void dump(Request request, Output output)
 {
+	// Probably you want to delete this spam.
+	info("Hello, log! There's a new incoming request.");
+
 	output ~= request.dump(true);
 }
 `;

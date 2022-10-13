@@ -31,10 +31,14 @@ import serverino.config;
 
 import std.stdio : File;
 import std.conv : to;
-import std.experimental.logger;
+import std.experimental.logger : log, info, warning;
 import std.process : ProcessPipes;
 
-import std;
+import std.format : format;
+import std.socket;
+import std.array : array;
+import std.algorithm : filter;
+import std.datetime : SysTime, Clock, dur, MonoTime;
 
 package class WorkerInfo
 {
