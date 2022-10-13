@@ -8,6 +8,7 @@
 ## Create and run your first serverino
 ```
 dub init your_fabulous_project -t serverino
+cd your_fabulous_project
 dub run
 ```
 
