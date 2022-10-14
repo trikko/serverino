@@ -33,7 +33,7 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 import serverino;
 mixin ServerinoMain;
 
-// This function will never block the execution of other endpoints since it doesn't write anything
+// This function will never block the execution of other endpoints since it doesn't write anything to output
 // In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
 @priority(10) @endpoint void logger(Request req, Output output)
 {
