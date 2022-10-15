@@ -62,7 +62,11 @@ class CustomLogger : Logger
 
       string intro;
 
-      if (environment.get("SERVERINO_DAEMON") == null) intro = "\x1b[1m★\x1b[0m ";
+      if (environment.get("SERVERINO_DAEMON") == null)
+      {
+         version(Windows){ intro = "\x1b[1m-\x1b[0m "; }
+         else { intro = "\x1b[1m★\x1b[0m "; }
+      }
       else {
          import std.stdio : write, stderr;
          import std.string : indexOf;
@@ -73,7 +77,9 @@ class CustomLogger : Logger
          auto g = ((r*seed*123479261)%15+1)   * 255/15;
          auto b = ((g*seed*123490957)%15+1)   * 255/15;
 
-         intro = text("\x1b[38;2;", r, ";", g, ";", b,"m■\x1b[0m ");
+         version(Windows){ intro = text("\x1b[38;2;", r, ";", g, ";", b,"mD\x1b[0m "); }
+         else { intro = text("\x1b[38;2;", r, ";", g, ";", b,"m■\x1b[0m "); }
+
       }
 
       intro ~= format("[%06d]", thisProcessID);
