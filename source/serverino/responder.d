@@ -123,7 +123,7 @@ package class Responder
       if (s is null && this.socket !is null)
       {
          alive.remove(id);
-         dead.insertFront(id);
+         dead.insertBack(id);
       }
 
       if (s !is null && this.socket is null)
@@ -141,6 +141,7 @@ package class Responder
       if (socket !is null)
       {
          socket.shutdown(SocketShutdown.BOTH);
+         socket.close();
          assignSocket(null, ulong.max);
       }
 
@@ -149,6 +150,9 @@ package class Responder
       responseSent = 0;
       leftover.length = 0;
       requestsQueue.length = 0;
+      started = false;
+      lastRecv = CoarseTime.zero;
+      lastRequest = CoarseTime.zero;
    }
 
    void detachWorker()
@@ -190,7 +194,10 @@ package class Responder
       if (sent == Socket.ERROR)
       {
          if(!wouldHaveBlocked)
-            log("[R:" ~ requestId ~ "] " ~ "ERRORE SOCKET");
+         {
+            log("SOCKET ERROR?");
+            reset();
+         }
       }
       else
       {
@@ -283,6 +290,7 @@ package class Responder
       {
          assert(0, "wouldHaveBlocked");
       }
+      else if (started == false) started = true;
 
       auto bufferRead = buffer[0..bytesRead];
 
@@ -469,6 +477,7 @@ package class Responder
    size_t            bufferSent;
    string            requestId;
 
+   bool              started;
    bool              isKeepAlive;
    size_t            responseSent;
    size_t            responseLength;

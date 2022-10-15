@@ -253,7 +253,7 @@ struct Daemon
 
       while(!exitRequested)
       {
-                  // Create workers if needed. Kills old workers, freezed ones, etc.
+         // Create workers if needed. Kills old workers, freezed ones, etc.
          checkWorkers(config);
 
          ready = true;
@@ -292,26 +292,44 @@ struct Daemon
 
             if (now-lastCheck >= 1.dur!"seconds")
             {
+               Responder[] toReset;
                foreach(idx; Responder.alive.asRange)
                {
                   auto responder = Responder.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (responder.status == Responder.State.KEEP_ALIVE && now - responder.lastRequest > 5.dur!"seconds")
-                  {
-                     responder.reset();
-                  }
+                  if (responder.status == Responder.State.KEEP_ALIVE && responder.lastRequest != CoarseTime.zero && now - responder.lastRequest > 5.dur!"seconds")
+                     toReset ~= responder;
 
                   // Http timeout hit.
                   else if (responder.status == Responder.State.ASSIGNED || responder.status == Responder.State.READING_BODY || responder.status == Responder.State.READING_HEADERS )
                   {
                      if (responder.lastRecv != CoarseTime.zero && now - responder.lastRecv > config.maxHttpWaiting)
                      {
-                        warning("Responder closed. [REASON: http timeout]");
-                        responder.reset();
+                        if (responder.started) warning("Responder closed. [REASON: http timeout]");
+                        toReset ~= responder;
                      }
                   }
                }
+
+               foreach(r; toReset)
+                  r.reset();
+
+            }
+
+            size_t cnt = 0;
+            foreach(r; Responder.dead.asRange)
+            {
+               if (r == Responder.instances.length - 1 && r > 5)
+                  cnt++;
+
+               else break;
+            }
+
+            for(size_t i = 0; i < cnt; ++i)
+            {
+               Responder.dead.remove(Responder.instances.length-1);
+               Responder.instances.length--;
             }
          }
 
