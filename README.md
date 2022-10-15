@@ -22,9 +22,9 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
 
 ## Documentation you need
-* [Request](https://serverino.dpldocs.info/serverino.worker.Request.html) - What user asked
-* [Output](https://serverino.dpldocs.info/serverino.worker.Output.html) - Your reply
-* [ServerinoConfig](https://serverino.dpldocs.info/serverino.common.ServerinoConfig.html) - Server configuration
+* [Request](https://serverino.dpldocs.info/serverino.interfaces.Request.html) - What user asked
+* [Output](https://serverino.dpldocs.info/serverino.interfaces.Output.html) - Your reply
+* [ServerinoConfig](https://serverino.dpldocs.info/serverino.config.ServerinoConfig.html) - Server configuration
 
 ## Defining more than one endpoint
 **Every function marked with ```@endpoint``` is called until one writes something to output**. The calling order is defined by ```@priority```
@@ -33,7 +33,7 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 import serverino;
 mixin ServerinoMain;
 
-// This function will never block the execution of other endpoints since it doesn't write anything
+// This function will never block the execution of other endpoints since it doesn't write anything to output
 // In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
 @priority(10) @endpoint void logger(Request req, Output output)
 {
