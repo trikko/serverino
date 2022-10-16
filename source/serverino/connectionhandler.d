@@ -291,6 +291,12 @@ package class ConnectionHandler
          requestToProcess.data ~= (cast(char*)(&len))[0..uint.sizeof];
       }
 
+      if (requestToProcess is null)
+      {
+         reset();
+         return;
+      }
+
       ProtoRequest request = requestToProcess;
       while(request.next !is null)
          request = request.next;

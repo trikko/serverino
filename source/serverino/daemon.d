@@ -277,7 +277,6 @@ struct Daemon
                ssWrite.add(ConnectionHandler.instances[idx].socket);
          }
 
-
          // Check for new requests
          size_t updates;
          try { updates = Socket.select(ssRead, ssWrite, null, 1.dur!"seconds"); }
