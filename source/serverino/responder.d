@@ -90,7 +90,7 @@ package class ProtoRequest
    ProtoRequest next = null;
 }
 
-package class Responder
+package class ConnectionHandler
 {
    enum State
    {
@@ -170,7 +170,7 @@ package class Responder
 
    void detachWorker()
    {
-      this.assignedWorker.assignedResponder = null;
+      this.assignedWorker.assignedConnectionHandler = null;
       this.assignedWorker.setStatus(WorkerInfo.State.IDLING);
       this.assignedWorker = null;
 
@@ -182,7 +182,7 @@ package class Responder
    {
 
       this.assignedWorker = wi;
-      wi.assignedResponder = this;
+      wi.assignedConnectionHandler = this;
 
       wi.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestToProcess;
@@ -399,7 +399,7 @@ package class Responder
                   if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
                   {
                      request.isValid = false;
-                     status = Responder.status.ERROR;
+                     status = ConnectionHandler.status.ERROR;
                      socket.send("HTTP/1.1 400 Bad Request\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Http version unknown.");
                      reset();
@@ -409,7 +409,7 @@ package class Responder
                   if (popped != 3 || !fields.empty)
                   {
                      request.isValid = false;
-                     status = Responder.status.ERROR;
+                     status = ConnectionHandler.status.ERROR;
                      socket.send("HTTP/1.1 400 Bad Request\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Malformed status line.");
                      reset();
@@ -449,7 +449,7 @@ package class Responder
 
                   if (request.isValid == false)
                   {
-                     status = Responder.status.ERROR;
+                     status = ConnectionHandler.status.ERROR;
                      socket.send("HTTP/1.1 400 Bad Request\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Malformed request.");
                      reset();
@@ -526,7 +526,6 @@ package class Responder
    Socket            socket;
 
    ProtoRequest      requestToProcess;
-   Responder.State   status;
    WorkerInfo        assignedWorker;
    char[]            leftover;
 
@@ -535,5 +534,6 @@ package class Responder
 
    static SimpleList          alive;
    static SimpleList          dead;
-   static Responder[]         instances;
+   ConnectionHandler.State    status;
+   static ConnectionHandler[] instances;
 }

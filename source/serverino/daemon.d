@@ -123,7 +123,7 @@ package class WorkerInfo
          channel = null;
       }
 
-      assignedResponder = null;
+      assignedConnectionHandler = null;
    }
 
    void setStatus(State s)
@@ -150,7 +150,7 @@ package:
 
    State                   status      = State.STOPPED;
    Socket                  channel     = null;
-   Responder               assignedResponder = null;
+   ConnectionHandler       assignedConnectionHandler = null;
 
    static WorkerInfo[]   instances;
    static SimpleList[5]  lookup;
@@ -241,11 +241,11 @@ struct Daemon
       foreach(i; 0..config.maxWorkers)
          new WorkerInfo();
 
-      Responder.alive = SimpleList();
-      Responder.dead = SimpleList();
+      ConnectionHandler.alive = SimpleList();
+      ConnectionHandler.dead = SimpleList();
 
       foreach(idx; 0..128)
-         new Responder(config);
+         new ConnectionHandler(config);
 
       // We use a socketset to check for updates
       SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
@@ -269,12 +269,12 @@ struct Daemon
          foreach(idx; workersAlive)
             ssRead.add(WorkerInfo.instances[idx].channel);
 
-         foreach(idx; Responder.alive.asRange)
+         foreach(idx; ConnectionHandler.alive.asRange)
          {
-            ssRead.add(Responder.instances[idx].socket);
+            ssRead.add(ConnectionHandler.instances[idx].socket);
 
-            if (!Responder.instances[idx].completed)
-               ssWrite.add(Responder.instances[idx].socket);
+            if (!ConnectionHandler.instances[idx].completed)
+               ssWrite.add(ConnectionHandler.instances[idx].socket);
          }
 
 
@@ -295,22 +295,22 @@ struct Daemon
                import std.file : exists;
                if (exists("/tmp/kill")) exitRequested = true;
 
-               Responder[] toReset;
-               foreach(idx; Responder.alive.asRange)
+               ConnectionHandler[] toReset;
+               foreach(idx; ConnectionHandler.alive.asRange)
                {
-                  auto responder = Responder.instances[idx];
+                  auto connectionHandler = ConnectionHandler.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (responder.status == Responder.State.KEEP_ALIVE && responder.lastRequest != CoarseTime.zero && now - responder.lastRequest > 5.dur!"seconds")
-                     toReset ~= responder;
+                  if (connectionHandler.status == ConnectionHandler.State.KEEP_ALIVE && connectionHandler.lastRequest != CoarseTime.zero && now - connectionHandler.lastRequest > 5.dur!"seconds")
+                     toReset ~= connectionHandler;
 
                   // Http timeout hit.
-                  else if (responder.status == Responder.State.ASSIGNED || responder.status == Responder.State.READING_BODY || responder.status == Responder.State.READING_HEADERS )
+                  else if (connectionHandler.status == ConnectionHandler.State.ASSIGNED || connectionHandler.status == ConnectionHandler.State.READING_BODY || connectionHandler.status == ConnectionHandler.State.READING_HEADERS )
                   {
-                     if (responder.lastRecv != CoarseTime.zero && now - responder.lastRecv > config.maxHttpWaiting)
+                     if (connectionHandler.lastRecv != CoarseTime.zero && now - connectionHandler.lastRecv > config.maxHttpWaiting)
                      {
-                        if (responder.started) warning("Responder closed. [REASON: http timeout]");
-                        toReset ~= responder;
+                        if (connectionHandler.started) warning("Connection closed. [REASON: http timeout]");
+                        toReset ~= connectionHandler;
                      }
                   }
                }
@@ -321,9 +321,9 @@ struct Daemon
             }
 
             size_t cnt = 0;
-            foreach(r; Responder.dead.asRange)
+            foreach(r; ConnectionHandler.dead.asRange)
             {
-               if (r == Responder.instances.length - 1 && r > 5)
+               if (r == ConnectionHandler.instances.length - 1 && r > 5)
                   cnt++;
 
                else break;
@@ -331,8 +331,8 @@ struct Daemon
 
             for(size_t i = 0; i < cnt; ++i)
             {
-               Responder.dead.remove(Responder.instances.length-1);
-               Responder.instances.length--;
+               ConnectionHandler.dead.remove(ConnectionHandler.instances.length-1);
+               ConnectionHandler.instances.length--;
             }
          }
 
@@ -349,7 +349,7 @@ struct Daemon
                break;
 
             WorkerInfo w = WorkerInfo.instances[idx];
-            Responder r = w.assignedResponder;
+            ConnectionHandler r = w.assignedConnectionHandler;
 
             if (ssRead.isSet(w.channel))
             {
@@ -396,7 +396,7 @@ struct Daemon
                   {
                      r.detachWorker();
 
-                     if (r.status != Responder.State.KEEP_ALIVE)
+                     if (r.status != ConnectionHandler.State.KEEP_ALIVE)
                         r.reset();
                   }
                }
@@ -405,36 +405,36 @@ struct Daemon
          }
 
 
-         foreach(idx; Responder.alive.asRange)
+         foreach(idx; ConnectionHandler.alive.asRange)
          {
-            auto responder = Responder.instances[idx];
+            auto connectionHandler = ConnectionHandler.instances[idx];
 
             if (updates == 0)
                continue;
 
-            if (responder.socket !is null && ssRead.isSet(responder.socket))
+            if (connectionHandler.socket !is null && ssRead.isSet(connectionHandler.socket))
             {
-               responder.lastRecv = now;
-               responder.read();
+               connectionHandler.lastRecv = now;
+               connectionHandler.read();
             }
 
-            if (responder.socket is null)
+            if (connectionHandler.socket is null)
             {
                continue;
             }
 
-            if (ssWrite.isSet(responder.socket))
+            if (ssWrite.isSet(connectionHandler.socket))
             {
-               responder.write();
+               connectionHandler.write();
 
-               if (responder.completed)
+               if (connectionHandler.completed)
                {
-                  responder.detachWorker();
+                  connectionHandler.detachWorker();
                }
             }
          }
 
-         foreach(ref r; Responder.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid))
+         foreach(ref r; ConnectionHandler.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
 
@@ -465,21 +465,19 @@ struct Daemon
                updates--;
 
                // We have an incoming connection to handle
-               Responder responder;
+               ConnectionHandler connectionHandler;
 
                // First: check if any idling worker is available
-               auto idling = Responder.dead.asRange;
+               auto idling = ConnectionHandler.dead.asRange;
 
-               if (!idling.empty) responder = Responder.instances[idling.front];
-               else
-               {
-                  responder = new Responder(config);
-               }
+               if (!idling.empty) connectionHandler = ConnectionHandler.instances[idling.front];
+               else connectionHandler = new ConnectionHandler(config);
 
-               responder.lastRecv = now;
+
+               connectionHandler.lastRecv = now;
 
                auto nextId = requestId++;
-               responder.assignSocket(listener.socket.accept(), nextId);
+               connectionHandler.assignSocket(listener.socket.accept(), nextId);
             }
          }
 
