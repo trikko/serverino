@@ -26,7 +26,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.daemon;
 
 import serverino.common;
-import serverino.responder;
+import serverino.connectionhandler;
 import serverino.config;
 
 import std.stdio : File;
