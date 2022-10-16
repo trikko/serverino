@@ -292,6 +292,9 @@ struct Daemon
 
             if (now-lastCheck >= 1.dur!"seconds")
             {
+               import std.file : exists;
+               if (exists("/tmp/kill")) exitRequested = true;
+
                Responder[] toReset;
                foreach(idx; Responder.alive.asRange)
                {
@@ -431,7 +434,7 @@ struct Daemon
             }
          }
 
-         foreach(ref r; Responder.instances.filter!(x => x.requestsQueue.length > 0 && x.requestsQueue[0].isValid))
+         foreach(ref r; Responder.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
 

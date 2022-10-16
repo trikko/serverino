@@ -63,9 +63,9 @@ package class ProtoRequest
       s ~= text("VER: ", httpVersion, "\n");
       s ~= text("METHOD: ", method, "\n");
       s ~= text("PATH: ", path, "\n");
-      s ~= text("BODY: ", body.length, "\n");
+      s ~= text("BODY: ", contentLength, "\n");
       s ~= text("HEADERS:", "\n");
-      s ~= (data);
+      s ~= (data[uint.sizeof..headersLength]);
       s ~= "\n";
 
       return s;
@@ -83,8 +83,11 @@ package class ProtoRequest
    Connection  connection = Connection.Unknown;
    HttpVersion httpVersion = HttpVersion.Unknown;
 
-   char[]   body;
+   //char[]   body;
    char[]   data;
+
+   size_t   headersLength;
+   ProtoRequest next = null;
 }
 
 package class Responder
@@ -149,7 +152,17 @@ package class Responder
       responseLength = 0;
       responseSent = 0;
       leftover.length = 0;
-      requestsQueue.length = 0;
+
+      // Clear requests queue
+      while(requestToProcess !is null)
+      {
+         auto tmp = requestToProcess;
+         requestToProcess = requestToProcess.next;
+         tmp.next = null;
+      }
+
+      requestToProcess = null;
+
       started = false;
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
@@ -172,12 +185,13 @@ package class Responder
       wi.assignedResponder = this;
 
       wi.setStatus(WorkerInfo.State.PROCESSING);
-      auto current = requestsQueue[0];
+      auto current = requestToProcess;
+      uint len = cast(uint)(current.data.length) - cast(uint)uint.sizeof;
+      current.data[0..uint.sizeof] = (cast(char*)&len)[0..uint.sizeof];
 
-      uint len = cast(uint)(current.data.length + current.body.length);
-      wi.channel.send((cast(char*)&len)[0..uint.sizeof] ~ current.data ~ current.body);
+      wi.channel.send(current.data);
 
-      requestsQueue = requestsQueue[1..$];
+      requestToProcess = requestToProcess.next;
       lastRequest = CoarseTime.currTime;
    }
 
@@ -261,11 +275,26 @@ package class Responder
 
       if (status == State.ASSIGNED || status == State.KEEP_ALIVE)
       {
-         requestsQueue ~= new ProtoRequest();
+         if (requestToProcess is null) requestToProcess = new ProtoRequest();
+         else
+         {
+            ProtoRequest tmp = requestToProcess;
+            while(tmp.next !is null)
+               tmp = tmp.next;
+
+            tmp.next = new ProtoRequest();
+         }
          status = State.READING_HEADERS;
+
+         uint len = 0;
+         requestToProcess.data.reserve(1024*10);
+         requestToProcess.data ~= (cast(char*)(&len))[0..uint.sizeof];
       }
 
-      auto request = requestsQueue[$-1];
+      ProtoRequest request = requestToProcess;
+      while(request.next !is null)
+         request = request.next;
+
       request.data.reserve(32*1024);
 
       char[32*1024] buffer;
@@ -300,14 +329,6 @@ package class Responder
          leftover.length = 0;
       }
 
-      if (request.data.length + request.body.length + bufferRead.length > config.maxRequestSize)
-      {
-         socket.send("HTTP/1.1 413 Request Entity Too Large\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
-         socket.shutdown(SocketShutdown.BOTH);
-         reset();
-         return;
-      }
-
       bool doAgain;
 
       while(true)
@@ -322,6 +343,14 @@ package class Responder
 
                if (headersEnd >= 0)
                {
+                  if (headersEnd > config.maxRequestSize)
+                  {
+                     socket.send("HTTP/1.1 413 Request Entity Too Large\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
+                     socket.shutdown(SocketShutdown.BOTH);
+                     reset();
+                     return;
+                  }
+
                   import std.algorithm : splitter, map, joiner;
 
                   request.data ~= bufferRead[0..headersEnd];
@@ -343,7 +372,7 @@ package class Responder
                      return;
                   }
 
-                  auto fields = request.data[0..firstLine].splitter(' ');
+                  auto fields = request.data[uint.sizeof..firstLine].splitter(' ');
                   size_t popped = 0;
 
                   if (!fields.empty)
@@ -387,8 +416,7 @@ package class Responder
                      return;
                   }
 
-
-                  request.data = request.data[0..firstLine+2] ~ request.data[firstLine+2..$]
+                  auto hdrs = request.data[firstLine+2..$]
                   .splitter("\r\n")
                   .map!((char[] row)
                   {
@@ -416,6 +444,9 @@ package class Responder
                   })
                   .join("\r\n") ~ "\r\n\r\n";
 
+                  request.data.length = firstLine+2 + hdrs.length;
+                  request.data[firstLine+2..firstLine+2+hdrs.length] = hdrs[0..$];
+
                   if (request.isValid == false)
                   {
                      status = Responder.status.ERROR;
@@ -431,9 +462,19 @@ package class Responder
                      else request.connection = ProtoRequest.Connection.Close;
                   }
 
+                  request.headersLength = request.data.length;
+
                   if (request.contentLength != 0)
                   {
-                     request.body.reserve(request.contentLength);
+                     if (request.headersLength + request.contentLength  > config.maxRequestSize)
+                     {
+                        socket.send("HTTP/1.1 413 Request Entity Too Large\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
+                        socket.shutdown(SocketShutdown.BOTH);
+                        reset();
+                        return;
+                     }
+
+                     request.data.reserve(request.headersLength + request.contentLength);
                      request.isValid = false;
                      status = State.READING_BODY;
 
@@ -451,16 +492,16 @@ package class Responder
          }
          else if (status == State.READING_BODY)
          {
-            request.body ~= leftover;
-            request.body ~= bufferRead;
+            request.data ~= leftover;
+            request.data ~= bufferRead;
 
             leftover.length = 0;
 
-            if (request.body.length >= request.contentLength)
+            if (request.data.length >= request.headersLength + request.contentLength)
             {
-               leftover = request.body[request.contentLength..$];
+               leftover = request.data[request.headersLength + request.contentLength..$];
                doAgain = leftover.length > 0;
-               request.body = request.body[0..request.contentLength];
+               request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
                if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                else status = State.READY;
@@ -483,7 +524,8 @@ package class Responder
    size_t            responseLength;
    size_t            id;
    Socket            socket;
-   ProtoRequest[]    requestsQueue;
+
+   ProtoRequest      requestToProcess;
    Responder.State   status;
    WorkerInfo        assignedWorker;
    char[]            leftover;
