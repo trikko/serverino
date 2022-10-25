@@ -1,0 +1,33 @@
+# Edit this file, rename and copy it inside /etc/systemd/system
+# Then
+# sudo systemctl enable your-renamed-service
+# sudo systemctl start your-renamed-service
+
+[Unit]
+Description=Serverino Example App
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+# Max 10 restarts in 600 seconds
+#StartLimitBurst=10
+#StartLimitIntervalSec=600
+
+[Service]
+User=ubuntu
+Group=ubuntu
+Restart=always
+RestartSec=3s
+
+# If you want to restart service every 12h (=43200 seconds)
+#RuntimeMaxSec=43200
+
+WorkingDirectory=/path/to/your/project/
+
+# You can run the compiled executable
+ExecStart=/path/to/your/project/executable
+
+# Or if user/group settings are ok, you can test also:
+#ExecStart=dub --build=release-nobounds
+
+[Install]
+WantedBy=multi-user.target
