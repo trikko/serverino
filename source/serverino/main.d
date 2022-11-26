@@ -33,7 +33,7 @@ import std.stdio : File, stderr;
 class CustomLogger : Logger
 {
 
-   this(LogLevel lv)
+   shared this(LogLevel lv)
    {
       super(lv);
    }
@@ -96,9 +96,6 @@ template ServerinoMain(Modules...)
 
    int main(string[] args)
    {
-
-      import std.experimental.logger : sharedLog, LogLevel;
-      sharedLog.logLevel = LogLevel.all;
       return mainServerinoLoop(args);
    }
 }
@@ -145,7 +142,7 @@ template ServerinoLoop(Modules...)
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
    import std.experimental.logger.core;
-   sharedLog = new CustomLogger(LogLevel.all);
+   sharedLog = new shared CustomLogger(LogLevel.all);
 
    if (config.returnCode != 0)
       return config.returnCode;
