@@ -29,13 +29,23 @@ import serverino;
 
 import std.experimental.logger : Logger, LogLevel;
 import std.stdio : File, stderr;
+import std.compiler : version_minor;
 
 class CustomLogger : Logger
 {
 
-   shared this(LogLevel lv)
+   static if (version_minor > 100)
    {
-      super(lv);
+      this(LogLevel lv) shared
+      {
+         super(lv);
+      }
+   }
+   else {
+      this(LogLevel lv)
+      {
+         super(lv);
+      }
    }
 
    @trusted
@@ -142,7 +152,12 @@ template ServerinoLoop(Modules...)
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
    import std.experimental.logger.core;
-   sharedLog = new shared CustomLogger(LogLevel.all);
+   import std.compiler : version_major;
+
+   static if (version_minor > 100)
+      sharedLog = new shared CustomLogger(LogLevel.all);
+   else
+      sharedLog = new CustomLogger(LogLevel.all);
 
    if (config.returnCode != 0)
       return config.returnCode;
