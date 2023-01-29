@@ -69,6 +69,7 @@ Use ```@onServerInit``` to configure your server
    ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
    sc.addListener("127.0.0.1", 8080);
    sc.addListener("127.0.0.1", 8081);
+   sc.addListener!(ServerinoConfig.ListenerProtocol.IPV6)("localhost", 8082); // IPV6
    sc.setWorkers(2);
    // etc...
 
