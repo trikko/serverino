@@ -25,7 +25,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.config;
 
-import std.socket : Socket, InternetAddress, Address;
+import std.socket : Socket, InternetAddress, Internet6Address, Address;
 import std.stdio : File;
 import std.datetime : Duration, dur;
 import std.traits : ReturnType;
