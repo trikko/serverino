@@ -682,9 +682,32 @@ struct Worker
                   mixin(`import ` ~ ff.mod ~ ";");
                   alias currentMod = mixin(ff.mod);
                   alias f = __traits(getMember,currentMod, ff.name);
+                  
+                  import std.traits : hasUDA;
+                  import std.string : stripRight;
 
-                  static if (__traits(compiles, f(request, output))) f(request, output);
-                  else static if (__traits(compiles, f(request))) f(request);
+                  static if (__traits(compiles, f(request, output))){
+                    static if (hasUDA!(f, route)){
+                        static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
+                        enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
+                        // serverino yields 404 if there is @route definition and this doesn't match
+                        if(udaRoute == request.uri.stripRight(['/'])) 
+                            f(request, output);
+                    } else { // there is no @route, so f will be handled normally
+                        f(request, output);
+                    }
+                  }
+                  else static if (__traits(compiles, f(request))){ // ditto
+                    static if (hasUDA!(f, route)){
+                        static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
+                        enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
+                        // serverino yields 404 if there is @route definition and this doesn't match
+                        if(udaRoute == request.uri.stripRight(['/']))
+                            f(request);
+                    } else { // there is no @route, so f will be handled normally
+                        f(request);
+                    }
+                  }
                   else f(output);
 
                   request._internal._route ~= ff.mod ~ "." ~ ff.name;

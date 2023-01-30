@@ -37,6 +37,8 @@ public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached ar
 public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
 public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
 
+public struct route{ immutable(string) _route; }
+
 /++
    Struct used to setup serverino.
    You must return this struct from a function with @onServerInit UDA attached.
