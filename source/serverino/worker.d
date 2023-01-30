@@ -690,6 +690,7 @@ struct Worker
                     static if (hasUDA!(f, route)){
                         static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
                         enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
+                        static assert(udaRoute[0] == '/', "Every route must begin with a '/'");
                         // serverino yields 404 if there is @route definition and this doesn't match
                         if(udaRoute == request.uri.stripRight(['/'])) 
                             f(request, output);
@@ -701,6 +702,7 @@ struct Worker
                     static if (hasUDA!(f, route)){
                         static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
                         enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
+                        static assert(udaRoute[0] == '/', "Every route must begin with a '/'");
                         // serverino yields 404 if there is @route definition and this doesn't match
                         if(udaRoute == request.uri.stripRight(['/']))
                             f(request);
