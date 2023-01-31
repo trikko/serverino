@@ -1,3 +1,5 @@
+###### [quickstart](https://github.com/trikko/serverino/edit/master/README.md#quickstart) – [minimal example](https://github.com/trikko/serverino/edit/master/README.md#a-simple-webserver-in-just-three-lines) – [docs]( https://github.com/trikko/serverino/edit/master/README.md#documentation-you-need) – [use nginx as proxy](https://github.com/trikko/serverino/edit/master/README.md#shielding-the-whole-thing) – [run serverino inside a docker](https://github.com/trikko/serverino/edit/master/README.md#run-serverino-inside-a-docker) 
+
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http server
 * Cross-platform (Linux/Windows/MacOS)
@@ -161,4 +163,33 @@ server {
     ...
     ...
  }
+```
+
+## Run serverino inside a docker
+
+First, create your serverino application:
+```dub init -t serverino my_serverino && cd my_serverino```
+
+Then, create a ```Dockerfile``` with a minimal system. Let's use Alpine (but you can use everything you want: ubuntu, arch, etc..)
+
+```Dockerfile
+FROM alpine:latest
+
+RUN apk update && apk upgrade
+RUN apk add dmd dub cmake gcc make musl-dev
+RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime
+RUN apk add tzdata
+RUN adduser -D -S www-data
+
+WORKDIR /source
+```
+
+Build your docker
+```
+docker build -t your_docker .
+```
+
+Finally run dub inside your docker but using your local dir for source and dub cache. I guess you want to put the following line in a script ```dub.sh```
+```sh
+docker run -ti --rm -v $(pwd):/source -v $(pwd)/.docker-dub:/root/.dub -p 8080:8080 your_docker dub
 ```
