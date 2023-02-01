@@ -687,13 +687,13 @@ struct Worker
 
                   static if (__traits(compiles, f(request, output)))
                   {
-                    static if (hasUDA!(f, allowIf))
+                    static if (hasUDA!(f, route))
                     {
                       bool willLaunch = false;
                       static foreach(attr;  __traits(getAttributes, f))
                       {
                         {
-                          static if(__traits(isSame, TemplateOf!(attr), allowIf)){
+                          static if(__traits(isSame, TemplateOf!(attr), route)){
                             if(attr.apply(request)) willLaunch = true;
                           }
                         }
@@ -706,13 +706,13 @@ struct Worker
                   }
                   else static if (__traits(compiles, f(request))) // ditto
                   { 
-                    static if (hasUDA!(f, allowIf))
+                    static if (hasUDA!(f, route))
                     {
                       bool willLaunch = false;
                       static foreach(attr;  __traits(getAttributes, f))
                       {
                         {
-                          static if(__traits(isSame, TemplateOf!(attr), allowIf)){
+                          static if(__traits(isSame, TemplateOf!(attr), route)){
                             if(attr.apply(request)) willLaunch = true;
                           }
                         }

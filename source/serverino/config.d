@@ -39,13 +39,10 @@ public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
 
 import serverino.interfaces : Request;
 
-public struct allowIf(alias T)
+public struct route(alias T)
 {
     static bool apply(Request r) { return T(r); }
 }
-
-import std.string : stripRight;
-
 
 private template compareUri(string _uri)
 {
@@ -55,7 +52,7 @@ private template compareUri(string _uri)
     };
 }
 
-public alias allowIf(string uri) = allowIf!(r => compareUri!uri(r));
+public alias route(string uri) = route!(r => compareUri!uri(r));
 
 /++
    Struct used to setup serverino.
