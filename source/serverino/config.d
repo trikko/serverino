@@ -51,8 +51,7 @@ private template compareUri(string _uri)
 {
     enum compareUri = (Request r){
         static assert(_uri[0] == '/', "Every route must begin with a '/'");
-        enum udaURI = _uri.stripRight(['/']);
-        return r.uri.stripRight(['/']) == udaURI;
+        return r.uri == _uri;
     };
 }
 
