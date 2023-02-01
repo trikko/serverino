@@ -41,7 +41,9 @@ void test_routing_1(Request r, Output o)
     o ~= v.toString();
 }
 
-@endpoint @priority(10000) @route!(r => r.uri == "/world_routing")
+@endpoint @priority(10000)
+@route!(r => r.uri == "/world_routing")
+@route!(r => r.uri == "/blah_routing")
 void test_routing_2(Request r, Output o)
 {
     JSONValue v = parseJSON(`{"route" : "world"}`);
@@ -282,7 +284,18 @@ Content-Disposition: form-data; name=\"field1\"\r
 
     {
         string content;
-        auto http = HTTP("http://localhost:8080/world_routing");
+        auto http = HTTP("http://localhost:8080/blah_routing");
+        http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 200);
+
+        auto j = parseJSON(content);
+        assert(j["route"].str == "world");
+    }
+
+    {
+        string content;
+        auto http = HTTP("http://localhost:8080/blah_routing");
         http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
         http.perform();
         assert(http.statusLine.code == 200);
