@@ -51,6 +51,16 @@ void test_routing_2(Request r, Output o)
     o ~= v.toString();
 }
 
+
+@endpoint @priority(12000)
+@route!(r => r.get.read("key") == "value" )
+void test_routing_3(Request r, Output o)
+{
+    JSONValue v = parseJSON(`{"route" : "get"}`);
+    o.addHeader("content-type", "application/json");
+    o ~= v.toString();
+}
+
 @endpoint @priority(5)
 void json(Request r, Output o)
 {
@@ -303,6 +313,18 @@ Content-Disposition: form-data; name=\"field1\"\r
         auto j = parseJSON(content);
         assert(j["route"].str == "world");
     }
+
+    {
+        string content;
+        auto http = HTTP("http://localhost:8080/blah_routing?key=value");
+        http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 200);
+
+        auto j = parseJSON(content);
+        assert(j["route"].str == "get");
+    }
+
 
 
 }
