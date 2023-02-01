@@ -64,6 +64,27 @@ mixin ServerinoMain;
 }
 ```
 
+## Basic routing
+Use ```@route``` template to add routing to your server.
+```d
+
+// Called only if uri == "/hello"
+@endpoint @route!"/hello"
+void example(const Request r, Output o)
+{
+   // ...
+}
+
+// Custom checks on request. 
+@endpoint 
+@route!(request => request.get.read("name") == "Andrea") // for example /uri?name=Andrea ...
+@route!(request => request.get.read("name") == "Ferhat") // .. and also /uri?name=Ferhat
+void with_name(const Request r, Output o)
+{
+   //
+}
+```
+
 ## @onServerInit UDA
 Use ```@onServerInit``` to configure your server
 ```d
