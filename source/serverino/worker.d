@@ -683,31 +683,45 @@ struct Worker
                   alias currentMod = mixin(ff.mod);
                   alias f = __traits(getMember,currentMod, ff.name);
                   
-                  import std.traits : hasUDA;
+                  import std.traits : hasUDA, TemplateOf;
                   import std.string : stripRight;
 
-                  static if (__traits(compiles, f(request, output))){
-                    static if (hasUDA!(f, route)){
-                        static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
-                        enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
-                        static assert(udaRoute[0] == '/', "Every route must begin with a '/'");
-                        // serverino yields 404 if there is @route definition and this doesn't match
-                        if(udaRoute == request.uri.stripRight(['/'])) 
-                            f(request, output);
-                    } else { // there is no @route, so f will be handled normally
+                  static if (__traits(compiles, f(request, output)))
+                  {
+                    static if (hasUDA!(f, allowIf))
+                    {
+                      bool willLaunch = false;
+                      static foreach(attr;  __traits(getAttributes, f))
+                      {
+                        {
+                          static if(__traits(isSame, TemplateOf!(attr), allowIf)){
+                            if(attr.apply(request)) willLaunch = true;
+                          }
+                        }
+                      }
+                      if(willLaunch)
                         f(request, output);
+                    } else {
+                      f(request, output);
                     }
                   }
-                  else static if (__traits(compiles, f(request))){ // ditto
-                    static if (hasUDA!(f, route)){
-                        static assert(getUDAs!(f, route).length == 1, "Only one route must be assigned to a function!");
-                        enum udaRoute = getUDAs!(f, route)[0]._route.stripRight(['/']);
-                        static assert(udaRoute[0] == '/', "Every route must begin with a '/'");
-                        // serverino yields 404 if there is @route definition and this doesn't match
-                        if(udaRoute == request.uri.stripRight(['/']))
-                            f(request);
-                    } else { // there is no @route, so f will be handled normally
+                  else static if (__traits(compiles, f(request))) // ditto
+                  { 
+                    static if (hasUDA!(f, allowIf))
+                    {
+                      bool willLaunch = false;
+                      static foreach(attr;  __traits(getAttributes, f))
+                      {
+                        {
+                          static if(__traits(isSame, TemplateOf!(attr), allowIf)){
+                            if(attr.apply(request)) willLaunch = true;
+                          }
+                        }
+                      }
+                      if(willLaunch)
                         f(request);
+                    } else {
+                      f(request);
                     }
                   }
                   else f(output);
