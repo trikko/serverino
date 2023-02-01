@@ -682,48 +682,27 @@ struct Worker
                   mixin(`import ` ~ ff.mod ~ ";");
                   alias currentMod = mixin(ff.mod);
                   alias f = __traits(getMember,currentMod, ff.name);
-                  
-                  import std.traits : hasUDA, TemplateOf;
 
-                  static if (__traits(compiles, f(request, output)))
+                  import std.traits : hasUDA, TemplateOf, getUDAs;
+
+                  bool willLaunch = true;
+                  static if (hasUDA!(f, route))
                   {
-                    static if (hasUDA!(f, route))
-                    {
-                      bool willLaunch = false;
-                      static foreach(attr;  __traits(getAttributes, f))
-                      {
+                     willLaunch = false;
+                     static foreach(attr;  getUDAs!(f, route))
+                     {
                         {
-                          static if(__traits(isSame, TemplateOf!(attr), route)){
-                            if(attr.apply(request)) willLaunch = true;
-                          }
+                           if(attr.apply(request)) willLaunch = true;
                         }
-                      }
-                      if(willLaunch)
-                        f(request, output);
-                    } else {
-                      f(request, output);
-                    }
+                     }
                   }
-                  else static if (__traits(compiles, f(request))) // ditto
-                  { 
-                    static if (hasUDA!(f, route))
-                    {
-                      bool willLaunch = false;
-                      static foreach(attr;  __traits(getAttributes, f))
-                      {
-                        {
-                          static if(__traits(isSame, TemplateOf!(attr), route)){
-                            if(attr.apply(request)) willLaunch = true;
-                          }
-                        }
-                      }
-                      if(willLaunch)
-                        f(request);
-                    } else {
-                      f(request);
-                    }
+
+                  if (willLaunch)
+                  {
+                     static if (__traits(compiles, f(request, output))) f(request, output);
+                     else static if (__traits(compiles, f(request))) f(request);
+                     else f(output);
                   }
-                  else f(output);
 
                   request._internal._route ~= ff.mod ~ "." ~ ff.name;
                }
