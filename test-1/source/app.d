@@ -33,6 +33,22 @@ import std;
 
 mixin ServerinoTest!tagged;
 
+@endpoint @priority(10000) @route!"/hello_routing"
+void test_routing_1(Request r, Output o)
+{
+    JSONValue v = parseJSON(`{"route" : "hello"}`);
+    o.addHeader("content-type", "application/json");
+    o ~= v.toString();
+}
+
+@endpoint @priority(10000) @route!(r => r.uri == "/world_routing")
+void test_routing_2(Request r, Output o)
+{
+    JSONValue v = parseJSON(`{"route" : "world"}`);
+    o.addHeader("content-type", "application/json");
+    o ~= v.toString();
+}
+
 @endpoint @priority(5)
 void json(Request r, Output o)
 {
@@ -252,5 +268,28 @@ Content-Disposition: form-data; name=\"field1\"\r
         http.perform();
         assert(http.statusLine.code == 200);
     }
+
+    {
+        string content;
+        auto http = HTTP("http://localhost:8080/hello_routing");
+        http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 200);
+
+        auto j = parseJSON(content);
+        assert(j["route"].str == "hello");
+    }
+
+    {
+        string content;
+        auto http = HTTP("http://localhost:8080/world_routing");
+        http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+        http.perform();
+        assert(http.statusLine.code == 200);
+
+        auto j = parseJSON(content);
+        assert(j["route"].str == "world");
+    }
+
 
 }
