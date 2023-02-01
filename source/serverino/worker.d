@@ -682,9 +682,47 @@ struct Worker
                   mixin(`import ` ~ ff.mod ~ ";");
                   alias currentMod = mixin(ff.mod);
                   alias f = __traits(getMember,currentMod, ff.name);
+                  
+                  import std.traits : hasUDA, TemplateOf;
 
-                  static if (__traits(compiles, f(request, output))) f(request, output);
-                  else static if (__traits(compiles, f(request))) f(request);
+                  static if (__traits(compiles, f(request, output)))
+                  {
+                    static if (hasUDA!(f, route))
+                    {
+                      bool willLaunch = false;
+                      static foreach(attr;  __traits(getAttributes, f))
+                      {
+                        {
+                          static if(__traits(isSame, TemplateOf!(attr), route)){
+                            if(attr.apply(request)) willLaunch = true;
+                          }
+                        }
+                      }
+                      if(willLaunch)
+                        f(request, output);
+                    } else {
+                      f(request, output);
+                    }
+                  }
+                  else static if (__traits(compiles, f(request))) // ditto
+                  { 
+                    static if (hasUDA!(f, route))
+                    {
+                      bool willLaunch = false;
+                      static foreach(attr;  __traits(getAttributes, f))
+                      {
+                        {
+                          static if(__traits(isSame, TemplateOf!(attr), route)){
+                            if(attr.apply(request)) willLaunch = true;
+                          }
+                        }
+                      }
+                      if(willLaunch)
+                        f(request);
+                    } else {
+                      f(request);
+                    }
+                  }
                   else f(output);
 
                   request._internal._route ~= ff.mod ~ "." ~ ff.name;

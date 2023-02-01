@@ -37,6 +37,23 @@ public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached ar
 public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
 public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
 
+import serverino.interfaces : Request;
+
+public struct route(alias T)
+{
+    static bool apply(Request r) { return T(r); }
+}
+
+private template compareUri(string _uri)
+{
+    enum compareUri = (Request r){
+        static assert(_uri[0] == '/', "Every route must begin with a '/'");
+        return r.uri == _uri;
+    };
+}
+
+public alias route(string uri) = route!(r => compareUri!uri(r));
+
 /++
    Struct used to setup serverino.
    You must return this struct from a function with @onServerInit UDA attached.
