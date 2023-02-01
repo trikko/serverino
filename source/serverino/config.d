@@ -41,12 +41,12 @@ import serverino.interfaces : Request;
 
 public struct route(alias T)
 {
-    static bool apply(Request r) { return T(r); }
+    static bool apply(const Request r) { return T(r); }
 }
 
 private template compareUri(string _uri)
 {
-    enum compareUri = (Request r){
+    enum compareUri = (const Request r){
         static assert(_uri[0] == '/', "Every route must begin with a '/'");
         return r.uri == _uri;
     };
