@@ -684,7 +684,6 @@ struct Worker
                   alias f = __traits(getMember,currentMod, ff.name);
                   
                   import std.traits : hasUDA, TemplateOf;
-                  import std.string : stripRight;
 
                   static if (__traits(compiles, f(request, output)))
                   {
