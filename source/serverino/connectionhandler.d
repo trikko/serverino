@@ -170,9 +170,12 @@ package class ConnectionHandler
 
    void detachWorker()
    {
-      this.assignedWorker.assignedConnectionHandler = null;
-      this.assignedWorker.setStatus(WorkerInfo.State.IDLING);
-      this.assignedWorker = null;
+      if (this.assignedWorker !is null)
+      {
+         this.assignedWorker.assignedConnectionHandler = null;
+         this.assignedWorker.setStatus(WorkerInfo.State.IDLING);
+         this.assignedWorker = null;
+      }
 
       responseLength = 0;
       responseSent = 0;
