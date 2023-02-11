@@ -751,7 +751,7 @@ struct Output
       if (_internal._headersSent)
          throw new Exception("Can't add/edit headers. Too late. Just sent.");
 
-      size_t fs = path.getSize();
+      size_t fs = path.getSize().to!size_t;
 
       addHeader("Content-Length", fs.to!string);
 
