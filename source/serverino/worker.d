@@ -279,6 +279,8 @@ struct Worker
          auto headersEnd = headers.indexOf("\r\n\r\n");
 
 
+         bool valid = true;
+
          // Headers completed?
          if (headersEnd > 0)
          {
@@ -292,8 +294,7 @@ struct Worker
             if (headersLines.empty)
             {
                warning("HTTP Request: empty request");
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             requestLine = headersLines.front;
@@ -301,8 +302,7 @@ struct Worker
             if (requestLine.length < 14)
             {
                warning("HTTP request line too short: ", requestLine);
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             auto fields = requestLine.splitter(" ");
@@ -332,29 +332,25 @@ struct Worker
             if (popped != 3 || !fields.empty)
             {
                warning("HTTP request invalid: ", requestLine);
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             if (path.startsWith("http://") || path.startsWith("https://"))
             {
                warning("Can't use absolute uri");
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
             {
                warning("HTTP request bad http version: ", httpVersion);
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
             {
                warning("HTTP method unknown: ", method);
-               //http.sendError("400 Bad Request");
-               return false;
+               valid = false;
             }
 
             headersLines.popFront;
@@ -389,6 +385,16 @@ struct Worker
             }
          }
          else return false;
+
+         if (!valid)
+         {
+            output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
+            output._internal._keepAlive = false;
+            output.status = 400;
+            output ~= "400 Bad Request";
+            return false;
+         }
+
 
          version(debugRequest) log("-- PARSING DATA");
 
