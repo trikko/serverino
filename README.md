@@ -1,4 +1,4 @@
-###### [quickstart](https://github.com/trikko/serverino/blob/master/README.md#quickstart) – [minimal example](https://github.com/trikko/serverino/blob/master/README.md#a-simple-webserver-in-just-three-lines) – [docs]( https://github.com/trikko/serverino/blob/master/README.md#documentation-you-need) – [use nginx as proxy](https://github.com/trikko/serverino/blob/master/README.md#shielding-the-whole-thing) – [run serverino with a shield](https://github.com/trikko/serverino/blob/master/README.md#run-serverino-inside-a-docker) 
+###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [docs]( #documentation-you-need) – [use nginx as proxy](#shielding-the-whole-thing) – [run serverino with a shield](#run-serverino-inside-a-docker) 
 
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http server
