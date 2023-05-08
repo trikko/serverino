@@ -1,4 +1,4 @@
-###### [quickstart](https://github.com/trikko/serverino/blob/master/README.md#quickstart) – [minimal example](https://github.com/trikko/serverino/blob/master/README.md#a-simple-webserver-in-just-three-lines) – [docs]( https://github.com/trikko/serverino/blob/master/README.md#documentation-you-need) – [use nginx as proxy](https://github.com/trikko/serverino/blob/master/README.md#shielding-the-whole-thing) – [run serverino inside a docker](https://github.com/trikko/serverino/blob/master/README.md#run-serverino-inside-a-docker) 
+###### [quickstart](https://github.com/trikko/serverino/blob/master/README.md#quickstart) – [minimal example](https://github.com/trikko/serverino/blob/master/README.md#a-simple-webserver-in-just-three-lines) – [docs]( https://github.com/trikko/serverino/blob/master/README.md#documentation-you-need) – [use nginx as proxy](https://github.com/trikko/serverino/blob/master/README.md#shielding-the-whole-thing) – [run serverino with a shield](https://github.com/trikko/serverino/blob/master/README.md#run-serverino-inside-a-docker) 
 
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http server
@@ -142,7 +142,9 @@ mixin ServerinoMain!(other, test); // Current module is always processed
 ```
 
 ## Shielding the whole thing
-I would not put serverino into the wild. For using in production I suggest shielding serverino under nginx.
+I would not put serverino into the wild. For using in production I suggest shielding serverino under a full webserver.
+
+### Using nginx
 It's pretty easy. Just add these lines inside your nginx configuration:
 
 ```
@@ -186,6 +188,20 @@ server {
     ...
     ...
  }
+```
+### Using apache2
+Enable proxy module for apache2:
+```
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+```
+
+Add a proxy in your virtualhost configuration:
+```
+<VirtualHost *:81>
+   ProxyPass "/"  "http://localhost:8080/"
+   ...
+</VirtualHost>
 ```
 
 ## Run serverino inside a docker
