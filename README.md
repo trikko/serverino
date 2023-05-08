@@ -198,7 +198,7 @@ sudo a2enmod proxy_http
 
 Add a proxy in your virtualhost configuration:
 ```
-<VirtualHost *:81>
+<VirtualHost *:80>
    ProxyPass "/"  "http://localhost:8080/"
    ...
 </VirtualHost>
