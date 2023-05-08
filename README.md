@@ -1,4 +1,4 @@
-###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [docs]( #documentation-you-need) – [use nginx as proxy](#shielding-the-whole-thing) – [run serverino with a shield](#run-serverino-inside-a-docker) 
+###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing) – [run serverino inside a docker](#run-serverino-inside-a-docker) 
 
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http server
