@@ -459,7 +459,17 @@ struct Worker
             request._internal._uri            = normalize(matches[5]);
             request._internal._rawQueryString = matches[7];
             request._internal._method         = method.to!string;
-            request._internal.process();
+            
+            import std.uri : URIException;
+            try { request._internal.process(); }
+            catch (URIException e)
+            {
+               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
+               output._internal._keepAlive = false;
+               output.status = 400;
+               output ~= "400 Bad Request";
+               return false;
+            }
 
             output._internal._httpVersion = request._internal._httpVersion;
 
