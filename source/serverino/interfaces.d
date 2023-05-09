@@ -402,7 +402,7 @@ struct Request
 
          // Read get params
          if (!_rawQueryString.empty)
-            foreach(m; match(_rawQueryString, ctRegex!("([^=&]+)(?:=([^&]+))?&?", "g")))
+            foreach(m; match(_rawQueryString, ctRegex!("([^=&]*)(?:=([^&]*))?&?", "g")))
                _get[m.captures[1].decodeComponent] = translate(m.captures[2],['+':' ']).decodeComponent;
 
          // Read post params
