@@ -453,8 +453,19 @@ package class ConnectionHandler
                   })
                   .join("\r\n") ~ "\r\n\r\n";
 
+
                   request.data.length = firstLine+2 + hdrs.length;
-                  request.data[firstLine+2..firstLine+2+hdrs.length] = hdrs[0..$];
+
+                  string ra = string.init;
+
+                  if(config.withRemoteIp)
+                  {
+                     ra = "x-remote-ip:" ~ socket.remoteAddress().toAddrString() ~ "\r\n";
+                     request.data.length += ra.length;
+                     request.data[firstLine+2..firstLine+2+ra.length] = ra;
+                  }
+
+                  request.data[firstLine+2+ra.length..$] = hdrs[0..$];
 
                   if (request.isValid == false)
                   {

@@ -101,6 +101,8 @@ struct ServerinoConfig
 
       sc.enableKeepAlive();
 
+      sc.disableRemoteIp();
+
       return sc;
    }
 
@@ -142,6 +144,10 @@ struct ServerinoConfig
    @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.dur!"seconds") return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
    @safe ref ServerinoConfig enableKeepAlive(Duration timeout) return { enableKeepAlive(true, timeout); return this; }
    @safe ref ServerinoConfig disableKeepAlive() return { enableKeepAlive(false); return this; }
+
+   /// Add a x-remote-ip header
+   @safe ref ServerinoConfig enableRemoteIp(bool enable = true) return { daemonConfig.withRemoteIp = enable; return this; }
+   @safe ref ServerinoConfig disableRemoteIp() return { return enableRemoteIp(false); }
 
    /// Add a new listener.
    @safe ref ServerinoConfig addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port) return
@@ -231,6 +237,7 @@ package struct DaemonConfig
    size_t      minWorkers;
    size_t      maxWorkers;
    int         listenerBacklog;
+   bool        withRemoteIp;
 
    Listener[]  listeners;
 }
