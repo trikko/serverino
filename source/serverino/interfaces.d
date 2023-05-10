@@ -119,14 +119,14 @@ struct Request
       output ~= format("Build ID: %s\n", buildId);
       output ~= "\n";
       output ~= "Request:\n";
-      output ~= format("- Protocol: %s\n",_internal._isHttps?"https":"http");
-      output ~= format("- Method: %s\n", method.to!string);
+      output ~= format(" - Protocol: %s\n",_internal._isHttps?"https":"http");
+      output ~= format(" - Method: %s\n", method.to!string);
       //output ~= format("- Host: %s (%s)\n", host, localAddress.toPortString);
-      output ~= format("- Uri: %s\n", uri);
+      output ~= format(" - Uri: %s\n", uri);
       //output ~= format("- Remote Address: %s\n", remoteAddress.toAddrString);
 
       if (!_internal._user.empty)
-         output ~= format("- Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
+         output ~= format(" - Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
 
       if (!get.data.empty)
       {
