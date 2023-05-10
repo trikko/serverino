@@ -420,7 +420,7 @@ package class ConnectionHandler
                      request.isValid = false;
                      status = ConnectionHandler.status.ERROR;
                      socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
-                     warning("Bad Request. Malformed status line.");
+                     warning("Bad Request. Malformed request line.");
                      reset();
                      return;
                   }
