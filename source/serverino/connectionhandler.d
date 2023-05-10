@@ -375,7 +375,7 @@ package class ConnectionHandler
                   {
                      request.isValid = false;
                      socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
-                     log("Bad Request. Status line too short.");
+                     log("Bad Request. Request line too short.");
                      status = State.ERROR;
                      reset();
                      return;
