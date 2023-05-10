@@ -143,7 +143,7 @@ struct Worker
          {
             size_t[1] sz;
             bool[1] ka;
-            auto res = "HTTP/1.1 504 Gateway Timeout\r\nserver: serverino/%02d.%02d.%02d\r\nconnection: close\r\n\r\n504 Gateway Timeout";
+            auto res = "HTTP/1.1 504 Gateway Timeout\r\nconnection: close\r\n\r\n504 Gateway Timeout";
             output._internal.clear();
             output.sendData(res);
             ka[0] = false;
