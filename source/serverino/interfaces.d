@@ -240,11 +240,10 @@ struct Request
    ///
    @safe @nogc @property nothrow public auto host() const { return _internal._host; }
 
-   ///
+   /*
    @safe @nogc @property nothrow public auto remoteAddress() const { return _internal._remoteAddress; }
-
-   ///
    @safe @nogc @property nothrow public auto localAddress() const { return _internal._localAddress; }
+   */
 
    /// Http or Https
    @safe @nogc @property nothrow public auto protocol() const { return _internal._isHttps?"https":"http"; }
@@ -581,33 +580,6 @@ struct Request
             foreach(m; match(_header["cookie"], ctRegex!("([^=]+)=([^;]+);? ?", "g")))
                _cookie[m.captures[1].decodeComponent] = m.captures[2].decodeComponent;
 
-         if ("__SESSION_ID__" in _cookie)
-         {
-            import std.string : indexOf;
-            import std.digest.sha;
-
-            auto sessionId  = _cookie["__SESSION_ID__"];
-
-            auto separator = sessionId.indexOf('-');
-
-            if (separator > 0 && sessionId.length > separator + 1)
-            {
-               auto signature = sessionId[0..separator];
-               auto uuid = sessionId[separator+1..$];
-
-               string ua = "NO-UA";
-               string al = "NO-AL";
-
-               if("user-agent" in _header) ua = _header["user-agent"];
-               if("accept-language" in _header) al = _header["accept-language"];
-
-               auto sign = cast(string)sha224Of(ua ~ "_" ~ al ~ "_" ~ _remoteAddress.toAddrString ~ "_" ~ uuid).toHexString.dup.toLower;
-
-               if (sign == signature) _sessionId = sessionId;
-               else warning("Is someone trying to spoof sessionId? ", sessionId);
-            }
-         }
-
          if ("authorization" in _header)
          {
             import std.base64 : Base64;
@@ -896,30 +868,6 @@ struct Output
 
    }
 
-
-   @safe string createSessionIdFromRequest(Request req, string cookiePath = string.init, string cookieDomain = string.init)
-   {
-      import std.random : unpredictableSeed, Xorshift192;
-      import std.digest.sha;
-      import std.uuid : randomUUID;
-
-      auto gen = Xorshift192(unpredictableSeed);
-      auto uuid = randomUUID(gen).toString;
-
-      // A simple way to help reduce spoofing of sessionId between different machines.
-      auto sign = cast(string)sha224Of
-      (
-         req.header.read("user-agent", "NO-UA") ~ "_" ~
-         req.header.read("accept-language", "NO-AL") ~ "_" ~
-         req.remoteAddress.toAddrString ~ "_" ~ uuid
-      ).toHexString.dup.toLower;
-
-      string sessionId = sign ~ "-" ~ uuid;
-
-      setCookie("__SESSION_ID__", sessionId, cookiePath, cookieDomain);
-
-      return sessionId;
-   }
 
    @safe void deleteSessionId() { deleteCookie("__SESSION_ID__"); }
 
