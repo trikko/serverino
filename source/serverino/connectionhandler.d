@@ -496,8 +496,9 @@ package class ConnectionHandler
                      else status = State.READY;
                   }
                }
-               else request.data ~= bufferRead;
+               else leftover = bufferRead.dup;
             }
+
          }
          else if (status == State.READING_BODY)
          {

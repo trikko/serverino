@@ -278,7 +278,6 @@ struct Worker
          headers = cast(char[]) data;
          auto headersEnd = headers.indexOf("\r\n\r\n");
 
-
          bool valid = true;
 
          // Headers completed?
@@ -305,52 +304,64 @@ struct Worker
                valid = false;
             }
 
-            auto fields = requestLine.splitter(" ");
-            size_t popped = 0;
-
-            if (!fields.empty)
+            else
             {
-               method = fields.front;
-               fields.popFront;
-               popped++;
+               auto fields = requestLine.splitter(" ");
+               size_t popped = 0;
+
+               if (!fields.empty)
+               {
+                  method = fields.front;
+                  fields.popFront;
+                  popped++;
+               }
+
+               if (!fields.empty)
+               {
+                  path = fields.front;
+                  fields.popFront;
+                  popped++;
+               }
+
+               if (!fields.empty)
+               {
+                  httpVersion = fields.front;
+                  fields.popFront;
+                  popped++;
+               }
+
+               if (popped != 3 || !fields.empty)
+               {
+                  warning("HTTP request invalid: ", requestLine);
+                  valid = false;
+               }
+
+               else if (path.startsWith("http://") || path.startsWith("https://"))
+               {
+                  warning("Can't use absolute uri");
+                  valid = false;
+               }
+
+               else if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
+               {
+                  warning("HTTP request bad http version: ", httpVersion);
+                  valid = false;
+               }
+
+               else if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
+               {
+                  warning("HTTP method unknown: ", method);
+                  valid = false;
+               }
             }
 
-            if (!fields.empty)
+            if (!valid)
             {
-               path = fields.front;
-               fields.popFront;
-               popped++;
-            }
-
-            if (!fields.empty)
-            {
-               httpVersion = fields.front;
-               fields.popFront;
-               popped++;
-            }
-
-            if (popped != 3 || !fields.empty)
-            {
-               warning("HTTP request invalid: ", requestLine);
-               valid = false;
-            }
-
-            if (path.startsWith("http://") || path.startsWith("https://"))
-            {
-               warning("Can't use absolute uri");
-               valid = false;
-            }
-
-            if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
-            {
-               warning("HTTP request bad http version: ", httpVersion);
-               valid = false;
-            }
-
-            if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
-            {
-               warning("HTTP method unknown: ", method);
-               valid = false;
+               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
+               output._internal._keepAlive = false;
+               output.status = 400;
+               output ~= "400 Bad Request";
+               return false;
             }
 
             headersLines.popFront;
@@ -385,16 +396,6 @@ struct Worker
             }
          }
          else return false;
-
-         if (!valid)
-         {
-            output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-            output._internal._keepAlive = false;
-            output.status = 400;
-            output ~= "400 Bad Request";
-            return false;
-         }
-
 
          version(debugRequest) log("-- PARSING DATA");
 
@@ -459,7 +460,7 @@ struct Worker
             request._internal._uri            = normalize(matches[5]);
             request._internal._rawQueryString = matches[7];
             request._internal._method         = method.to!string;
-            
+
             import std.uri : URIException;
             try { request._internal.process(); }
             catch (URIException e)
