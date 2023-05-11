@@ -308,7 +308,11 @@ struct Daemon
                   {
                      if (connectionHandler.lastRecv != CoarseTime.zero && now - connectionHandler.lastRecv > config.maxHttpWaiting)
                      {
-                        if (connectionHandler.started) warning("Connection closed. [REASON: http timeout]");
+                        if (connectionHandler.started)
+                        {
+                           warning("Connection closed. [REASON: http timeout]");
+                           connectionHandler.socket.send("HTTP/1.0 408 Request Timeout\r\nconnection: close\r\n\r\n408 Request Timeout");
+                        }
                         toReset ~= connectionHandler;
                      }
                   }
