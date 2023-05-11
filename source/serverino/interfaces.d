@@ -803,7 +803,6 @@ struct Output
 
       bool has_content_type = false;
       buffer.append(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
-      //buffer.append("server: serverino/%02d.%02d.%02d\r\n".format(SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION));
 
       if (!_internal._keepAlive) buffer.append("connection: close\r\n");
       else buffer.append("connection: keep-alive\r\n");
