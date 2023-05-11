@@ -354,7 +354,7 @@ package class ConnectionHandler
                {
                   if (headersEnd > config.maxRequestSize)
                   {
-                     socket.send("HTTP/1.1 413 Request Entity Too Large\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
+                     socket.send("HTTP/1.0 413 Request Entity Too Large\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
                      socket.shutdown(SocketShutdown.BOTH);
                      reset();
                      return;
@@ -374,7 +374,7 @@ package class ConnectionHandler
                   if (firstLine < 14)
                   {
                      request.isValid = false;
-                     socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
+                     socket.send("HTTP/1.0 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
                      log("Bad Request. Request line too short.");
                      status = State.ERROR;
                      reset();
@@ -409,7 +409,7 @@ package class ConnectionHandler
                   {
                      request.isValid = false;
                      status = ConnectionHandler.status.ERROR;
-                     socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
+                     socket.send("HTTP/1.0 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Http version unknown.");
                      reset();
                      return;
@@ -419,7 +419,7 @@ package class ConnectionHandler
                   {
                      request.isValid = false;
                      status = ConnectionHandler.status.ERROR;
-                     socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
+                     socket.send("HTTP/1.0 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Malformed request line.");
                      reset();
                      return;
@@ -470,7 +470,7 @@ package class ConnectionHandler
                   if (request.isValid == false)
                   {
                      status = ConnectionHandler.status.ERROR;
-                     socket.send("HTTP/1.1 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
+                     socket.send("HTTP/1.0 400 Bad Request\r\nconnection: close\r\n\r\n400 Bad Request");
                      warning("Bad Request. Malformed request.");
                      reset();
                      return;
@@ -488,7 +488,7 @@ package class ConnectionHandler
                   {
                      if (request.headersLength + request.contentLength  > config.maxRequestSize)
                      {
-                        socket.send("HTTP/1.1 413 Request Entity Too Large\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
+                        socket.send("HTTP/1.0 413 Request Entity Too Large\r\nconnection: close\r\n\r\n413 Request Entity Too Large");
                         socket.shutdown(SocketShutdown.BOTH);
                         reset();
                         return;

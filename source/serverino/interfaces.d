@@ -772,7 +772,7 @@ struct Output
 
       if (bytesRead.length != fs)
       {
-         sendData("HTTP/1.1 500 Internal server error\r\nconnection: close\r\n\r\n500 Internal server error");
+         sendData("HTTP/1.0 500 Internal server error\r\nconnection: close\r\n\r\n500 Internal server error");
          return false;
       }
 
