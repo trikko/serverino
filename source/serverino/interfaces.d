@@ -119,21 +119,21 @@ struct Request
       output ~= format("Build ID: %s\n", buildId);
       output ~= "\n";
       output ~= "Request:\n";
-      output ~= format(" - Protocol: %s\n",_internal._isHttps?"https":"http");
-      output ~= format(" - Method: %s\n", method.to!string);
+      output ~= format(" • Protocol: %s\n",_internal._isHttps?"https":"http");
+      output ~= format(" • Method: %s\n", method.to!string);
       //output ~= format("- Host: %s (%s)\n", host, localAddress.toPortString);
-      output ~= format(" - Uri: %s\n", uri);
+      output ~= format(" • Uri: %s\n", uri);
       //output ~= format("- Remote Address: %s\n", remoteAddress.toAddrString);
 
       if (!_internal._user.empty)
-         output ~= format(" - Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
+         output ~= format(" • Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
 
       if (!get.data.empty)
       {
          output ~= "\nQuery Params:\n";
          foreach(k,v; get.data)
          {
-            output ~= format(" - %s => %s\n", k, v);
+            output ~= format(" • %s => %s\n", k, v);
          }
       }
 
@@ -145,7 +145,7 @@ struct Request
          output ~= "\nPost Params:\n";
          foreach(k,v; post.data)
          {
-            output ~= format(" - %s => %s\n", k, v);
+            output ~= format(" • %s => %s\n", k, v);
          }
       }
 
@@ -156,8 +156,8 @@ struct Request
          {
             import std.file : getSize;
 
-            if (v.isFile) output ~= format(" - `%s` (content-type: %s, size: %s bytes, path: %s)\n", k, v.contentType, getSize(v.path), v.path);
-            else output ~= format(" - `%s` (content-type: %s, size: %s bytes)\n", k, v.contentType, v.data.length);
+            if (v.isFile) output ~= format(" • `%s` (content-type: %s, size: %s bytes, path: %s)\n", k, v.contentType, getSize(v.path), v.path);
+            else output ~= format(" • `%s` (content-type: %s, size: %s bytes)\n", k, v.contentType, v.data.length);
          }
       }
 
@@ -166,14 +166,14 @@ struct Request
          output ~= "\nCookies:\n";
          foreach(k,v; cookie.data)
          {
-            output ~= format(" - %s => %s\n", k, v);
+            output ~= format(" • %s => %s\n", k, v);
          }
       }
 
       output ~= "\nHeaders:\n";
       foreach(k,v; header.data)
       {
-         output ~= format(" - %s => %s\n", k, v);
+         output ~= format(" • %s => %s\n", k, v);
       }
 
       return output;
