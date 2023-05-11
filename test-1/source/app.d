@@ -74,7 +74,6 @@ void json(Request r, Output o)
     v.object["post"] = r.post.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
     v.object["cookie"] = r.cookie.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
     v.object["headers"] = r.header.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
-    v.object["protocol"] = r.protocol;
     v.object["method"] = r.method.to!string.toUpper;
     v.object["host"] = r.host;
     v.object["uri"] = r.uri;
@@ -152,7 +151,6 @@ void test()
         auto j = parseJSON(content);
 
         assert(j["method"].str == "POST");
-        assert(j["protocol"].str == "http");
         assert(j["uri"].str == "/json/dump/test");
         assert(j["host"].str == "localhost:8080");
 
@@ -198,7 +196,6 @@ Content-Type: application/json\r
         auto j = parseJSON(content);
 
         assert(j["method"].str == "POST");
-        assert(j["protocol"].str == "http");
         assert(j["uri"].str == "/json/dump/test");
         assert(j["host"].str == "127.0.0.1:8080");
 
