@@ -412,15 +412,18 @@ struct Worker
             request._internal._rawRequestLine = requestLine.to!string;
             request._internal._isHttps        = isHttps;
 
-            auto uriRegex = ctRegex!(`^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?`, "g");
-            auto matches = path.to!string.matchFirst(uriRegex);
-
-            if (!matches[2].empty || !matches[4].empty)
+            if (!path.startsWith("/"))
             {
                warning("HTTP Request with absolute uri");
-               //http.sendError("400 Bad Request");
+               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
+               output._internal._keepAlive = false;
+               output.status = 400;
+               output ~= "400 Bad Request";
                return false;
             }
+
+            auto uriRegex = ctRegex!(`^(/([^?#]*))(\?([^#]*))?(#(.*))?`, "g");
+            auto matches = path.to!string.matchFirst(uriRegex);
 
             // Just to prevent uri attack like
             // GET /../../non_public_file
@@ -457,8 +460,8 @@ struct Worker
                   else return "/" ~ norm;
             }
 
-            request._internal._uri            = normalize(matches[5]);
-            request._internal._rawQueryString = matches[7];
+            request._internal._uri            = normalize(matches[1]);
+            request._internal._rawQueryString = matches[4];
             request._internal._method         = method.to!string;
 
             import std.uri : URIException;
