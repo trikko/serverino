@@ -949,8 +949,11 @@ struct Output
    {
       _internal._dirty = true;
 
-      if (_internal._keepAlive && _internal._headersSent) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
-      else _internal._sendBuffer.append(cast(const char[])data);
+      if (_internal._sendBody || !_internal._headersSent)
+      {
+         if (_internal._keepAlive && _internal._headersSent) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
+         else _internal._sendBuffer.append(cast(const char[])data);
+      }
    }
 
    package struct OutputImpl
@@ -968,6 +971,7 @@ struct Output
       string          _buffer;
       Socket          _channel;
       bool            _flushed;
+      bool            _sendBody;
 
       void clear()
       {
@@ -982,6 +986,7 @@ struct Output
          _keepAlive = false;
          _flushed = false;
          _sendBuffer.clear();
+         _sendBody = true;
       }
    }
 

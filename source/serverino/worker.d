@@ -461,6 +461,8 @@ struct Worker
             request._internal._rawQueryString = matches[4];
             request._internal._method         = method.to!string;
 
+            output._internal._sendBody = (!["CONNECT", "DELETE", "HEAD", "TRACE"].assumeSorted.contains(request._internal._method));
+
             import std.uri : URIException;
             try { request._internal.process(); }
             catch (URIException e)
@@ -481,7 +483,10 @@ struct Worker
 
 
             if (output._internal._keepAlive)
-               output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
+            {
+               if (output._internal._sendBody) output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
+               else output._internal._headers ~= Output.KeyValue("content-length", "0");
+            }
 
             version(debugRequest) log("-- REQ: ", request.uri);
             version(debugRequest) log("-- PARSING STATUS: ", request._internal._parsingStatus);
