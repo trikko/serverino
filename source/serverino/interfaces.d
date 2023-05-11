@@ -104,7 +104,7 @@ struct Request
       import std.string : replace;
       string d = toString();
 
-      if (html) d = `<pre style="padding:10px;background:#DDD">` ~ d.replace("<", "&lt").replace(">", "&gt").replace(";", "&amp;") ~ "</pre>";
+      if (html) d = `<pre style="padding:10px;background:#DDD;overflow-x:auto">` ~ d.replace("<", "&lt").replace(">", "&gt").replace(";", "&amp;") ~ "</pre>";
 
       return d;
    }
