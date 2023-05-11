@@ -119,11 +119,8 @@ struct Request
       output ~= format("Build ID: %s\n", buildId);
       output ~= "\n";
       output ~= "Request:\n";
-      output ~= format(" • Protocol: %s\n",_internal._isHttps?"https":"http");
       output ~= format(" • Method: %s\n", method.to!string);
-      //output ~= format("- Host: %s (%s)\n", host, localAddress.toPortString);
       output ~= format(" • Uri: %s\n", uri);
-      //output ~= format("- Remote Address: %s\n", remoteAddress.toAddrString);
 
       if (!_internal._user.empty)
          output ~= format(" • Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
@@ -240,13 +237,8 @@ struct Request
    ///
    @safe @nogc @property nothrow public auto host() const { return _internal._host; }
 
-   /*
-   @safe @nogc @property nothrow public auto remoteAddress() const { return _internal._remoteAddress; }
-   @safe @nogc @property nothrow public auto localAddress() const { return _internal._localAddress; }
-   */
-
-   /// Http or Https
-   @safe @nogc @property nothrow public auto protocol() const { return _internal._isHttps?"https":"http"; }
+   /// Use at your own risk! Raw data from user.
+   @safe @nogc @property nothrow public auto requestLine() const { return _internal._rawRequestLine; }
 
    /// Basic http authentication user. Safe only if sent thru https!
    @safe @nogc @property nothrow public auto user() const { return _internal._user; }
@@ -624,15 +616,11 @@ struct Request
       string _method;
       string _host;
       string _postDataContentType;
-      bool   _isHttps;
       string _worker;
       string _user;
       string _password;
       string _sessionId;
       size_t _uploadId;
-
-      Address _remoteAddress;
-      Address _localAddress;
 
       string _rawQueryString;
       string _rawHeaders;
@@ -659,11 +647,8 @@ struct Request
          _cookie  = null;
          _uri     = string.init;
 
-         _isHttps       = false;
          _method        = string.init;
          _host          = string.init;
-         _remoteAddress = null;
-         _localAddress  = null;
          _user          = string.init;
          _password      = string.init;
          _sessionId     = string.init;

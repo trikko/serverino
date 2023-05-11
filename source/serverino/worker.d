@@ -255,7 +255,7 @@ struct Worker
 
    }
 
-   bool parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data, bool isHttps=false)
+   bool parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
    {
 
       version(debugRequest) log("-- START RECEIVING");
@@ -405,12 +405,9 @@ struct Worker
             import std.uni : sicmp;
 
             request._internal._httpVersion    = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-            //request._internal._remoteAddress  = http.socket.remoteAddress;
-            //request._internal._localAddress   = http.socket.localAddress;
             request._internal._data           = cast(char[])data;
             request._internal._rawHeaders     = headers.to!string;
             request._internal._rawRequestLine = requestLine.to!string;
-            request._internal._isHttps        = isHttps;
 
             if (!path.startsWith("/"))
             {
