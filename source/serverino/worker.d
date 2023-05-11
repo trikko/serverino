@@ -461,7 +461,7 @@ struct Worker
             request._internal._rawQueryString = matches[4];
             request._internal._method         = method.to!string;
 
-            output._internal._sendBody = (!["CONNECT", "DELETE", "HEAD", "TRACE"].assumeSorted.contains(request._internal._method));
+            output._internal._sendBody = (!["CONNECT", "HEAD", "TRACE"].assumeSorted.contains(request._internal._method));
 
             import std.uri : URIException;
             try { request._internal.process(); }
