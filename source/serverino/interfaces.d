@@ -859,9 +859,6 @@ struct Output
 
    }
 
-
-   @safe void deleteSessionId() { deleteCookie("__SESSION_ID__"); }
-
    /// You can set a cookie.  But you can't if body is already sent.
    @safe void setCookie(Cookie c)
    {
