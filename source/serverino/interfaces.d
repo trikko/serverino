@@ -811,9 +811,15 @@ struct Output
       // send user-defined headers
       foreach(const ref header;_internal._headers)
       {
+         if (!_internal._sendBody && (header.key == "content-length" || header.key == "transfer-encoding"))
+            continue;
+
          buffer.append(format("%s: %s\r\n", header.key, header.value));
          if (header.key == "content-type") has_content_type = true;
       }
+
+      if (!_internal._sendBody)
+          buffer.append(format("content-length: 0\r\n"));
 
       // Default content-type is text/html if not defined by user
       if (!has_content_type && _internal._sendBody)
