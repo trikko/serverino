@@ -258,8 +258,9 @@ struct Worker
    bool parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
    {
 
-      version(debugRequest) log("-- START RECEIVING");
+      import std.utf : UTFException;
 
+      version(debugRequest) log("-- START RECEIVING");
       try
       {
          size_t			   contentLength = 0;
@@ -574,10 +575,16 @@ struct Worker
 
          }
       }
-      catch(Exception e)
+      catch(UTFException e)
       {
-         critical("Error during http parsing", e);
+         output._internal._httpVersion = HttpVersion.HTTP10;
+         output._internal._keepAlive = false;
+         output.status = 400;
+         output ~= "400 Bad Request";
+         warning("UTFException: ", e.toString);
+         return false;
       }
+      catch(Exception e) { critical("Unknown error during http parsing", e.toString); }
 
       return false;
    }
