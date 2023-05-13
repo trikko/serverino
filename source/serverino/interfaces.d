@@ -922,6 +922,20 @@ struct Output
    */
 	void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
 
+   /**
+   * Mute/unmute output. You must set this before writing any data to output
+   * --------------------
+   * output = false; // Mute the output.
+   * output ~= "Hello world"; // Serverino will not send this to user.
+   * --------------------
+   */
+   void opAssign(in bool v) {
+      if (_internal._headersSent)
+         throw new Exception("Can't change output mode. Too late. Just sent.");
+
+      _internal._sendBody = v;
+   }
+
    /// Write data
    @safe void write(string data = string.init) { write(data.representation); }
 
