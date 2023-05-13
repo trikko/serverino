@@ -225,12 +225,7 @@ Content-Disposition: form-data; name=\"field1\"\r
         http.method = HTTP.Method.post;
         http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
         http.perform();
-
-        auto j = parseJSON(content);
-
-        assert(j["post"].array.map!(x=>x.str).array.sort.array == []);
-        assert(j["form-data"].array.map!(x=>x.str).array.sort.array == []);
-        assert(j["form-file"].array.map!(x=>x.str).array.sort.array == []);
+        assert(http.statusLine.code == 422);
     }
 
    {

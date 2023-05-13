@@ -143,7 +143,7 @@ struct Worker
          {
             size_t[1] sz;
             bool[1] ka;
-            auto res = "HTTP/1.1 504 Gateway Timeout\r\nconnection: close\r\n\r\n504 Gateway Timeout";
+            auto res = "HTTP/1.0 504 Gateway Timeout\r\n";
             output._internal.clear();
             output.sendData(res);
             ka[0] = false;
@@ -358,10 +358,9 @@ struct Worker
 
             if (!valid)
             {
-               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-               output._internal._keepAlive = false;
+               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
                output.status = 400;
-               output ~= "400 Bad Request";
+               output.sendHeaders();
                return false;
             }
 
@@ -410,13 +409,13 @@ struct Worker
             request._internal._rawHeaders     = headers.to!string;
             request._internal._rawRequestLine = requestLine.to!string;
 
+            output._internal._httpVersion = request._internal._httpVersion;
+
             if (!path.startsWith("/"))
             {
-               warning("HTTP Request with absolute uri");
-               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-               output._internal._keepAlive = false;
+               debug warning("HTTP Request with absolute uri");
                output.status = 400;
-               output ~= "400 Bad Request";
+               output.sendHeaders();
                return false;
             }
 
@@ -468,14 +467,10 @@ struct Worker
             try { request._internal.process(); }
             catch (URIException e)
             {
-               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
-               output._internal._keepAlive = false;
                output.status = 400;
-               output ~= "400 Bad Request";
+               output.sendHeaders();
                return false;
             }
-
-            output._internal._httpVersion = request._internal._httpVersion;
 
             output._internal._keepAlive =
                config.keepAlive &&
@@ -504,10 +499,7 @@ struct Worker
                   callHandlers!Modules(request, output);
 
                   if (!output._internal._dirty && !output.headersSent)
-                  {
                      output.status = 404;
-                     output ~= "404 Not found";
-                  }
 
                   if (!output._internal._headersSent)
                      output.sendHeaders();
@@ -531,7 +523,7 @@ struct Worker
                   if (!output.headersSent)
                   {
                      output.status = 500;
-                     output ~= "500 Internal Server Error";
+                     output.sendHeaders();
 
                      if (output._internal._keepAlive)
                      {
@@ -558,8 +550,10 @@ struct Worker
             {
                if (!output.headersSent)
                {
-                  output.status = 400;
-                  output ~= "400 Bad Request";
+                  if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
+                  else output.status = 400;
+
+                  output.sendHeaders();
 
                   if (output._internal._keepAlive)
                   {
@@ -570,21 +564,31 @@ struct Worker
                   return false;
                }
 
-               critical("Parsing error:", request._internal._parsingStatus);
+               debug critical("Parsing error:", request._internal._parsingStatus);
             }
 
          }
       }
       catch(UTFException e)
       {
-         output._internal._httpVersion = HttpVersion.HTTP10;
-         output._internal._keepAlive = false;
-         output.status = 400;
-         output ~= "400 Bad Request";
-         warning("UTFException: ", e.toString);
-         return false;
+         if (!output.headersSent)
+         {
+            output.status = 400;
+            output.sendHeaders();
+         }
+
+         debug warning("UTFException: ", e.toString);
       }
-      catch(Exception e) { critical("Unknown error during http parsing", e.toString); }
+      catch(Exception e) {
+
+         if (!output.headersSent)
+         {
+            output.status = 500;
+            output.sendHeaders();
+         }
+
+         debug critical("UTFException: ", e.toString);
+      }
 
       return false;
    }

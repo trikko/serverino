@@ -311,7 +311,7 @@ struct Daemon
                         if (connectionHandler.started)
                         {
                            debug warning("Connection closed. [REASON: http timeout]");
-                           connectionHandler.socket.send("HTTP/1.0 408 Request Timeout\r\nconnection: close\r\n\r\n408 Request Timeout");
+                           connectionHandler.socket.send("HTTP/1.0 408 Request Timeout\r\n");
                         }
                         toReset ~= connectionHandler;
                      }

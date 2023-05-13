@@ -554,6 +554,7 @@ struct Request
                      if (!lastBoundary)
                      {
                         warning("Can't parse multipart/form-data content");
+                        _parsingStatus = ParsingStatus.InvalidBody;
 
                         // Something went wrong with parsing, we ignore data.
                         clearFiles();
@@ -757,7 +758,7 @@ struct Output
 
       if (bytesRead.length != fs)
       {
-         sendData("HTTP/1.0 500 Internal server error\r\nconnection: close\r\n\r\n500 Internal server error");
+         sendData("HTTP/1.0 500 Internal server error\r\n");
          return false;
       }
 
@@ -790,7 +791,7 @@ struct Output
          400 : "Bad Request", 401 : "Unauthorized", 402 : "Payment Required", 403 : "Forbidden", 404 : "Not Found", 405 : "Method Not Allowed",
          406 : "Not Acceptable", 407 : "Proxy Authentication Required", 408 : "Request Timeout", 409 : "Conflict", 410 : "Gone",
          411 : "Lenght Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
-         416 : "Requested Range Not Satisfable", 417 : "Expectation Failed",
+         416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content",
 
          500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
       ];
