@@ -359,6 +359,7 @@ struct Worker
             if (!valid)
             {
                output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
+               output._internal._sendBody = false;
                output.status = 400;
                output.sendHeaders();
                return false;
@@ -415,6 +416,7 @@ struct Worker
             {
                debug warning("HTTP Request with absolute uri");
                output.status = 400;
+               output._internal._sendBody = false;
                output.sendHeaders();
                return false;
             }
@@ -468,6 +470,7 @@ struct Worker
             catch (URIException e)
             {
                output.status = 400;
+               output._internal._sendBody = false;
                output.sendHeaders();
                return false;
             }
@@ -499,7 +502,10 @@ struct Worker
                   callHandlers!Modules(request, output);
 
                   if (!output._internal._dirty && !output.headersSent)
+                  {
                      output.status = 404;
+                     output._internal._sendBody = false;
+                  }
 
                   if (!output._internal._headersSent)
                      output.sendHeaders();
@@ -553,6 +559,7 @@ struct Worker
                   if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
                   else output.status = 400;
 
+                  output._internal._sendBody = false;
                   output.sendHeaders();
 
                   if (output._internal._keepAlive)
@@ -574,6 +581,7 @@ struct Worker
          if (!output.headersSent)
          {
             output.status = 400;
+            output._internal._sendBody = false;
             output.sendHeaders();
          }
 
@@ -584,6 +592,7 @@ struct Worker
          if (!output.headersSent)
          {
             output.status = 500;
+            output._internal._sendBody = false;
             output.sendHeaders();
          }
 

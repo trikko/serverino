@@ -816,7 +816,7 @@ struct Output
       }
 
       // Default content-type is text/html if not defined by user
-      if (!has_content_type)
+      if (!has_content_type && _internal._sendBody)
          buffer.append(format("content-type: text/html;charset=utf-8\r\n"));
 
       // If required, I add headers to write cookies
@@ -964,7 +964,7 @@ struct Output
       bool            _keepAlive;
       string          _httpVersion;
       ushort          _status;
-      bool			   _headersSent;
+      bool			    _headersSent;
       Duration        _timeout;
       bool            _dirty;
       size_t          _requestId;
