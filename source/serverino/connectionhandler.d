@@ -285,11 +285,6 @@ package class ConnectionHandler
 
             tmp.next = new ProtoRequest();
          }
-         status = State.READING_HEADERS;
-
-         uint len = 0;
-         requestToProcess.data.reserve(1024*10);
-         requestToProcess.data ~= (cast(char*)(&len))[0..uint.sizeof];
       }
 
       if (requestToProcess is null)
@@ -302,7 +297,11 @@ package class ConnectionHandler
       while(request.next !is null)
          request = request.next;
 
+      status = State.READING_HEADERS;
+
+      uint len = 0;
       request.data.reserve(32*1024);
+      request.data ~= (cast(char*)(&len))[0..uint.sizeof];
 
       char[32*1024] buffer;
       auto bytesRead = socket.receive(buffer);
@@ -336,10 +335,11 @@ package class ConnectionHandler
          leftover.length = 0;
       }
 
-      bool doAgain;
+      bool doAgain = true;
 
-      while(true)
+      while(doAgain)
       {
+         bool newRequest = false;
          doAgain = false;
 
          if (status == State.READING_HEADERS)
@@ -495,6 +495,7 @@ package class ConnectionHandler
                   }
                   else
                   {
+                     newRequest = true;
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
                   }
@@ -514,6 +515,7 @@ package class ConnectionHandler
             {
                leftover = request.data[request.headersLength + request.contentLength..$];
                doAgain = leftover.length > 0;
+               newRequest = true;
                request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
                if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
@@ -521,8 +523,20 @@ package class ConnectionHandler
             }
          }
 
-         if (!doAgain)
-            break;
+         if (doAgain && newRequest)
+         {
+            request.next = new ProtoRequest();
+            request = request.next;
+            status = State.READING_HEADERS;
+
+            len = 0;
+            request.data.reserve(1024*10);
+            request.data ~= (cast(char*)(&len))[0..uint.sizeof];
+
+            bufferRead = leftover;
+            leftover.length = 0;
+
+         }
       }
 
    }
