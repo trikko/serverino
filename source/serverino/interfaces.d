@@ -587,20 +587,21 @@ struct Request
                   auth = (cast(char[])Base64.decode(auth[6..$])).to!string;
                   auto delim = auth.indexOf(":");
 
-                  if (delim < 0) _user = auth;
-                  else
-                  {
-                     _user = auth[0..delim];
+                     if (delim < 0) _user = auth;
+                     else
+                     {
+                        _user = auth[0..delim];
 
-                  if (delim < auth.length-1)
-                     _password = auth[delim+1..$];
-                  }
+                     if (delim < auth.length-1)
+                        _password = auth[delim+1..$];
+                     }
 
                }
                catch(Base64Exception e)
                {
-                  _user=string.init;
-                  _password=string.init;
+                  _user = string.init;
+                  _password = string.init;
+                  debug warning("Authorization header ignored. Error decoding base64.");
                
                
                }
