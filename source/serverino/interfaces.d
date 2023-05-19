@@ -403,9 +403,14 @@ struct Request
             import std.range : drop, takeOne;
             import std.array : array;
 
-            if (_method == "POST" && "content-type" in _header)
+            if (_method == "POST")
             {
-               auto cSplitted = _header["content-type"].splitter(";");
+               auto contentType = "application/octet-stream";
+
+               if ("content-type" in _header && !_header["content-type"].empty)
+                  contentType = _header["content-type"];
+
+               auto cSplitted = contentType.splitter(";");
 
                _postDataContentType = cSplitted.front.toLower.strip;
                cSplitted.popFront();

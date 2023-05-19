@@ -33,6 +33,13 @@ import std;
 
 mixin ServerinoTest!tagged;
 
+
+@endpoint @priority(15000) @route!"/test_content_type"
+void test_content_type(Request r, Output o)
+{
+    o ~= r.body.contentType;
+}
+
 @endpoint @priority(10000) @route!"/hello_routing"
 void test_routing_1(Request r, Output o)
 {
@@ -316,6 +323,53 @@ Content-Disposition: form-data; name=\"field1\"\r
         auto j = parseJSON(content);
         assert(j["route"].str == "get");
     }
+
+    // Post content-type tests
+    {
+        string request = "POST /test_content_type HTTP/1.0\r\nContent-Type:   \r\nHost: localhost:57123\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n123";
+        auto socket = new TcpSocket();
+        socket.connect(new InternetAddress("localhost", 8080));
+        socket.send(request);
+
+        ubyte[4096] buffer;
+        auto r = socket.receive(buffer[]);
+        socket.close();
+
+        auto responseLines = (cast(string)(buffer[0..r])).split("\r\n");
+        assert(responseLines[0] == "HTTP/1.0 200 OK");
+        assert(responseLines[$-1] == "application/octet-stream");
+   }
+
+   {
+        string request = "POST /test_content_type HTTP/1.0\r\nHost: localhost:57123\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n123";
+        auto socket = new TcpSocket();
+        socket.connect(new InternetAddress("localhost", 8080));
+        socket.send(request);
+
+        ubyte[4096] buffer;
+        auto r = socket.receive(buffer[]);
+        socket.close();
+
+        auto responseLines = (cast(string)(buffer[0..r])).split("\r\n");
+        assert(responseLines[0] == "HTTP/1.0 200 OK");
+        assert(responseLines[$-1] == "application/octet-stream");
+   }
+
+   {
+        string request = "POST /test_content_type HTTP/1.0\r\nContent-Type:  blah/blah\r\nHost: localhost:57123\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n123";
+        auto socket = new TcpSocket();
+        socket.connect(new InternetAddress("localhost", 8080));
+        socket.send(request);
+
+        ubyte[4096] buffer;
+        auto r = socket.receive(buffer[]);
+        socket.close();
+
+        auto responseLines = (cast(string)(buffer[0..r])).split("\r\n");
+        assert(responseLines[0] == "HTTP/1.0 200 OK");
+        assert(responseLines[$-1] == "blah/blah");
+   }
+
 
 
 

@@ -370,7 +370,10 @@ struct Daemon
 
                if (bytes == Socket.ERROR)
                {
-                  log("ERROR");
+                  debug warning("Error: worker killed?");
+                  w.setStatus(WorkerInfo.State.STOPPED);
+                  w.clear();
+                  r.reset();
                }
                else if (bytes == 0)
                {
