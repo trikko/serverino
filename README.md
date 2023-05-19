@@ -45,6 +45,17 @@ mixin ServerinoMain;
    log(req.uri);
 }
 
+// We accept only GET request in this example
+@priority(5) @endpoint void checkMethod(Request req, Output output)
+{
+   if (req.method != Request.Method.Get)
+   {
+      // We set a 405 (method not allowed) status here. 
+      // If we change the output no other endpoints will be called.
+      output.status = 405;
+   }
+}
+
 // This endpoint (default priority == 0) handles the homepage
 // Request and Output can be used in @safe code
 @safe
