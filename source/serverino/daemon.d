@@ -197,7 +197,7 @@ struct Daemon
       workerEnvironment["SERVERINO_DAEMON"] = thisProcessID.to!string;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
 
-      log("Daemon started.");
+      info("Daemon started.");
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)

@@ -137,7 +137,7 @@ struct Worker
          while(processedStartedAt == CoarseTime.zero || CoarseTime.currTime - processedStartedAt < config.maxRequestTime)
             Thread.sleep(1.dur!"seconds");
 
-         warning("Request timeout.");
+         log("Request timeout.");
 
          if (cas(&justSent, false, true))
          {
@@ -170,7 +170,6 @@ struct Worker
          size_t[1] sz;
          bool[1] ka;
 
-         //log("WAITING");
          idlingAt = CoarseTime.currTime;
 
          import serverino.databuffer;
@@ -196,14 +195,14 @@ struct Worker
                   auto tm = CoarseTime.currTime;
                   if (tm - idlingAt > config.maxWorkerIdling)
                   {
-                     info("Killing worker. [REASON: maxWorkerIdling]");
+                     log("Killing worker. [REASON: maxWorkerIdling]");
                      tryUninit!Modules();
                      channel.close();
                      exit(0);
                   }
                   else if (tm - startedAt > config.maxWorkerLifetime)
                   {
-                     info("Killing worker. [REASON: maxWorkerLifetime]");
+                     log("Killing worker. [REASON: maxWorkerLifetime]");
                      tryUninit!Modules();
                      channel.close();
                      exit(0);
@@ -214,7 +213,7 @@ struct Worker
                else if (recv < 0)
                {
                   tryUninit!Modules();
-                  warning("Killing worker. [REASON: socket error]");
+                  log("Killing worker. [REASON: socket error]");
                   channel.close();
                   exit(cast(int)recv);
                }
@@ -235,8 +234,8 @@ struct Worker
          {
             tryUninit!Modules();
 
-            if (daemonProcess.isTerminated()) warning("Killing worker. [REASON: daemon dead?]");
-            else warning("Killing worker. [REASON: socket closed?]");
+            if (daemonProcess.isTerminated()) log("Killing worker. [REASON: daemon dead?]");
+            else log("Killing worker. [REASON: socket closed?]");
 
             channel.close();
             exit(0);
@@ -293,7 +292,7 @@ struct Worker
 
             if (headersLines.empty)
             {
-               warning("HTTP Request: empty request");
+               debug warning("HTTP Request: empty request");
                valid = false;
             }
 
@@ -301,7 +300,7 @@ struct Worker
 
             if (requestLine.length < 14)
             {
-               warning("HTTP request line too short: ", requestLine);
+               debug warning("HTTP request line too short: ", requestLine);
                valid = false;
             }
 
@@ -333,25 +332,25 @@ struct Worker
 
                if (popped != 3 || !fields.empty)
                {
-                  warning("HTTP request invalid: ", requestLine);
+                  debug warning("HTTP request invalid: ", requestLine);
                   valid = false;
                }
 
                else if (path.startsWith("http://") || path.startsWith("https://"))
                {
-                  warning("Can't use absolute uri");
+                  debug warning("Can't use absolute uri");
                   valid = false;
                }
 
                else if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
                {
-                  warning("HTTP request bad http version: ", httpVersion);
+                  debug warning("HTTP request bad http version: ", httpVersion);
                   valid = false;
                }
 
                else if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
                {
-                  warning("HTTP method unknown: ", method);
+                  debug warning("HTTP method unknown: ", method);
                   valid = false;
                }
             }
@@ -571,7 +570,7 @@ struct Worker
                   return false;
                }
 
-               debug critical("Parsing error:", request._internal._parsingStatus);
+               debug warning("Parsing error:", request._internal._parsingStatus);
             }
 
          }
@@ -596,7 +595,7 @@ struct Worker
             output.sendHeaders();
          }
 
-         debug critical("UTFException: ", e.toString);
+         debug critical("Unhandled exception: ", e.toString);
       }
 
       return false;

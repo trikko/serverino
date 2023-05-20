@@ -211,7 +211,7 @@ package class ConnectionHandler
       {
          if(!wouldHaveBlocked)
          {
-            log("SOCKET ERROR?");
+            log("Socket Error");
             reset();
          }
       }
@@ -372,7 +372,7 @@ package class ConnectionHandler
                   {
                      request.isValid = false;
                      socket.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug log("Bad Request. Request line too short.");
+                     debug warning("Bad Request. Request line too short.");
                      reset();
                      return;
                   }

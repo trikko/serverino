@@ -25,6 +25,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.config;
 
+import std.experimental.logger : LogLevel;
 import std.socket : Socket, InternetAddress, Internet6Address, Address;
 import std.stdio : File;
 import std.datetime : Duration, dur;
@@ -80,6 +81,7 @@ struct ServerinoConfig
    {
       ServerinoConfig sc = ServerinoConfig.init;
 
+      sc.setLogLevel();
       sc.setReturnCode();
       sc.setMaxWorkers();
       sc.setMinWorkers();
@@ -93,8 +95,8 @@ struct ServerinoConfig
       version(Windows) { }
       else
       {
-      sc.setWorkerUser();
-      sc.setWorkerGroup();
+         sc.setWorkerUser();
+         sc.setWorkerGroup();
       }
 
       sc.setHttpTimeout();
@@ -105,6 +107,9 @@ struct ServerinoConfig
 
       return sc;
    }
+
+   /// Min log level to display. Default == LogLevel.all
+   @safe ref ServerinoConfig setLogLevel(LogLevel level = LogLevel.all) return { daemonConfig.logLevel = level; return this; }
 
    /// Every value != 0 is used to terminate server immediatly.
    @safe ref ServerinoConfig setReturnCode(int retCode = 0) return { returnCode = retCode; return this; }
@@ -231,6 +236,7 @@ package struct WorkerConfig
 
 package struct DaemonConfig
 {
+   LogLevel    logLevel;
    size_t      maxRequestSize;
    Duration    maxHttpWaiting;
    Duration    keepAliveTimeout;

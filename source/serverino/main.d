@@ -155,9 +155,9 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import std.compiler : version_major;
 
    static if (version_minor > 100)
-      sharedLog = new shared CustomLogger(LogLevel.all);
+      sharedLog = new shared CustomLogger(config.daemonConfig.logLevel);
    else
-      sharedLog = new CustomLogger(LogLevel.all);
+      sharedLog = new CustomLogger(config.daemonConfig.logLevel);
 
    if (config.returnCode != 0)
       return config.returnCode;

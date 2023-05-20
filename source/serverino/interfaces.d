@@ -212,7 +212,7 @@ struct Request
    /++ Raw posted data
    ---
    import std.experimental.logger;
-   log("Content-Type: ", request.body.contentType, " Size: ", request.body.data.length, " bytes");
+   info("Content-Type: ", request.body.contentType, " Size: ", request.body.data.length, " bytes");
    ---
    +/
    @safe @nogc @property nothrow public auto body() const { import std.typecons: tuple; return tuple!("data", "contentType")(_internal._data,_internal._postDataContentType); }
@@ -558,7 +558,7 @@ struct Request
 
                      if (!lastBoundary)
                      {
-                        warning("Can't parse multipart/form-data content");
+                        debug warning("Can't parse multipart/form-data content");
                         _parsingStatus = ParsingStatus.InvalidBody;
 
                         // Something went wrong with parsing, we ignore data.
@@ -580,7 +580,6 @@ struct Request
 
          if ("authorization" in _header)
          {
-            
             import std.base64 : Base64, Base64Exception;
             import std.string : indexOf;
             auto auth = _header["authorization"];
@@ -607,8 +606,6 @@ struct Request
                   _user = string.init;
                   _password = string.init;
                   debug warning("Authorization header ignored. Error decoding base64.");
-               
-               
                }
             }
          }
