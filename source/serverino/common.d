@@ -32,7 +32,7 @@ alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 public static int SERVERINO_MAJOR = 0;
 public static int SERVERINO_MINOR = 4;
-public static int SERVERINO_REVISION = 4;
+public static int SERVERINO_REVISION = 5;
 
 
 version(Windows)
