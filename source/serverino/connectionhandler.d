@@ -285,6 +285,8 @@ package class ConnectionHandler
 
             tmp.next = new ProtoRequest();
          }
+
+	      status = State.READING_HEADERS;
       }
 
       if (requestToProcess is null)
@@ -297,11 +299,12 @@ package class ConnectionHandler
       while(request.next !is null)
          request = request.next;
 
-      status = State.READING_HEADERS;
-
       uint len = 0;
-      request.data.reserve(32*1024);
-      request.data ~= (cast(char*)(&len))[0..uint.sizeof];
+      if(request.data.length == 0)
+      {
+	      request.data.reserve(32*1024);
+		   request.data ~= (cast(char*)(&len))[0..uint.sizeof];
+      }
 
       char[32*1024] buffer;
       auto bytesRead = socket.receive(buffer);
@@ -362,7 +365,6 @@ package class ConnectionHandler
                   request.data ~= bufferRead[0..headersEnd];
                   leftover = bufferRead[headersEnd+4..$];
                   bufferRead.length = 0;
-                  doAgain = leftover.length > 0;
                   request.headersDone = true;
                   request.isValid = true;
 
@@ -488,7 +490,8 @@ package class ConnectionHandler
 
                      request.data.reserve(request.headersLength + request.contentLength);
                      request.isValid = false;
-                     status = State.READING_BODY;
+                     doAgain = true;
+		               status = State.READING_BODY;
 
                      if (request.expect100)
                         socket.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
@@ -510,6 +513,7 @@ package class ConnectionHandler
             request.data ~= bufferRead;
 
             leftover.length = 0;
+            bufferRead.length = 0;
 
             if (request.data.length >= request.headersLength + request.contentLength)
             {
