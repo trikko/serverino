@@ -134,6 +134,9 @@ struct Worker
       __gshared bool justSent = false;
 
       new Thread({
+
+         Thread.getThis().isDaemon = true;
+
          while(processedStartedAt == CoarseTime.zero || CoarseTime.currTime - processedStartedAt < config.maxRequestTime)
             Thread.sleep(1.dur!"seconds");
 

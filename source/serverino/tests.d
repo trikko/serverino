@@ -40,6 +40,8 @@ template ServerinoTest(Modules...)
             import serverino.daemon;
             import core.thread;
 
+            Thread.getThis().isDaemon = true;
+
             scope(exit) Daemon.instance.shutdown();
             while(!Daemon.isReady) { Thread.sleep(10.dur!"msecs");}
 
