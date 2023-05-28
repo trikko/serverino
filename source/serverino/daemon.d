@@ -156,6 +156,16 @@ package:
    static SimpleList[5]  lookup;
 }
 
+version(Posix)
+{
+   extern(C) void serverino_exit_handler(int num) nothrow @nogc @system
+   {
+      import core.stdc.stdlib : exit;
+      if (Daemon.exitRequested) exit(-1);
+      else Daemon.exitRequested = true;
+   }
+}
+
 struct Daemon
 {
    static auto isReady() { return ready; }
@@ -187,7 +197,7 @@ struct Daemon
    }
 
 
-   void wake(DaemonConfigPtr config)
+   void wake(Modules...)(DaemonConfigPtr config)
    {
       import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
@@ -198,6 +208,17 @@ struct Daemon
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
 
       info("Daemon started.");
+
+      version(Posix)
+      {
+         import core.sys.posix.signal;
+         sigaction_t act = { sa_handler: &serverino_exit_handler };
+	      sigaction(SIGINT, &act, null);
+         sigaction(SIGTERM, &act, null);
+      }
+      else version(Windows) scope(exit) tryUninit!Modules();
+
+      tryInit!Modules();
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
@@ -510,11 +531,13 @@ struct Daemon
          catch (Exception e) { }
       }
 
+      tryUninit!Modules();
+
       import core.stdc.stdlib : exit;
       exit(0);
    }
 
-   void shutdown() { exitRequested = true; }
+   void shutdown() @nogc nothrow { exitRequested = true; }
 
 private:
 
@@ -557,4 +580,39 @@ private:
 
    __gshared bool exitRequested = false;
    __gshared bool ready = false;
+}
+
+
+void tryInit(Modules...)()
+{
+   import std.traits : getSymbolsByUDA, isFunction;
+
+   static foreach(m; Modules)
+   {
+      static foreach(f;  getSymbolsByUDA!(m, onDaemonStart))
+      {{
+         static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onDaemonStart but it is not a function");
+
+         static if (__traits(compiles, f())) f();
+         else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onDaemonStart but it is not callable");
+
+      }}
+   }
+}
+
+void tryUninit(Modules...)()
+{
+   import std.traits : getSymbolsByUDA, isFunction;
+
+   static foreach(m; Modules)
+   {
+      static foreach(f;  getSymbolsByUDA!(m, onDaemonStop))
+      {{
+         static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onDaemonStop but it is not a function");
+
+         static if (__traits(compiles, f())) f();
+         else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onDaemonStop but it is not callable");
+
+      }}
+   }
 }

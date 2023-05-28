@@ -34,6 +34,8 @@ import std.traits : ReturnType;
 public struct priority { long priority; } /// UDA. Set @endpoint priority
 
 public enum endpoint;         /// UDA. Attach @endpoint to functions worker should call
+public enum onDaemonStart;    /// UDA. Called when daemon is ready. Please notice, it is running on main thread
+public enum onDaemonStop;     /// UDA. Called when daemon exit.
 public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached are called when worker is started
 public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
 public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
