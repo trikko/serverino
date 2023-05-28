@@ -1,4 +1,4 @@
-###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing) – [run serverino inside a docker](#run-serverino-inside-a-docker) 
+###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
 
 # serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml)
 * Ready-to-go http server
@@ -24,6 +24,7 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
 
 ## Documentation you need
+* [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
 * [Request](https://serverino.dpldocs.info/serverino.interfaces.Request.html) - What user asked
 * [Output](https://serverino.dpldocs.info/serverino.interfaces.Output.html) - Your reply
 * [ServerinoConfig](https://serverino.dpldocs.info/serverino.config.ServerinoConfig.html) - Server configuration
@@ -75,27 +76,6 @@ mixin ServerinoMain;
 }
 ```
 
-## Basic routing
-Use ```@route``` template to add routing to your server.
-```d
-
-// Called only if uri == "/hello"
-@endpoint @route!"/hello"
-void example(const Request r, Output o)
-{
-   // ...
-}
-
-// Custom checks on request. 
-@endpoint 
-@route!(request => request.get.read("name") == "Andrea") // for example /uri?name=Andrea ...
-@route!(request => request.get.read("name") == "Ferhat") // .. and also /uri?name=Ferhat
-void with_name(const Request r, Output o)
-{
-   //
-}
-```
-
 ## @onServerInit UDA
 Use ```@onServerInit``` to configure your server
 ```d
@@ -112,44 +92,6 @@ Use ```@onServerInit``` to configure your server
    return sc;
 }
 
-```
-
-## @onWorkerStart, @onWorkerStop UDAs
-
-```d
-/+
- When a worker is created, this function is called.
- Useful to init database connection & everything else.
-+/
-@onWorkerStart
-auto start()
-{
-   // Connect to db...
-}
-```
-
-## Use serverino across multiple modules
-
-```d
-module test;
-import serverino;
-
-@endpoint void f1(Request r, Output o) { ... }
-```
-
-```d
-module other;
-import serverino;
-
-@endpoint void f2(Request r, Output o) { ... }
-```
-
-```d
-module main;
-import serverino;
-import test, other;
-
-mixin ServerinoMain!(other, test); // Current module is always processed
 ```
 
 ## Shielding the whole thing
@@ -213,33 +155,4 @@ Add a proxy in your virtualhost configuration:
    ProxyPass "/"  "http://localhost:8080/"
    ...
 </VirtualHost>
-```
-
-## Run serverino inside a docker
-
-First, create your serverino application:
-```dub init -t serverino my_serverino && cd my_serverino```
-
-Then, create a ```Dockerfile``` with a minimal system. Let's use Alpine (but you can use everything you want: ubuntu, arch, etc..)
-
-```Dockerfile
-FROM alpine:latest
-
-RUN apk update && apk upgrade
-RUN apk add dmd dub cmake gcc make musl-dev
-RUN ln -fs /usr/share/zoneinfo/Europe/Rome /etc/localtime
-RUN apk add tzdata
-RUN adduser -D -S www-data
-
-WORKDIR /source
-```
-
-Build your docker
-```
-docker build -t your_docker .
-```
-
-Finally run dub inside your docker but using your local dir for source and dub cache. I guess you want to put the following line in a script ```dub.sh```
-```sh
-docker run -ti --rm -v $(pwd):/source -v $(pwd)/.docker-dub:/root/.dub -p 8080:8080 your_docker dub
 ```
