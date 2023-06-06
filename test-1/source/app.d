@@ -390,4 +390,52 @@ Content-Disposition: form-data; name=\"field1\"\r
       assert(http.statusLine.code == 200);
    }
 
+   //Blank space on Content-Disposition in multipart/form-data
+  
+      {
+      string content;
+      string postBody =
+"-----------------------------blahblahblah\r
+Content-Disposition: form-data; name=\"field1\"\r
+\r
+first value\r
+-----------------------------blahblahblah\r
+Content-Disposition: form-data; name=\"field2\"\r
+\r
+second value\r
+-----------------------------blahblahblah\r
+Content-Disposition: form-data; name=\"myfile\"; filename=\"file1.txt\";\"   \"\r
+Content-Type: application/json\r
+\r
+{}
+\r
+-----------------------------blahblahblah--\r
+";
+
+      auto http = HTTP("http://myuser@127.0.0.1:8080/json/dump/test?");
+      http.setPostData(postBody,"multipart/form-data; boundary=---------------------------blahblahblah");
+      http.method = HTTP.Method.post;
+      http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+      http.perform();
+
+      auto j = parseJSON(content);
+
+      assert(j["method"].str == "POST");
+      assert(j["uri"].str == "/json/dump/test");
+      assert(j["host"].str == "127.0.0.1:8080");
+
+      assert(j["get"].array.map!(x=>x.str).array.sort.array == []);
+      assert(j["post"].array.map!(x=>x.str).array.sort.array == []);
+      assert(j["cookie"].array.map!(x=>x.str).array.sort.array == []);
+
+      assert(j["username"].str == "myuser");
+      assert(j["password"].str == string.init);
+
+      assert(j["form-data"].array.map!(x=>x.str).array.sort.array == ["field1,text/plain,first value", "field2,text/plain,second value"]);
+      assert(j["form-file"].array.map!(x=>x.str).array.sort.array == ["myfile,file1.txt,application/json,{}\n"]);
+
+      assert(j["content-type"].str == "multipart/form-data");
+   }
+   
+
 }
