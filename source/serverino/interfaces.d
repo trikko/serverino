@@ -519,12 +519,15 @@ struct Request
                         string[string] form_data;
 
                         foreach(f; form_data_raw)
-                        {
-                           auto k = f[0].strip;
-                           auto v = f[1].strip;
-
-                           if (v.length < 2) continue;
-                           form_data[k] = v[1..$-1];
+                        {  
+                           if (f.length > 1)
+                           {
+                              auto k = f[0].strip;
+                              auto v = f[1].strip;
+         
+                              if (v.length < 2) continue;
+                              form_data[k] = v[1..$-1];
+                           }
                         }
 
                         if ("name" !in form_data) continue;
@@ -595,7 +598,7 @@ struct Request
                      else
                      {
                         _user = auth[0..delim];
-
+                        
                      if (delim < auth.length-1)
                         _password = auth[delim+1..$];
                      }
