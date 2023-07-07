@@ -299,7 +299,7 @@ struct Daemon
          }
 
          // Check for new requests
-         size_t updates;
+         long updates = -1;
          try { updates = Socket.select(ssRead, ssWrite, null, 1.dur!"seconds"); }
          catch (SocketException se) {
             import std.experimental.logger : warning;
