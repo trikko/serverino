@@ -432,7 +432,7 @@ struct Daemon
          }
 
 
-         foreach(idx; ConnectionHandler.alive.asRange)
+         foreach(idx; ConnectionHandler.alive.asRange.array)
          {
             auto connectionHandler = ConnectionHandler.instances[idx];
 
