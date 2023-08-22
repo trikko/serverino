@@ -312,6 +312,8 @@ struct Daemon
 
             if (now-lastCheck >= 1.dur!"seconds")
             {
+               lastCheck = now;
+		    
                import std.file : exists;
                if (exists("/tmp/kill")) exitRequested = true;
 
