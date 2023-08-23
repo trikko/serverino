@@ -145,7 +145,7 @@ struct ServerinoConfig
    }
 
    /// How long the socket will wait for a request after the connection?
-   @safe ref ServerinoConfig setHttpTimeout(Duration dur = 5.dur!"seconds") return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
+   @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.dur!"seconds") return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
 
    /// Enable/Disable keep-alive for http/1.1
    @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.dur!"seconds") return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
