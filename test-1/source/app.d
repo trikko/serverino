@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 Andrea Fontana
+Copyright (c) 2022-2023 Andrea Fontana
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -391,7 +391,7 @@ Content-Disposition: form-data; name=\"field1\"\r
    }
 
    //Blank space on Content-Disposition in multipart/form-data
-  
+
       {
       string content;
       string postBody =
@@ -436,6 +436,6 @@ Content-Type: application/json\r
 
       assert(j["content-type"].str == "multipart/form-data");
    }
-   
+
 
 }
