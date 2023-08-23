@@ -206,13 +206,14 @@ struct Request
    /// Params from post if content-type is "application/x-www-form-urlencoded"
    @safe @nogc @property nothrow public auto post()  const { return SafeAccess!string(_internal._post); }
 
-   /++ Form data if content-type is "multipart/form-data"
+   /++
+    + Form data if content-type is "multipart/form-data"
     + See_Also: Request.FormData
     + Returns: a FormData struct
-   ---
-   auto form_data = request.form.read("my_field").data;
-   ---
-   +/
+    + ---
+    + auto form_data = request.form.read("my_field").data;
+    + ---
+    +/
    @safe @nogc @property nothrow public auto form() const { return SafeAccess!FormData(_internal._form); }
 
    /++ Raw posted data
