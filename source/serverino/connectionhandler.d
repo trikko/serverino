@@ -517,12 +517,6 @@ package class ConnectionHandler
                      else status = State.READY;
 
                      hasQueuedRequests = leftover.length > 0;
-
-                     if (leftover.length > 0)
-                     {
-                     warning(leftover);
-                     assert(0);
-                     }
                   }
                }
                else leftover = bufferRead.dup;
