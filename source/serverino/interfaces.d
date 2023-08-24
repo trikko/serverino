@@ -987,11 +987,11 @@ struct Output
    package:
 
    @safe void sendData(const string data) { sendData(data.representation); }
-   @safe void sendData(const void[] data)
+   @safe void sendData(bool force = false)(const void[] data)
    {
       _internal._dirty = true;
 
-      if (_internal._sendBody || !_internal._headersSent)
+      if ((force || data.length > 0) && (_internal._sendBody || !_internal._headersSent))
       {
          if (_internal._keepAlive && _internal._headersSent) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
          else _internal._sendBuffer.append(cast(const char[])data);

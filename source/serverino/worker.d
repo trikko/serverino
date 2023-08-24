@@ -514,7 +514,7 @@ struct Worker
 
                   if (output._internal._keepAlive)
                   {
-                     output.sendData([]);
+                     output.sendData!true([]);
                      return true;
                   }
 
