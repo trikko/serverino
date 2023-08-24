@@ -165,6 +165,8 @@ package class ConnectionHandler
       started = false;
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
+
+      hasQueuedRequests = false;
    }
 
    void detachWorker()
@@ -270,7 +272,7 @@ package class ConnectionHandler
       }
    }
 
-   void read()
+   void read(bool fromBuffer = false)
    {
       import std.string: indexOf;
 
@@ -307,28 +309,39 @@ package class ConnectionHandler
       }
 
       char[32*1024] buffer;
-      auto bytesRead = socket.receive(buffer);
+      ptrdiff_t bytesRead = 0;
 
-      if (bytesRead < 0)
+      if (!fromBuffer)
       {
-         status = State.READY;
-         log("Socket error on read. ", lastSocketError);
-         reset();
-         return;
-      }
+         bytesRead = socket.receive(buffer);
 
-      if (bytesRead == 0)
-      {
-         // Connection closed.
-         status = State.READY;
-         reset();
-         return;
+         if (bytesRead < 0)
+         {
+            status = State.READY;
+            log("Socket error on read. ", lastSocketError);
+            reset();
+            return;
+         }
+
+         if (bytesRead == 0)
+         {
+            // Connection closed.
+            status = State.READY;
+            reset();
+            return;
+         }
+         else if (bytesRead == Socket.ERROR && wouldHaveBlocked)
+         {
+            assert(0, "wouldHaveBlocked");
+         }
+         else if (started == false) started = true;
+
       }
-      else if (bytesRead == Socket.ERROR && wouldHaveBlocked)
+      else
       {
-         assert(0, "wouldHaveBlocked");
+         bytesRead = 0;
+         started = true;
       }
-      else if (started == false) started = true;
 
       auto bufferRead = buffer[0..bytesRead];
 
@@ -471,6 +484,7 @@ package class ConnectionHandler
                      return;
                   }
 
+
                   if (request.connection == ProtoRequest.Connection.Unknown)
                   {
                      if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11) request.connection = ProtoRequest.Connection.KeepAlive;
@@ -501,6 +515,14 @@ package class ConnectionHandler
                      newRequest = true;
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
+
+                     hasQueuedRequests = leftover.length > 0;
+
+                     if (leftover.length > 0)
+                     {
+                     warning(leftover);
+                     assert(0);
+                     }
                   }
                }
                else leftover = bufferRead.dup;
@@ -549,6 +571,7 @@ package class ConnectionHandler
    size_t            bufferSent;
    string            requestId;
 
+   bool              hasQueuedRequests = false;
    bool              started;
    bool              isKeepAlive;
    size_t            responseSent;
