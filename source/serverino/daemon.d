@@ -431,25 +431,26 @@ struct Daemon
          }
 
 
+
          foreach(idx; ConnectionHandler.alive.asRange.array)
          {
             auto connectionHandler = ConnectionHandler.instances[idx];
 
-            if (updates == 0)
+            if(connectionHandler.socket is null)
                continue;
 
-            if (connectionHandler.socket !is null && ssRead.isSet(connectionHandler.socket))
+            if (ssRead.isSet(connectionHandler.socket))
             {
                connectionHandler.lastRecv = now;
                connectionHandler.read();
             }
-
-            if (connectionHandler.socket is null)
+            else if(connectionHandler.hasQueuedRequests)
             {
-               continue;
+               connectionHandler.lastRecv = now;
+               connectionHandler.read(true);
             }
 
-            if (ssWrite.isSet(connectionHandler.socket))
+            if (updates > 0 && connectionHandler.socket !is null && ssWrite.isSet(connectionHandler.socket))
             {
                connectionHandler.write();
 
@@ -460,7 +461,7 @@ struct Daemon
             }
          }
 
-         foreach(ref r; ConnectionHandler.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid))
+         foreach(ref r; ConnectionHandler.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.assignedWorker is null))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
 
