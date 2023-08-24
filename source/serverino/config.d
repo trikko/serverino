@@ -128,7 +128,7 @@ struct ServerinoConfig
    ///
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.dur!"hours") return  { workerConfig.maxWorkerIdling = dur; return this; }
    ///
-   @safe ref ServerinoConfig setListenerBacklog(int val = 256) return                   { daemonConfig.listenerBacklog = val; return this; }
+   @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
 
    ///
    @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.dur!"seconds") return  { workerConfig.maxRequestTime = dur; return this; }
