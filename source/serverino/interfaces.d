@@ -886,6 +886,8 @@ struct Output
    /// You can set a cookie.  But you can't if body is already sent.
    @safe void setCookie(Cookie c)
    {
+      _internal._dirty = true;
+
       if (_internal._headersSent)
          throw new Exception("Can't set cookies. Too late. Headers just sent.");
 
@@ -913,14 +915,11 @@ struct Output
    /// Delete a cookie
    @safe void deleteCookie(string name)
    {
-      if (_internal._headersSent)
-         throw new Exception("Can't delete cookies. Too late. Headers just sent.");
-
       Cookie c = Cookie.init;
       c.name = name;
       c.invalidate();
 
-     _internal._cookies[c.name] = c;
+      setCookie(c);
    }
 
    /// Output status
