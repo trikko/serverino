@@ -584,7 +584,7 @@ struct Request
 
          // Read cookies
          if ("cookie" in _header)
-            foreach(m; match(_header["cookie"], ctRegex!("([^=]+)=([^;]+);? ?", "g")))
+            foreach(m; match(_header["cookie"], ctRegex!("([^=]+)=([^;]+)?;? ?", "g")))
                _cookie[m.captures[1].decodeComponent] = m.captures[2].decodeComponent;
 
          if ("authorization" in _header)
