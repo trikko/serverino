@@ -42,51 +42,85 @@ import serverino.common;
 /// A cookie
 struct Cookie
 {
-   /// Create a cookie with an expire time
+   /++ Create a cookie with an expire time.
+   + By default the path is the one of the current request, not "/"
+   +/
    @safe static Cookie create(string name, string value, SysTime expire, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       Cookie c = Cookie.init;
-      c.name = name;
-      c.value = value;
-      c.path = path;
-      c.domain = domain;
-      c.secure = secure;
-      c.httpOnly = httpOnly;
-      c.expire = expire;
-      c.session = false;
+      c._name = name;
+      c._value = value;
+      c._path = path;
+      c._domain = domain;
+      c._secure = secure;
+      c._httpOnly = httpOnly;
+      c._expire = expire;
+      c._session = false;
       return c;
    }
 
-   /// Create a cookie with a duration
+   /+ Create a cookie with a duration
+   + By default the path is the one of the current request, not "/"
+   +/
    @safe static Cookie create(string name, string value, Duration duration, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       import std.datetime : Clock;
       return create(name, value, Clock.currTime + duration, path, domain, secure, httpOnly);
    }
 
-   /// Create a session cookie. (no expire time)
+   /+ Create a session cookie. Session cookies are deleted when the browser is closed.
+   + By default the path is the one of the current request, not "/"
+   +/
    @safe static Cookie create(string name, string value, string path = string.init, string domain = string.init, bool secure = false, bool httpOnly = false)
    {
       Cookie c = create(name, value, SysTime.init, path, domain, secure, httpOnly);
-      c.session = true;
+      c._session = true;
       return c;
    }
 
    @disable this();
 
-   string      name;       /// key
-   string      value;      /// Value
-   string      path;       ///
-   string      domain;     ///
 
-   SysTime     expire;     /// Expiration date. Ignored if cookie.session == true
+   /// Cookie name
+   @safe @nogc nothrow @property string name() const { return _name; }
 
-   bool        session     = true;  /// Is this a session cookie?
-   bool        secure      = false; /// Send only thru https
-   bool        httpOnly    = false; /// Not visible from JS
+   /// Cookie value
+   @safe @nogc nothrow @property string value() const { return _value; }
 
-   /// Invalidate cookie
-   @safe public void invalidate() { expire = SysTime(DateTime(1970,1,1,0,0,0)); }
+   /// Cookie path
+   @safe @nogc nothrow @property string path() const { return _path; }
+
+   /// Cookie domain
+   @safe @nogc nothrow @property string domain() const { return _domain; }
+
+   /** The cookie will be deleted after this time.
+   *  If session is true, expire will be not initialized
+   */
+   @safe @nogc nothrow @property SysTime expire() const { return _expire; }
+
+   /// if session is true, the cookie will be deleted when the browser is closed
+   @safe @nogc nothrow @property bool session() const { return _session; }
+
+   /// if secure is true, the cookie will be sent only thru https
+   @safe @nogc nothrow @property bool secure() const { return _secure; }
+
+   /// If httpOnly is true, the cookie will be accessible only by the web server.
+   @safe @nogc nothrow @property bool httpOnly() const { return _httpOnly; }
+
+   private:
+   string      _name;
+   string      _value;
+   string      _path;
+   string      _domain;
+
+   SysTime     _expire;
+
+   bool        _session     = true;
+   bool        _secure      = false;
+   bool        _httpOnly    = false;
+
+   /// Invalidate a cookie. It will be deleted from browser.
+   @safe public Cookie invalidate() { _session = false; _expire = SysTime(DateTime(1970,1,1,0,0,0)); return this; }
 }
 
 enum HttpVersion
@@ -912,15 +946,6 @@ struct Output
       setCookie(Cookie.create(name, value, path, domain, secure, httpOnly));
    }
 
-   /// Delete a cookie
-   @safe void deleteCookie(string name)
-   {
-      Cookie c = Cookie.init;
-      c.name = name;
-      c.invalidate();
-
-      setCookie(c);
-   }
 
    /// Output status
    @safe @nogc @property nothrow ushort status() 	{ return _internal._status; }
