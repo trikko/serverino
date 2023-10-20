@@ -119,7 +119,7 @@ struct Cookie
    bool        _secure      = false;
    bool        _httpOnly    = false;
 
-   /// Invalidate a cookie. It will be deleted from browser.
+   /// Invalidate a cookie. It will be deleted from browser passed again to the client with [Output.setCookie()]
    @safe public Cookie invalidate() { _session = false; _expire = SysTime(DateTime(1970,1,1,0,0,0)); return this; }
 }
 
