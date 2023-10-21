@@ -402,7 +402,7 @@ struct Request
       string name;         /// Form field name
 
       string contentType;  /// Content type
-      char[] data;         /// Data, if inlined (empty if isFile() == true)
+      char[] data;         /// Data, if inlined (empty if `isFile() == true`)
 
       string filename;     /// We have a file attached. Its name.
       string path;         /// If we have a file attached, here it is saved.
