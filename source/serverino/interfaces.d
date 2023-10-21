@@ -39,50 +39,57 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 import serverino.databuffer;
 import serverino.common;
 
-struct CookieRequest
+/++ A cookie. Use this(string name, string value) to create a cookie. You can chain methods.
++ ---
++ auto cookie = Cookie("name", "value").path("/").domain("example.com").secure().maxAge(1.days);
++ output.setCookie(cookie);
++ ---
++/
+struct Cookie
 {
+   /// Cookie SameSite flag
    enum SameSite
    {
-      Default = "Default",
-      Strict = "Strict",
-      Lax = "Lax",
-      None = "None"
+      NotSet = "NotSet",   /// SameSite flag will not be set.
+      Strict = "Strict",   /// Strict value. Cookie will be sent only if the request is from the same site.
+      Lax = "Lax",         /// Lax value. Cookie will be sent only if the request is from the same site, except for links from external sites.
+      None = "None"        /// None value. Cookie will be sent always. Secure flag will be set.
    }
-
-   private struct CookieRequestBuilder
-   {
-      @safe @nogc nothrow @property this(string name, string value) { cr._name = name; cr._value = value; }
-
-      @safe @nogc nothrow @property ref CookieRequestBuilder path(string path) scope return { cr._path = path; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder domain(string domain) scope return { cr._domain = domain; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder secure(bool secure = true) scope return { cr._secure = secure; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder httpOnly(bool httpOnly = true) scope return { cr._httpOnly = httpOnly; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder expire(SysTime expire) scope return { cr._maxAge = Duration.zero; cr._expire = expire; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder maxAge(Duration maxAge) scope return { cr._expire = SysTime.init; cr._maxAge = maxAge; return this; }
-      @safe @nogc nothrow @property ref CookieRequestBuilder sameSite(SameSite sameSite) scope return { cr._sameSite = sameSite; return this; }
-
-      @safe @nogc nothrow @property CookieRequest add()
-      {
-         cr._valid = true;
-         return cr;
-      }
-
-      @safe @nogc nothrow @property CookieRequest remove()
-      {
-         cr._value = string.init;
-         cr._expire = SysTime.init;
-         cr._maxAge = Duration.min;
-         cr._valid = true;
-         return cr;
-      }
-
-      private:
-      CookieRequest cr;
-   }
-
-   @safe @nogc nothrow @property static CookieRequestBuilder builder(string name, string value) { return CookieRequestBuilder(name, value); }
 
    @disable this();
+
+   /// Build a cookie with name and value
+   @safe @nogc nothrow this(string name, string value) { _name = name; _value = value; _valid = true; }
+
+   /// Set cookie path
+   @safe @nogc nothrow @property ref Cookie path(string path) scope return { _path = path; return this; }
+
+   /// Set cookie domain
+   @safe @nogc nothrow @property ref Cookie domain(string domain) scope return { _domain = domain; return this; }
+
+   /// Set cookie secure flag. This cookie will be sent only thru https.
+   @safe @nogc nothrow @property ref Cookie secure(bool secure = true) scope return { _secure = secure; return this; }
+
+   /// Set cookie httpOnly flag. This cookie will not be accessible from javascript.
+   @safe @nogc nothrow @property ref Cookie httpOnly(bool httpOnly = true) scope return { _httpOnly = httpOnly; return this; }
+
+   /// Set cookie expire time. It overrides maxAge.
+   @safe @nogc nothrow @property ref Cookie expire(SysTime expire) scope return { _maxAge = Duration.zero; _expire = expire; return this; }
+
+   /// Set cookie max age. It overrides expire.
+   @safe @nogc nothrow @property ref Cookie maxAge(Duration maxAge) scope return { _expire = SysTime.init; _maxAge = maxAge; return this; }
+
+   /// Set cookie SameSite flag
+   @safe @nogc nothrow @property ref Cookie sameSite(SameSite sameSite) scope return { _sameSite = sameSite; return this; }
+
+   /// Invalidate cookie. It will be deleted from browser on output.setCookie() request.
+   @safe @nogc nothrow @property ref Cookie invalidate() scope return
+   {
+      _value = string.init;
+      _expire = SysTime.init;
+      _maxAge = Duration.min;
+      return this;
+   }
 
    private:
 
@@ -94,7 +101,7 @@ struct CookieRequest
    bool     _httpOnly   = false;
    SysTime  _expire     = SysTime.init;
    Duration _maxAge     = Duration.zero;
-   SameSite _sameSite   = SameSite.Default;
+   SameSite _sameSite   = SameSite.NotSet;
 
    bool _valid = false;
 }
@@ -861,7 +868,7 @@ struct Output
          buffer.append(format("content-type: text/html;charset=utf-8\r\n"));
 
       // If required, I add headers to write cookies
-      foreach(CookieRequest c;_internal._cookies)
+      foreach(Cookie c;_internal._cookies)
       {
          buffer.append(format("set-cookie: %s=%s", encodeComponent(c._name), encodeComponent(c._value)));
 
@@ -888,9 +895,9 @@ struct Output
          if (!c._path.length == 0) buffer.append(format("; path=%s", c._path.encodeComponent()));
          if (!c._domain.length == 0) buffer.append(format("; domain=%s", c._domain.encodeComponent()));
 
-         if (c._sameSite != CookieRequest.SameSite.Default)
+         if (c._sameSite != Cookie.SameSite.NotSet)
          {
-            if (c._sameSite == CookieRequest.SameSite.None) c._secure = true;
+            if (c._sameSite == Cookie.SameSite.None) c._secure = true;
             buffer.append(format("; SameSite=%s", c._sameSite.to!string));
          }
 
@@ -906,12 +913,12 @@ struct Output
       buffer.clear();
    }
 
-   @safe void addCookieRequest(CookieRequest c)
+   @safe void setCookie(Cookie c)
    {
       _internal._dirty = true;
 
       if (!c._valid)
-         throw new Exception("Invalid cookie. Please use CookieRequest.builder() to create a valid cookie.");
+         throw new Exception("Invalid cookie. Please use Cookie(name, value) to create a valid cookie.");
 
       if (_internal._headersSent)
          throw new Exception("Can't set cookies. Too late. Headers just sent.");
@@ -997,7 +1004,7 @@ struct Output
 
    package struct OutputImpl
    {
-      CookieRequest[] _cookies;
+      Cookie[]        _cookies;
       KeyValue[]  	 _headers;
       bool            _keepAlive;
       string          _httpVersion;

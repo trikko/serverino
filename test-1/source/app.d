@@ -37,36 +37,47 @@ mixin ServerinoTest!tagged;
 @endpoint @priority(15000) @route!"/set cookies"
 void cookie_test(Request r, Output o)
 {
-   o.addCookieRequest(
-      CookieRequest.builder("test1", "value")
+   o.setCookie(
+      Cookie("test1", "value")
       .domain("cookie.localhost")
       .path("/")
       .secure(false)
       .httpOnly(false)
-      .sameSite(CookieRequest.SameSite.Lax)
-      .add()
+      .sameSite(Cookie.SameSite.Lax)
    );
 
-   o.addCookieRequest(
-      CookieRequest.builder("test2", "value")
+   o.setCookie(
+      Cookie("test2", "value")
       .secure(false)
-      .sameSite(CookieRequest.SameSite.None)
-      .add()
+      .sameSite(Cookie.SameSite.None)
    );
 
-   o.addCookieRequest(
-      CookieRequest.builder("test3", "value")
+   o.setCookie(
+      Cookie("test3", "value")
       .maxAge(10.seconds)
       .secure(false)
-      .add()
    );
 
-   o.addCookieRequest(
-      CookieRequest.builder("test4", "value")
+   o.setCookie(
+      Cookie("test4", "value")
       .httpOnly()
       .secure(true)
-      .add()
    );
+
+   o.setCookie(
+      Cookie("test5", "value")
+      .domain("cookie.localhost")
+      .path("/")
+      .secure(false)
+      .httpOnly(false)
+      .sameSite(Cookie.SameSite.Lax)
+      .invalidate()
+   );
+
+   Cookie c = Cookie.init;
+   c.secure();
+
+   assertThrown(o.setCookie(c));
 
 }
 
@@ -488,6 +499,7 @@ Content-Type: application/json\r
       assert(cookies.canFind("test2=value; SameSite=None; Secure"));
       assert(cookies.canFind("test3=value; Max-Age=10"));
       assert(cookies.canFind("test4=value; Secure; HttpOnly"));
+      assert(cookies.canFind("test5=; Max-Age=-1; path=%2F; domain=cookie.localhost; SameSite=Lax"));
    }
 
 }
