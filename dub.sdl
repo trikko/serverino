@@ -14,3 +14,4 @@ subPackage "./init-exec"
 subPackage "./test-1"
 
 dependency ":init-exec" version="*"
+x:ddoxTool "scod"
