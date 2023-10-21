@@ -23,6 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/// Configuration module for serverino.
 module serverino.config;
 
 import std.experimental.logger : LogLevel;
@@ -33,15 +34,23 @@ import std.traits : ReturnType;
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
 
-public enum endpoint;         /// UDA. Attach @endpoint to functions worker should call
-public enum onDaemonStart;    /// UDA. Called when daemon is ready. Please notice, it is running on main thread
-public enum onDaemonStop;     /// UDA. Called when daemon exit.
+public enum endpoint;         /// UDA. Functions with @endpoint attached are called when a request is received
+public enum onDaemonStart;    /// UDA. Called when daemon start. Running in main thread, not in worker.
+public enum onDaemonStop;     /// UDA. Called when daemon exit. Running in main thread, not in worker.
 public enum onWorkerStart;    /// UDA. Functions with @onWorkerStart attached are called when worker is started
 public enum onWorkerStop;     /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
-public enum onServerInit;     /// UDA. SeeAlso:ServerinoConfig
+public enum onServerInit;     /// UDA. Used to setup serverino. Must return a ServerinoConfig struct. See `ServerinoConfig` struct.
 
 import serverino.interfaces : Request;
 
+/++ UDA. You can use to filter requests using a function `bool(Request request) { }`
++ Example:
++ ---
++ @endpoint
++ @route!(x => x.uri.startsWith("/api"))
++ void api(Request r, Output o) { ... }
++ ---
++/
 public struct route(alias T)
 {
    static bool apply(const Request r) { return T(r); }
@@ -56,6 +65,14 @@ private template compareUri(string _uri)
    };
 }
 
+/++ UDA. You can use to filter requests using a uri.
++ Example:
++ ---
++ @endpoint
++ @route!"/hello.html"
++ void api(Request r, Output o) { ... }
++ ---
++/
 public alias route(string uri) = route!(r => compareUri!uri(r));
 
 /++
@@ -65,8 +82,11 @@ public alias route(string uri) = route!(r => compareUri!uri(r));
 @onServerInit
 auto configure()
 {
-   auto config = ServerinoConfig.create();
-   config.setWorkers(5);
+   // You can chain methods
+   ServerinoConfig config =
+      ServerinoConfig.create()
+      .setWorkers(5)
+      .enableKeepAlive();
 
    return config;
 }
@@ -124,16 +144,19 @@ struct ServerinoConfig
    /// Same as setMaxWorkers(v); setMinWorkers(v);
    @safe ref ServerinoConfig setWorkers(size_t val) return { setMinWorkers(val); setMaxWorkers(val); return this; }
 
-   ///
+   /// Max time a worker can live. After this time, worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 6.dur!"hours") return  { workerConfig.maxWorkerLifetime = dur; return this; }
-   ///
+
+   /// Max time a worker can be idle. After this time, worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.dur!"hours") return  { workerConfig.maxWorkerIdling = dur; return this; }
-   ///
+
+   /// Max number of pending connections
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
 
-   ///
+   /// Max time a request can take. After this time, worker is terminated.
    @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.dur!"seconds") return  { workerConfig.maxRequestTime = dur; return this; }
-   ///
+
+   /// Max size of a request. If a request is bigger than this value, error 413 is returned.
    @safe ref ServerinoConfig setMaxRequestSize(size_t bytes = 1024*1024*10) return     { daemonConfig.maxRequestSize = bytes;  return this;}
 
    version(Windows) { }
@@ -150,11 +173,17 @@ struct ServerinoConfig
 
    /// Enable/Disable keep-alive for http/1.1
    @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.dur!"seconds") return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
+
+   /// Ditto
    @safe ref ServerinoConfig enableKeepAlive(Duration timeout) return { enableKeepAlive(true, timeout); return this; }
+
+   /// Ditto
    @safe ref ServerinoConfig disableKeepAlive() return { enableKeepAlive(false); return this; }
 
    /// Add a x-remote-ip header
    @safe ref ServerinoConfig enableRemoteIp(bool enable = true) return { daemonConfig.withRemoteIp = enable; return this; }
+
+   ///
    @safe ref ServerinoConfig disableRemoteIp() return { return enableRemoteIp(false); }
 
    /// Add a new listener.
@@ -169,12 +198,12 @@ struct ServerinoConfig
       return this;
    }
 
-   ///
+   /// Protocol used by listener
    enum ListenerProtocol
    {
-      IPV4,
-      IPV6,
-      BOTH
+      IPV4, /// Listen on IPV4
+      IPV6, /// Listen on IPV6
+      BOTH  /// Listen on both IPV4 and IPV6
    }
 
    package:

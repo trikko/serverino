@@ -23,9 +23,8 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/// Everything you need to communicate.
 module serverino.interfaces;
-
-
 
 import std.conv : to;
 import std.string : format, representation, indexOf, lastIndexOf, toLower, toStringz, strip;
@@ -39,7 +38,7 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 import serverino.databuffer;
 import serverino.common;
 
-/++ A cookie. Use `this(string name, string value)` to create a cookie. You can chain methods.
+/++ A cookie. Use `Cookie("key", "value")` to create a cookie. You can chain methods.
 + ---
 + auto cookie = Cookie("name", "value").path("/").domain("example.com").secure().maxAge(1.days);
 + output.setCookie(cookie);
@@ -106,13 +105,21 @@ struct Cookie
    bool _valid = false;
 }
 
+/// HTTP version used in request
 enum HttpVersion
 {
    HTTP10 = "HTTP/1.0",
    HTTP11 = "HTTP/1.1"
 }
 
-/// A request from user. Do not store ref to this struct anywhere.
+/++ A request from user. Do not store ref to this struct anywhere.
++ ---
++ void handler(Request request, Output output)
++ {
++    info("You asked for ", request.uri, " with method ", request.method, " and params ", request.get.data);
++ }
++ ---
++/
 struct Request
 {
    /// Print request data
@@ -196,20 +203,17 @@ struct Request
    /// HTTP methods
    public enum Method
 	{
-		Get, ///
-      Post, ///
-      Head, ///
-      Put, ///
-      Delete, ///
-      Connect, ///
-      Options, ///
-      Patch, ///
-      Trace, ///
-      Unknown = -1 ///
+		Get, /// GET
+      Post, /// POST
+      Head, /// HEAD
+      Put, /// PUT
+      Delete, /// DELETE
+      Connect, /// CONNECT
+      Options, /// OPTIONS
+      Patch, /// PATCH
+      Trace, /// TRACE
+      Unknown = -1 /// Unknown method
 	}
-
-   /// Raw data from request body
-   @safe @nogc @property nothrow public const(char[]) data() const  { return _internal._data; }
 
    /++ Params from query string
     + ---
@@ -220,16 +224,31 @@ struct Request
     +/
    @safe @nogc @property nothrow public auto get() const { return SafeAccess!string(_internal._get); }
 
-   /// Params from post if content-type is "application/x-www-form-urlencoded"
+   /++ Params from post if content-type is "application/x-www-form-urlencoded"
+   + ---
+   + request.post.has("name");
+   + request.post.read("name", "Anonymous") // returns "Anonymous" if name was not posted
+   + ---
+   +/
    @safe @nogc @property nothrow public auto post()  const { return SafeAccess!string(_internal._post); }
 
    /++
-    + Form data if content-type is "multipart/form-data"
-    + See_Also: Request.FormData
-    + Returns: a FormData struct
+    + The fields from a form. Only if content-type is "multipart/form-data".
     + ---
-    + auto form_data = request.form.read("my_field").data;
-    + ---
+    + FormData fd = request.form.read("form_id");
+    + if (fd.isFile)
+    + {
+    +   // We have a file attached
+    +   info("File name: ", fd.filename);
+    +   info("File path: ", fd.path);
+    + }
+    + else
+    + {
+    +   // We have data inlined
+    +   into("Content-Type: ", fd.contentType, " Size: ", fd.data.length, " bytes")
+    +   info("Data: ", fd.data);
+    + }
+    ---
     +/
    @safe @nogc @property nothrow public auto form() const { return SafeAccess!FormData(_internal._form); }
 
@@ -249,16 +268,16 @@ struct Request
    +/
    @safe @nogc @property nothrow public auto header() const { return SafeAccess!(string)(_internal._header); }
 
-   ///
+   /// Cookies received from user
    @safe @nogc @property nothrow public auto cookie() const { return SafeAccess!string(_internal._cookie); }
 
-   ///
+   /// The uri requested by user
    @safe @nogc @property nothrow public const(string) uri() const { return _internal._uri; }
 
    /// Which worker is processing this request?
    @safe @nogc @property nothrow public auto worker() const { return _internal._worker; }
 
-   ///
+   /// The host that received the request
    @safe @nogc @property nothrow public auto host() const { return _internal._host; }
 
    /// Use at your own risk! Raw data from user.
@@ -269,9 +288,6 @@ struct Request
 
    /// Basic http authentication password. Safe only if sent thru https!
    @safe @nogc @property nothrow public auto password() const { return _internal._password; }
-
-   /// Current sessionId, if set and valid.
-   @safe @nogc @property nothrow public auto sessionId() const { return _internal._sessionId; }
 
    /// The sequence of endpoints called so far
    @safe @nogc @property nothrow public auto route() const { return _internal._route; }
@@ -310,21 +326,21 @@ struct Request
    /// Every time you compile the app this value will change
    enum buildId = simpleNotSecureCompileTimeHash();
 
-	///
+	/// HTTP method
    @safe @property @nogc nothrow public Method method() const
 	{
 		switch(_internal._method)
 		{
-			case "GET": return Method.Get;
-			case "POST": return Method.Post;
-			case "HEAD": return Method.Head;
-			case "PUT": return Method.Put;
-			case "DELETE": return Method.Delete;
-         case "CONNECT": return Method.Connect;
-         case "OPTIONS": return Method.Options;
-         case "PATCH": return Method.Patch;
-         case "TRACE": return Method.Trace;
-         default: return Method.Unknown;
+			case "GET": return Method.Get; /// GET
+			case "POST": return Method.Post; /// POST
+			case "HEAD": return Method.Head; /// HEAD
+			case "PUT": return Method.Put; /// PUT
+			case "DELETE": return Method.Delete; /// DELETE
+         case "CONNECT": return Method.Connect; /// CONNECT
+         case "OPTIONS": return Method.Options; /// OPTIONS
+         case "PATCH": return Method.Patch; /// PATCH
+         case "TRACE": return Method.Trace; /// TRACE
+         default: return Method.Unknown; /// Unknown
 		}
 	}
 
@@ -337,8 +353,14 @@ struct Request
       InvalidRequest          ///
    }
 
-   /// Simple structure to access data from an associative array.
-   private struct SafeAccess(T)
+   /++ Simple structure to safely access data from an associative array.
+   + ---
+   + // request.cookie returns a SafeAccess!string
+   + // get a cookie named "user", default to "anonymous"
+   + auto user = request.cookie.read("user", "anonymous");
+   + ---
+   +/
+   struct SafeAccess(T)
    {
       public:
 
@@ -661,7 +683,6 @@ struct Request
       string _worker;
       string _user;
       string _password;
-      string _sessionId;
       size_t _uploadId;
 
       string _rawQueryString;
@@ -693,7 +714,6 @@ struct Request
          _host          = string.init;
          _user          = string.init;
          _password      = string.init;
-         _sessionId     = string.init;
          _httpVersion   = HttpVersion.HTTP10;
 
          _rawQueryString   = string.init;
@@ -712,7 +732,15 @@ struct Request
    package RequestImpl* _internal;
 }
 
-/// Your reply.
+/++ A response to user. Default content-type is "text/html".
++ ---
++ // Set status code to 404
++ output.status = 404
++
++ // Send a response. Same as: output.write("Sorry, page not found.");
++ output ~= "Sorry, page not found.";
++ ---
++/
 struct Output
 {
 
@@ -721,7 +749,12 @@ struct Output
    /// Override timeout for this request
    @safe void setTimeout(Duration max) {  _internal._timeout = max; }
 
-   /// You can add a http header. But you can't if body is already sent.
+   /++ You can add a http header. But you can't if body is already sent.
+   + ---
+   + // Set content-type to json, default is text/html
+   + output.addHeader("content-type", "application/json");
+   + ---
+   +/
 	@safe void addHeader(in string key, in string value)
    {
       _internal._dirty = true;
@@ -913,6 +946,9 @@ struct Output
       buffer.clear();
    }
 
+   /++ Add or edit a cookie. You can't if body is already sent.
+   + To delete a cookie, use cookie.invalidate() and then setCookie(cookie)
+   +/
    @safe void setCookie(Cookie c)
    {
       _internal._dirty = true;
@@ -927,10 +963,10 @@ struct Output
    }
 
 
-   /// Output status
+   /// Read status.
    @safe @nogc @property nothrow ushort status() 	{ return _internal._status; }
 
-   /// Set response status. Default is 200 (OK)
+   /// Set response status. 200 by default.
    @safe @property void status(ushort status)
    {
       _internal._dirty = true;
@@ -964,7 +1000,7 @@ struct Output
       _internal._sendBody = v;
    }
 
-   /// Write data
+   /// Write data to output. You can write as many times as you want.
    @safe void write(string data = string.init) { write(data.representation); }
 
    /// Ditto
@@ -1002,7 +1038,7 @@ struct Output
       }
    }
 
-   package struct OutputImpl
+   struct OutputImpl
    {
       Cookie[]        _cookies;
       KeyValue[]  	 _headers;
@@ -1036,6 +1072,6 @@ struct Output
       }
    }
 
-   package OutputImpl* _internal;
+   OutputImpl* _internal;
 }
 
