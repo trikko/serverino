@@ -24,10 +24,8 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 ```
 
 ## Documentation you need
+* [Serverino docs](https://trikko.github.io/serverino/) - Serverino reference, generated from code
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
-* [Request](https://serverino.dpldocs.info/serverino.interfaces.Request.html) - What user asked
-* [Output](https://serverino.dpldocs.info/serverino.interfaces.Output.html) - Your reply
-* [ServerinoConfig](https://serverino.dpldocs.info/serverino.config.ServerinoConfig.html) - Server configuration
 
 ## Defining more than one endpoint
 **Every function marked with ```@endpoint``` is called until one writes something to output**
