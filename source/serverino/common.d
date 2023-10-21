@@ -31,8 +31,8 @@ import std.stdio : File;
 alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 public static int SERVERINO_MAJOR = 0;
-public static int SERVERINO_MINOR = 4;
-public static int SERVERINO_REVISION = 8;
+public static int SERVERINO_MINOR = 5;
+public static int SERVERINO_REVISION = 0;
 
 
 version(Windows)
