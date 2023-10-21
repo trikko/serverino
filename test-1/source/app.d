@@ -34,6 +34,42 @@ import std;
 mixin ServerinoTest!tagged;
 
 
+@endpoint @priority(15000) @route!"/set cookies"
+void cookie_test(Request r, Output o)
+{
+   o.addCookieRequest(
+      CookieRequest.builder("test1", "value")
+      .domain("cookie.localhost")
+      .path("/")
+      .secure(false)
+      .httpOnly(false)
+      .sameSite(CookieRequest.SameSite.Lax)
+      .add()
+   );
+
+   o.addCookieRequest(
+      CookieRequest.builder("test2", "value")
+      .secure(false)
+      .sameSite(CookieRequest.SameSite.None)
+      .add()
+   );
+
+   o.addCookieRequest(
+      CookieRequest.builder("test3", "value")
+      .maxAge(10.seconds)
+      .secure(false)
+      .add()
+   );
+
+   o.addCookieRequest(
+      CookieRequest.builder("test4", "value")
+      .httpOnly()
+      .secure(true)
+      .add()
+   );
+
+}
+
 @endpoint @priority(15000) @route!"/test_content_type"
 void test_content_type(Request r, Output o)
 {
@@ -144,6 +180,8 @@ ServerinoConfig conf()
 
 void test()
 {
+
+
    {
       string content;
 
@@ -437,5 +475,19 @@ Content-Type: application/json\r
       assert(j["content-type"].str == "multipart/form-data");
    }
 
+   // Check cookies
+   {
+      string[] cookies;
+
+      auto http = HTTP("http://myuser@127.0.0.1:8080/set%20cookies");
+      http.onReceiveHeader((key, value) { if (key.toLower == "set-cookie") cookies ~= value.to!string; });
+      http.onReceive = (ubyte[] data) { return data.length; };
+      http.perform();
+
+      assert(cookies.canFind("test1=value; path=%2F; domain=cookie.localhost; SameSite=Lax"));
+      assert(cookies.canFind("test2=value; SameSite=None; Secure"));
+      assert(cookies.canFind("test3=value; Max-Age=10"));
+      assert(cookies.canFind("test4=value; Secure; HttpOnly"));
+   }
 
 }
