@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Module serverino.config</title>
+		<link rel="stylesheet" href="../css/style.min.css"/>
+		<script type="text/javascript" src="../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Module serverino.config</h1><p>Configuration module for serverino.
+</p>
+				<section></section>
+				<section>
+					<h2>Structs</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="priority" class="public" href="../serverino/config/priority.html">priority</a>
+								</code>
+							</td>
+							<td>UDA. Set @endpoint priority
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="route" class="public" href="../serverino/config/route.html">route</a>
+								</code>
+							</td>
+							<td>UDA. You can use to filter requests using a function <code class="lang-d"><span class="typ">bool</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">request</span><span class="pun">) { }</span></code>
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="ServerinoConfig" class="public" href="../serverino/config/ServerinoConfig.html">ServerinoConfig</a>
+								</code>
+							</td>
+							<td>Struct used to setup serverino.
+   You must return this struct from a function with @onServerInit UDA attached.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section>
+					<h2>Enums</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="endpoint" class="public" href="../serverino/config/endpoint.html">endpoint</a>
+								</code>
+							</td>
+							<td>UDA. Functions with @endpoint attached are called when a request is received
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onDaemonStart" class="public" href="../serverino/config/onDaemonStart.html">onDaemonStart</a>
+								</code>
+							</td>
+							<td>UDA. Called when daemon start. Running in main thread, not in worker.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onDaemonStop" class="public" href="../serverino/config/onDaemonStop.html">onDaemonStop</a>
+								</code>
+							</td>
+							<td>UDA. Called when daemon exit. Running in main thread, not in worker.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onServerInit" class="public" href="../serverino/config/onServerInit.html">onServerInit</a>
+								</code>
+							</td>
+							<td>UDA. Used to setup serverino. Must return a ServerinoConfig struct. See <code class="lang-d"><a href="../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a></code> struct.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onWorkerStart" class="public" href="../serverino/config/onWorkerStart.html">onWorkerStart</a>
+								</code>
+							</td>
+							<td>UDA.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onWorkerStop" class="public" href="../serverino/config/onWorkerStop.html">onWorkerStop</a>
+								</code>
+							</td>
+							<td>UDA. Functions with @onWorkerStop attached are called when worker is stopped
+</td>
+						</tr>
+					</table>
+				</section>
+				<section>
+					<h2>Aliases</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a id="route" class="public" href="../serverino/config/route.html">
+									<code>route</code>
+								</a>
+							</td>
+							<td>
+								<code class="prettyprint lang-d"><a href="../serverino/config/route.html"><span class="pln">route</span></a>!((r)=>compareUri!uri(r))</code>
+							</td>
+							<td>UDA. You can use to filter requests using a uri.
+</td>
+						</tr>
+					</table>
+				</section>
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

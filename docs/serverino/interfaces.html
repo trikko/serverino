@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Module serverino.interfaces</title>
+		<link rel="stylesheet" href="../css/style.min.css"/>
+		<script type="text/javascript" src="../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Module serverino.interfaces</h1><p>Everything you need to communicate.
+</p>
+				<section></section>
+				<section>
+					<h2>Structs</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="Cookie" class="public" href="../serverino/interfaces/Cookie.html">Cookie</a>
+								</code>
+							</td>
+							<td>A cookie. Use <code class="lang-d"><span class="typ">Cookie</span><span class="pun">(</span><span class="str">"key"</span><span class="pun">, </span><span class="str">"value"</span><span class="pun">)</span></code> to create a cookie. You can chain methods.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="Output" class="public" href="../serverino/interfaces/Output.html">Output</a>
+								</code>
+							</td>
+							<td>A response to user. Default content-type is "text/html".
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="Request" class="public" href="../serverino/interfaces/Request.html">Request</a>
+								</code>
+							</td>
+							<td>A request from user. Do not store ref to this struct anywhere.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section>
+					<h2>Enums</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="HttpVersion" class="public" href="../serverino/interfaces/HttpVersion.html">HttpVersion</a>
+								</code>
+							</td>
+							<td>HTTP version used in request
+</td>
+						</tr>
+					</table>
+				</section>
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

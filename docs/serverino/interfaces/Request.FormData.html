@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Request.FormData</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Request.FormData</h1><p>Data sent through multipart/form-data.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">FormData</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				
+				<section><h2>Fields</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.contentType.html" class="public"><code>contentType</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">string</span></code></td><td>Content type
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.data.html" class="public"><code>data</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">char</span><span class="pun">[]</span></code></td><td>Data, if inlined (empty if isFile() == true)
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.filename.html" class="public"><code>filename</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">string</span></code></td><td>We have a file attached. Its name.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.name.html" class="public"><code>name</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">string</span></code></td><td>Form field name
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.path.html" class="public"><code>path</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">string</span></code></td><td>If we have a file attached, here it is saved.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Properties</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.isFile.html" class="public property"><code>isFile</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span></code></td><td>Is it a file or is data inlined?
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

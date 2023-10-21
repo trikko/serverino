@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Function Request.form</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Function Request.form</h1><p>The fields from a form. Only if content-type is "multipart/form-data".
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(serverino.interfaces.Request.FormData) <span class="pln">form</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">pure nothrow @property @nogc @safe const</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><a href="../../serverino/interfaces/Request.FormData.html"><span class="typ">FormData</span></a><span class="pln"> fd </span><span class="pun">= </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">form<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"form_id"</span><span class="pun">);
+</span><span class="kwd">if </span><span class="pun">(</span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">isFile</span><span class="pun">)
+{
+  </span><span class="com">// We have a file attached
+  </span><span class="pln">info</span><span class="pun">(</span><span class="str">"File name: "</span><span class="pun">, </span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">filename</span><span class="pun">);
+  </span><span class="pln">info</span><span class="pun">(</span><span class="str">"File path: "</span><span class="pun">, </span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">path</span><span class="pun">);
+}
+</span><span class="kwd">else
+</span><span class="pun">{
+  </span><span class="com">// We have data inlined
+  </span><span class="pln">into</span><span class="pun">(</span><span class="str">"Content-Type: "</span><span class="pun">, </span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">contentType</span><span class="pun">, </span><span class="str">" Size: "</span><span class="pun">, </span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">, </span><span class="str">" bytes"</span><span class="pun">)
+  </span><span class="pln">info</span><span class="pun">(</span><span class="str">"Data: "</span><span class="pun">, </span><span class="pln">fd<wbr/></span><span class="pun">.</span><span class="pln">data</span><span class="pun">);
+}</span></code></pre>
+</section>
+
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

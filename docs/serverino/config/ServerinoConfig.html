@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct ServerinoConfig</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct ServerinoConfig</h1><p>Struct used to setup serverino.
+   You must return this struct from a function with @onServerInit UDA attached.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">ServerinoConfig</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="pun">@<a href="../../serverino/config/onServerInit.html"></span><span class="pln">onServerInit</span></a><span class="pln">
+</span><span class="kwd">auto </span><span class="pln">configure</span><span class="pun">()
+{
+   </span><span class="com">// You can chain methods
+   </span><span class="typ">ServerinoConfig </span><span class="pln">config </span><span class="pun">=
+      <a href="../../serverino/config/ServerinoConfig.create.html"></span><span class="typ">ServerinoConfig<wbr/></span><span class="pun">.</span><span class="pln">create</span></a><span class="pun">()
+      <wbr/>.</span><span class="pln">setWorkers</span><span class="pun">(</span><span class="lit">5</span><span class="pun">)
+      <wbr/>.</span><span class="pln">enableKeepAlive</span><span class="pun">();
+
+   </span><span class="kwd">return </span><span class="pln">config</span><span class="pun">;
+}</span></code></pre>
+</section>
+
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.addListener.html" class="public">
+									<code>addListener</code>
+								</a>
+								<span class="tableEntryAnnotation">(address, port)</span>
+							</td>
+							<td>Add a new listener.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.create.html" class="public">
+									<code>create</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Create a new instance of ServerinoConfig
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.disableKeepAlive.html" class="public">
+									<code>disableKeepAlive</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Enable/Disable keep-alive for http/1.1
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.disableRemoteIp.html" class="public">
+									<code>disableRemoteIp</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td></td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableKeepAlive.html" class="public">
+									<code>enableKeepAlive</code>
+								</a>
+								<span class="tableEntryAnnotation">(enable, timeout)</span>
+							</td>
+							<td>Enable/Disable keep-alive for http/1.1
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableRemoteIp.html" class="public">
+									<code>enableRemoteIp</code>
+								</a>
+								<span class="tableEntryAnnotation">(enable)</span>
+							</td>
+							<td>Add a x-remote-ip header
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setHttpTimeout.html" class="public">
+									<code>setHttpTimeout</code>
+								</a>
+								<span class="tableEntryAnnotation">(dur)</span>
+							</td>
+							<td>How long the socket will wait for a request after the connection?
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setListenerBacklog.html" class="public">
+									<code>setListenerBacklog</code>
+								</a>
+								<span class="tableEntryAnnotation">(val)</span>
+							</td>
+							<td>Max number of pending connections
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setLogLevel.html" class="public">
+									<code>setLogLevel</code>
+								</a>
+								<span class="tableEntryAnnotation">(level)</span>
+							</td>
+							<td>Min log level to display. Default == LogLevel.all
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxRequestSize.html" class="public">
+									<code>setMaxRequestSize</code>
+								</a>
+								<span class="tableEntryAnnotation">(bytes)</span>
+							</td>
+							<td>Max size of a request. If a request is bigger than this value, error 413 is returned.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxRequestTime.html" class="public">
+									<code>setMaxRequestTime</code>
+								</a>
+								<span class="tableEntryAnnotation">(dur)</span>
+							</td>
+							<td>Max time a request can take. After this time, worker is terminated.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxWorkerIdling.html" class="public">
+									<code>setMaxWorkerIdling</code>
+								</a>
+								<span class="tableEntryAnnotation">(dur)</span>
+							</td>
+							<td>Max time a worker can be idle. After this time, worker is terminated.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxWorkerLifetime.html" class="public">
+									<code>setMaxWorkerLifetime</code>
+								</a>
+								<span class="tableEntryAnnotation">(dur)</span>
+							</td>
+							<td>Max time a worker can live. After this time, worker is terminated.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxWorkers.html" class="public">
+									<code>setMaxWorkers</code>
+								</a>
+								<span class="tableEntryAnnotation">(val)</span>
+							</td>
+							<td>Max number of workers
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMinWorkers.html" class="public">
+									<code>setMinWorkers</code>
+								</a>
+								<span class="tableEntryAnnotation">(val)</span>
+							</td>
+							<td>Min number of workers
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setReturnCode.html" class="public">
+									<code>setReturnCode</code>
+								</a>
+								<span class="tableEntryAnnotation">(retCode)</span>
+							</td>
+							<td>Every value != 0 is used to terminate server immediatly.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setWorkerGroup.html" class="public">
+									<code>setWorkerGroup</code>
+								</a>
+								<span class="tableEntryAnnotation">(s)</span>
+							</td>
+							<td>For example: "www-data"
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setWorkers.html" class="public">
+									<code>setWorkers</code>
+								</a>
+								<span class="tableEntryAnnotation">(val)</span>
+							</td>
+							<td>Same as setMaxWorkers(v); setMinWorkers(v);
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.setWorkerUser.html" class="public">
+									<code>setWorkerUser</code>
+								</a>
+								<span class="tableEntryAnnotation">(s)</span>
+							</td>
+							<td>For example: "www-data"
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Enums</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.ListenerProtocol.html" class="public">
+									<code>ListenerProtocol</code>
+								</a>
+							</td>
+							<td>Protocol used by listener
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

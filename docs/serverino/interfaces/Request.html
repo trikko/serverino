@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Request</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Request</h1><p>A request from user. Do not store ref to this struct anywhere.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">Request</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="typ">void </span><span class="pln">handler</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">request</span><span class="pun">, <a href="../../serverino/interfaces/Output.html"></span><span class="typ">Output</span></a><span class="pln"> output</span><span class="pun">)
+{
+   </span><span class="pln">info</span><span class="pun">(</span><span class="str">"You asked for "</span><span class="pun">, </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">uri</span><span class="pun">, </span><span class="str">" with method "</span><span class="pun">, </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">method</span><span class="pun">, </span><span class="str">" and params "</span><span class="pun">, </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">get<wbr/></span><span class="pun">.</span><span class="pln">data</span><span class="pun">);
+}</span></code></pre>
+</section>
+
+				<section><h2>Properties</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.body.html" class="public property"><code>body</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">typecons<wbr/></span><span class="pun">.</span><span class="typ">Tuple</span>!(const(char)[],"data",string,"contentType")</code></td><td>Raw posted data
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.cookie.html" class="public property"><code>cookie</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Cookies received from user
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.form.html" class="public property"><code>form</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(serverino.interfaces.Request.FormData)</code></td><td>The fields from a form. Only if content-type is "multipart/form-data".
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.get.html" class="public property"><code>get</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Params from query string
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.header.html" class="public property"><code>header</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Http headers, always lowercase
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.host.html" class="public property"><code>host</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>The host that received the request
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.method.html" class="public property"><code>method</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.Method.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">Method</span></a></code></td><td>HTTP method
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.password.html" class="public property"><code>password</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>Basic http authentication password. Safe only if sent thru https!
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.post.html" class="public property"><code>post</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Params from post if content-type is "application/x-www-form-urlencoded"
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.requestLine.html" class="public property"><code>requestLine</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>Use at your own risk! Raw data from user.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.route.html" class="public property"><code>route</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">[]</span><span class="pun">)</span></code></td><td>The sequence of endpoints called so far
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.uri.html" class="public property"><code>uri</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>The uri requested by user
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.user.html" class="public property"><code>user</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>Basic http authentication user. Safe only if sent thru https!
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.worker.html" class="public property"><code>worker</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span></code></td><td>Which worker is processing this request?
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.dump.html" class="public">
+									<code>dump</code>
+								</a>
+								<span class="tableEntryAnnotation">(html)</span>
+							</td>
+							<td>Print request data
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.toString.html" class="public">
+									<code>toString</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Print request data
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Inner structs</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.FormData.html" class="public">
+									<code>FormData</code>
+								</a>
+							</td>
+							<td>Data sent through multipart/form-data.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccess.html" class="public">
+									<code>SafeAccess</code>
+								</a>
+							</td>
+							<td>Simple structure to safely access data from an associative array.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Enums</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.Method.html" class="public">
+									<code>Method</code>
+								</a>
+							</td>
+							<td>HTTP methods
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Cookie</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Cookie</h1><p>A cookie. Use <code class="lang-d"><span class="typ">Cookie</span><span class="pun">(</span><span class="str">"key"</span><span class="pun">, </span><span class="str">"value"</span><span class="pun">)</span></code> to create a cookie. You can chain methods.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">Cookie</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">cookie </span><span class="pun">= </span><span class="typ">Cookie</span><span class="pun">(</span><span class="str">"name"</span><span class="pun">, </span><span class="str">"value"</span><span class="pun">)<wbr/>.</span><span class="pln">path</span><span class="pun">(</span><span class="str">"/"</span><span class="pun">)<wbr/>.</span><span class="pln">domain</span><span class="pun">(</span><span class="str">"example.com"</span><span class="pun">)<wbr/>.</span><span class="pln">secure</span><span class="pun">()<wbr/>.</span><span class="pln">maxAge</span><span class="pun">(</span><span class="lit">1<wbr/></span><span class="pun">.</span><span class="pln">days</span><span class="pun">);
+</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">setCookie</span><span class="pun">(</span><span class="pln">cookie</span><span class="pun">);</span></code></pre>
+</section>
+
+				<section><h2>Constructors</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.this.html" class="public">
+									<code>this</code>
+								</a>
+								<span class="tableEntryAnnotation">(name, value)</span>
+							</td>
+							<td>Build a cookie with name and value
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Properties</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.domain.html" class="public property"><code>domain</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie domain
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.expire.html" class="public property"><code>expire</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie expire time. It overrides maxAge.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.httpOnly.html" class="public property"><code>httpOnly</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie httpOnly flag. This cookie will not be accessible from javascript.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.invalidate.html" class="public property"><code>invalidate</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Invalidate cookie. It will be deleted from browser on output.setCookie() request.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.maxAge.html" class="public property"><code>maxAge</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie max age. It overrides expire.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.path.html" class="public property"><code>path</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie path
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.sameSite.html" class="public property"><code>sameSite</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie SameSite flag
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.secure.html" class="public property"><code>secure</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Cookie.html"><span class="typ">Cookie</span></a></code></td><td>Set cookie secure flag. This cookie will be sent only thru https.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Enums</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Cookie.SameSite.html" class="public">
+									<code>SameSite</code>
+								</a>
+							</td>
+							<td>Cookie SameSite flag
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

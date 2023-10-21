@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Function Output.addHeader</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Function Output.addHeader</h1><p>You can add a http header. But you can't if body is already sent.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="typ">void</span> <span class="pln">addHeader</span>
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span> <span class="pln">key</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span> <span class="pln">value</span>
+				<br/>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="com">// Set content-type to json, default is text/html
+</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">addHeader</span><span class="pun">(</span><span class="str">"content-type"</span><span class="pun">, </span><span class="str">"application/json"</span><span class="pun">);</span></code></pre>
+</section>
+
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

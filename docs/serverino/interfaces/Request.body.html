@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Function Request.body</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Function Request.body</h1><p>Raw posted data
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">typecons<wbr/></span><span class="pun">.</span><span class="typ">Tuple</span>!(const(char)[],"data",string,"contentType") <span class="pln">body</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">pure nothrow @property @nogc @safe const</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">experimental<wbr/></span><span class="pun">.</span><span class="pln">logger</span><span class="pun">;
+</span><span class="pln">info</span><span class="pun">(</span><span class="str">"Content-Type: "</span><span class="pun">, </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">body<wbr/></span><span class="pun">.</span><span class="pln">contentType</span><span class="pun">, </span><span class="str">" Size: "</span><span class="pun">, </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">body<wbr/></span><span class="pun">.</span><span class="pln">data<wbr/></span><span class="pun">.</span><span class="pln">length</span><span class="pun">, </span><span class="str">" bytes"</span><span class="pun">);</span></code></pre>
+</section>
+
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

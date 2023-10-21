@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Request.SafeAccess</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Request.SafeAccess</h1><p>Simple structure to safely access data from an associative array.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">SafeAccess</span>(T)
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="com">// request.cookie returns a SafeAccess!string
+// get a cookie named "user", default to "anonymous"
+</span><span class="kwd">auto <a href="../../serverino/interfaces/Request.user.html"></span><span class="pln">user</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"user"</span><span class="pun">, </span><span class="str">"anonymous"</span><span class="pun">);</span></code></pre>
+</section>
+
+				<section><h2>Properties</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccess.data.html" class="public property"><code>data</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="kwd">auto</span></code></td><td>Return the underlying AA
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccess.has.html" class="public">
+									<code>has</code>
+								</a>
+								<span class="tableEntryAnnotation">(key)</span>
+							</td>
+							<td>Check if value exists
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccess.read.html" class="public">
+									<code>read</code>
+								</a>
+								<span class="tableEntryAnnotation">(key, defaultValue)</span>
+							</td>
+							<td>Read a value. Return defaultValue if k does not exist.
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

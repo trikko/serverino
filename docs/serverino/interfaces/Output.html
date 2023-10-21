@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Output</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Output</h1><p>A response to user. Default content-type is "text/html".
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">Output</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="com">// Set status code to 404
+</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">status </span><span class="pun">= </span><span class="lit">404
+
+</span><span class="com">// Send a response. Same as: output.write("Sorry, page not found.");
+</span><span class="pln">output </span><span class="pun">~= </span><span class="str">"Sorry, page not found."</span><span class="pun">;</span></code></pre>
+</section>
+
+				<section><h2>Properties</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.status.html" class="public property"><code>status</code></a><span class="tableEntryAnnotation">[get]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">ushort</span></code></td><td>Read status.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.status.html" class="public property"><code>status</code></a><span class="tableEntryAnnotation">[set]</span>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">ushort</span></code></td><td>Set response status. 200 by default.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.addHeader.html" class="public">
+									<code>addHeader</code>
+								</a>
+								<span class="tableEntryAnnotation">(key, value)</span>
+							</td>
+							<td>You can add a http header. But you can't if body is already sent.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.headersSent.html" class="public">
+									<code>headersSent</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Are headers already sent?
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.opAssign.html" class="public">
+									<code>opAssign</code>
+								</a>
+								<span class="tableEntryAnnotation">(v)</span>
+							</td>
+							<td>Mute/unmute output. You must set this before writing any data to output
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.opOpAssign.html" class="public">
+									<code>opOpAssign</code>
+								</a>
+								<span class="tableEntryAnnotation">(data)</span>
+							</td>
+							<td>Syntax sugar. Easier way to write output.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.sendHeaders.html" class="public">
+									<code>sendHeaders</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Force sending of headers. You can't add/edit headers after this.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.serveFile.html" class="public">
+									<code>serveFile</code>
+								</a>
+								<span class="tableEntryAnnotation">(path, guessMime)</span>
+							</td>
+							<td>You can reply with a file. Automagical mime-type detection.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.setCookie.html" class="public">
+									<code>setCookie</code>
+								</a>
+								<span class="tableEntryAnnotation">(c)</span>
+							</td>
+							<td>Add or edit a cookie. You can't if body is already sent.
+ To delete a cookie, use cookie.invalidate() and then setCookie(cookie)
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.setTimeout.html" class="public">
+									<code>setTimeout</code>
+								</a>
+								<span class="tableEntryAnnotation">(max)</span>
+							</td>
+							<td>Override timeout for this request
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Output.write.html" class="public">
+									<code>write</code>
+								</a>
+								<span class="tableEntryAnnotation">(data)</span>
+							</td>
+							<td>Write data to output. You can write as many times as you want.
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

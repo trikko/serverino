@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>route - multiple declarations</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>route - multiple declarations</h1>
+				<nav class="page-nav">
+					<ul>
+						<li>
+							<a href="#0">
+								Struct <code>route</code>
+							</a>
+						</li>
+						<li>
+							<a href="#1">
+								Alias <code>route</code>
+							</a>
+						</li>
+					</ul>
+				</nav><h2 id="0">Struct route</h2><p>UDA. You can use to filter requests using a function <code class="lang-d"><span class="typ">bool</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">request</span><span class="pun">) { }</span></code>
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">route</span>(alias T)
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				
+				<section><h3>Example</h3>
+<pre class="code"><code class="lang-d"><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln">
+</span><span class="pun">@</span><span class="pln">route</span><span class="pun">!(</span><span class="pln">x </span><span class="pun">=&gt; </span><span class="pln">x<wbr/></span><span class="pun">.</span><span class="pln">uri<wbr/></span><span class="pun">.</span><span class="pln">startsWith</span><span class="pun">(</span><span class="str">"/api"</span><span class="pun">))
+</span><span class="typ">void </span><span class="pln">api</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { ... }</span></code></pre>
+</section>
+<h2 id="1">Alias route</h2><p>UDA. You can use to filter requests using a uri.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">alias</span> <span class="pln">route</span>(<span class="typ">string</span> uri)
+				 <span class="pun">=</span> <a href="../../serverino/config/route.html"><span class="pln">route</span></a>!((r)=>compareUri!uri(r))<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				
+				<section><h3>Example</h3>
+<pre class="code"><code class="lang-d"><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln">
+</span><span class="pun">@<a href="../../serverino/config/route.html"></span><span class="pln">route</span></a><span class="pun">!</span><span class="str">"/hello.html"
+</span><span class="typ">void </span><span class="pln">api</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { ... }</span></code></pre>
+</section>
+
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Module serverino</title>
+		<link rel="stylesheet" href="./css/style.min.css"/>
+		<script type="text/javascript" src="./js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="./symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "./";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package selected">
+							<a href="./serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="./serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="./serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Module serverino</h1><p>Serverino is a small and ready-to-go http server, in D. It is multiplatform
+ and compiles with DMD, LDC and GDC.
+</p><section><p>The following example shows how to create a server that responds to all requests
+ with the request dump, in a few lines of code.
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">serverino</span><span class="pun">;
+</span><span class="kwd">mixin </span><span class="typ">ServerinoMain</span><span class="pun">;
+</span><span class="typ">void </span><span class="pln">hello</span><span class="pun">(</span><span class="kwd">const </span><span class="typ">Request </span><span class="pln">req</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">output</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="pln">req<wbr/></span><span class="pun">.</span><span class="pln">dump</span><span class="pun">(); }</span></code></pre>
+<p> <code class="lang-d"><a href="./serverino/interfaces/Request.html" title="serverino.interfaces.Request"><span class="typ">Request</span></a></code> is the request object received, and <code class="lang-d"><a href="./serverino/interfaces/Output.html" title="serverino.interfaces.Output"><span class="typ">Output</span></a></code> is the output you can write to.
+</p>
+
+<p> A more complete example is the following:
+</p>
+
+<pre class="code"><code class="lang-d"><span class="kwd">import </span><span class="pln">serverino</span><span class="pun">;
+</span><span class="kwd">mixin </span><span class="typ">ServerinoMain</span><span class="pun">;
+
+@</span><span class="pln">onServerInit </span><span class="typ">ServerinoConfig </span><span class="pln">setup</span><span class="pun">()
+{
+   </span><span class="typ">ServerinoConfig </span><span class="pln">sc </span><span class="pun">= </span><span class="typ">ServerinoConfig<wbr/></span><span class="pun">.</span><span class="pln">create</span><span class="pun">(); </span><span class="com">// Config with default params
+   </span><span class="pln">sc<wbr/></span><span class="pun">.</span><span class="pln">addListener</span><span class="pun">(</span><span class="str">"127.0.0.1"</span><span class="pun">, </span><span class="lit">8080</span><span class="pun">);
+   </span><span class="pln">sc<wbr/></span><span class="pun">.</span><span class="pln">setWorkers</span><span class="pun">(</span><span class="lit">2</span><span class="pun">);
+   </span><span class="com">// etc...
+
+   </span><span class="kwd">return </span><span class="pln">sc</span><span class="pun">;
+}
+
+@</span><span class="pln">endpoint
+</span><span class="typ">void </span><span class="pln">dump</span><span class="pun">(</span><span class="kwd">const </span><span class="typ">Request </span><span class="pln">req</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">output</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="pln">req<wbr/></span><span class="pun">.</span><span class="pln">dump</span><span class="pun">(); }
+
+@</span><span class="pln">endpoint </span><span class="pun">@</span><span class="pln">priority</span><span class="pun">(</span><span class="lit">1</span><span class="pun">)
+@</span><span class="pln">route</span><span class="pun">!</span><span class="str">"/hello"
+</span><span class="typ">void </span><span class="pln">hello</span><span class="pun">(</span><span class="kwd">const </span><span class="typ">Request </span><span class="pln">req</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">output</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="str">"Hello, world!"</span><span class="pun">; }</span></code></pre>
+
+<p> The function decorated with <code class="lang-d"><a href="./serverino/config/onServerInit.html" title="serverino.config.onServerInit"><span class="pln">onServerInit</span></a></code> is called when the server is initialized, and it is
+ used to configure the server. It must return a <code class="lang-d"><a href="./serverino/config/ServerinoConfig.html" title="serverino.config.ServerinoConfig"><span class="typ">ServerinoConfig</span></a></code> object.
+ In this example, the server is configured to listen on localhost:8080, with 2 workers.
+</p>
+
+<p> Every function decorated with <code class="lang-d"><a href="./serverino/config/endpoint.html" title="serverino.config.endpoint"><span class="pln">endpoint</span></a></code> is an endpoint. They are called in order of priority assigned with
+ <code class="lang-d"><a href="./serverino/config/priority.html" title="serverino.config.priority"><span class="pln">priority</span></a></code> (default is 0). The first endpoint that write something to the output is the one that will respond to the request.
+</p>
+
+<p> The <code class="lang-d"><a href="./serverino/config/route.html" title="serverino.config.route"><span class="pln">route</span></a></code> attribute can be used to filter the requests that are passed to the endpoint, using a uri or a <code class="lang-d"><span class="typ">bool </span><span class="kwd">delegate</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">)</span></code> argument.
+ In this example, only requests to <code class="lang-d"><span class="pun">/</span><span class="pln">hello</span></code> are passed to the <code class="lang-d"><span class="pln">hello</span></code> endpoint. The <code class="lang-d"><a href="./serverino/config/route.html" title="serverino.config.route"><span class="pln">route</span></a></code> attribute can be used multiple times to specify multiple routes also using a delegate.
+</p>
+</section>
+
+				<section></section>
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>
