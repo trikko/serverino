@@ -44,15 +44,16 @@ import serverino.interfaces : Request;
 
 public struct route(alias T)
 {
-    static bool apply(const Request r) { return T(r); }
+   static bool apply(const Request r) { return T(r); }
 }
 
 private template compareUri(string _uri)
 {
-    enum compareUri = (const Request r){
-        static assert(_uri[0] == '/', "Every route must begin with a '/'");
-        return r.uri == _uri;
-    };
+   import std.uri : encode;
+   enum compareUri = (const Request r){
+      static assert(_uri[0] == '/', "Every route must begin with a '/'");
+      return r.uri == _uri.encode();
+   };
 }
 
 public alias route(string uri) = route!(r => compareUri!uri(r));
