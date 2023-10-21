@@ -39,7 +39,7 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 import serverino.databuffer;
 import serverino.common;
 
-/++ A cookie. Use this(string name, string value) to create a cookie. You can chain methods.
+/++ A cookie. Use `this(string name, string value)` to create a cookie. You can chain methods.
 + ---
 + auto cookie = Cookie("name", "value").path("/").domain("example.com").secure().maxAge(1.days);
 + output.setCookie(cookie);
