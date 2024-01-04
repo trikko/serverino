@@ -518,6 +518,11 @@ struct Worker
                      return true;
                   }
 
+                  if (output._internal._sendBuffer.length >= 32*1024)
+                  {
+                     critical("If you are sending a big response, please use `serveFile` method. With keep-alive disabled, your response is truncated to 32KB.");
+                  }
+
                   return false;
 
                }
