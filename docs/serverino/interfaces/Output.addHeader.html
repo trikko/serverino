@@ -61,11 +61,32 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span> <span class="pln">value</span>
 				<br/>
 				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
+				<br/>
+				<br/>
+				<span class="typ">void</span> <span class="pln">addHeader</span>
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span> <span class="pln">key</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="pln">core<wbr/></span><span class="pun">.</span><span class="pln">time<wbr/></span><span class="pun">.</span><span class="typ">Duration</span><span class="pun">)</span> <span class="pln">dur</span>
+				<br/>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
+				<br/>
+				<br/>
+				<span class="typ">void</span> <span class="pln">addHeader</span>
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="typ">string</span><span class="pun">)</span> <span class="pln">key</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="kwd">in </span><span class="kwd">const</span><span class="pun">(</span><span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">datetime<wbr/></span><span class="pun">.</span><span class="pln">systime<wbr/></span><span class="pun">.</span><span class="typ">SysTime</span><span class="pun">)</span> <span class="pln">time</span>
+				<br/>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
 				<section><pre class="code"><code class="lang-d"><span class="com">// Set content-type to json, default is text/html
-</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">addHeader</span><span class="pun">(</span><span class="str">"content-type"</span><span class="pun">, </span><span class="str">"application/json"</span><span class="pun">);</span></code></pre>
+</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">addHeader</span><span class="pun">(</span><span class="str">"content-type"</span><span class="pun">, </span><span class="str">"application/json"</span><span class="pun">);
+</span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">addHeader</span><span class="pun">(</span><span class="str">"expire"</span><span class="pun">, </span><span class="lit">3<wbr/></span><span class="pun">.</span><span class="pln">days</span><span class="pun">);</span></code></pre>
 </section>
 
 				

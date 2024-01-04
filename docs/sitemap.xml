@@ -48,6 +48,8 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/HttpVersion.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.headersSent.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.opAssign.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.opOpAssign.html</loc></url>
