@@ -753,6 +753,7 @@ struct Output
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
+   + output.addHeader("expire", 3.days);
    + ---
    +/
 	@safe void addHeader(in string key, in string value)
@@ -764,6 +765,12 @@ struct Output
 
       _internal._headers ~= KeyValue(key.toLower, value);
    }
+
+   /// Ditto
+   @safe void addHeader(in string key, in Duration dur) { addHeader(key, Clock.currTime + dur); }
+
+   /// Ditto
+   @safe void addHeader(in string key, in SysTime time) { addHeader(key, toHTTPDate(time)); }
 
    /// You can reply with a file. Automagical mime-type detection.
    bool serveFile(const string path, bool guessMime = true)
@@ -912,17 +919,7 @@ struct Output
          }
          else if (c._expire != SysTime.init)
          {
-            string[] mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-            string[] dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-            SysTime gmt = c._expire.toUTC();
-
-            string data = format("%s, %s %s %s %s:%s:%s GMT",
-               dd[gmt.dayOfWeek], gmt.day, mm[gmt.month], gmt.year,
-               gmt.hour, gmt.minute, gmt.second
-            );
-
-            buffer.append(format("; Expires=%s", data));
+            buffer.append(format("; Expires=%s",  toHTTPDate(c._expire)));
          }
 
          if (!c._path.length == 0) buffer.append(format("; path=%s", c._path.encodeComponent()));
@@ -1036,6 +1033,18 @@ struct Output
          if (_internal._keepAlive && _internal._headersSent) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
          else _internal._sendBuffer.append(cast(const char[])data);
       }
+   }
+
+   @safe string toHTTPDate(SysTime t) {
+      string[] mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      string[] dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+      SysTime gmt = t.toUTC();
+
+      return format("%s, %s %s %s %s:%s:%s GMT",
+         dd[gmt.dayOfWeek], gmt.day, mm[gmt.month], gmt.year,
+         gmt.hour, gmt.minute, gmt.second
+      );
    }
 
    struct OutputImpl
