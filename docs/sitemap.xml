@@ -50,10 +50,8 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
-<url><loc>http://127.0.0.1/serverino/interfaces/Output.headersSent.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.opAssign.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.opOpAssign.html</loc></url>
-<url><loc>http://127.0.0.1/serverino/interfaces/Output.sendHeaders.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.serveFile.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.setCookie.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.setTimeout.html</loc></url>

@@ -100,17 +100,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(key, value)</span>
 							</td>
-							<td>You can add a http header. But you can't if body is already sent.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/interfaces/Output.headersSent.html" class="public">
-									<code>headersSent</code>
-								</a>
-								<span class="tableEntryAnnotation">()</span>
-							</td>
-							<td>Are headers already sent?
+							<td>Add a http header.
 </td>
 						</tr>
 						<tr>
@@ -120,7 +110,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(v)</span>
 							</td>
-							<td>Mute/unmute output. You must set this before writing any data to output
+							<td>Mute/unmute output. If false, serverino will not send any data to user.
 </td>
 						</tr>
 						<tr>
@@ -131,16 +121,6 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">(data)</span>
 							</td>
 							<td>Syntax sugar. Easier way to write output.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/interfaces/Output.sendHeaders.html" class="public">
-									<code>sendHeaders</code>
-								</a>
-								<span class="tableEntryAnnotation">()</span>
-							</td>
-							<td>Force sending of headers. You can't add/edit headers after this.
 </td>
 						</tr>
 						<tr>
@@ -160,7 +140,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(c)</span>
 							</td>
-							<td>Add or edit a cookie. You can't if body is already sent.
+							<td>Add or edit a cookie.
  To delete a cookie, use cookie.invalidate() and then setCookie(cookie)
 </td>
 						</tr>
