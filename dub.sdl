@@ -1,7 +1,7 @@
 name "serverino"
 description "Small and ready-to-go http server"
 authors "Andrea Fontana"
-copyright "Copyright © 2022-2023, Andrea Fontana"
+copyright "Copyright © 2023-2024, Andrea Fontana"
 license "MIT"
 
 configuration "lib" {

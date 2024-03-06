@@ -17,3 +17,4 @@ dub.selections*
 *.lst
 *.lib
 test-1/test-1
+init-exec/serverino_init-exec
