@@ -417,14 +417,6 @@ struct Daemon
                      r.write(cast(char[])buffer[bool.sizeof + size_t.sizeof..bytes]);
                   }
                   else r.write(cast(char[])buffer[0..bytes]);
-
-                  if (r.completed)
-                  {
-                     r.detachWorker();
-
-                     if (r.status != ConnectionHandler.State.KEEP_ALIVE)
-                        r.reset();
-                  }
                }
             }
 
@@ -453,11 +445,6 @@ struct Daemon
             if (updates > 0 && connectionHandler.socket !is null && ssWrite.isSet(connectionHandler.socket))
             {
                connectionHandler.write();
-
-               if (connectionHandler.completed)
-               {
-                  connectionHandler.detachWorker();
-               }
             }
          }
 

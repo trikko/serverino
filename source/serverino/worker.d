@@ -146,14 +146,14 @@ struct Worker
          {
             size_t[1] sz;
             bool[1] ka;
-            auto res = "HTTP/1.0 504 Gateway Timeout\r\n";
             output._internal.clear();
-            output.sendData(res);
+            output.status = 504;
+            output._internal.buildHeaders();
             ka[0] = false;
             processedStartedAt = CoarseTime.zero;
-            sz[0] = output._internal._sendBuffer.array.length;
+            sz[0] = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
 
-            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._sendBuffer.array);
+            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
          }
 
          channel.close();
@@ -248,10 +248,9 @@ struct Worker
          processedStartedAt = CoarseTime.currTime;
          ka[0] = parseHttpRequest!Modules(config, data.array);
          processedStartedAt = CoarseTime.zero;
-         sz[0] = output._internal._sendBuffer.array.length;
-
+         sz[0] = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
          if (cas(&justSent, false, true))
-            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._sendBuffer.array);
+            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~  output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
       }
 
 
@@ -259,6 +258,12 @@ struct Worker
 
    bool parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
    {
+
+      scope(exit) {
+         output._internal.buildHeaders();
+         if (!output._internal._sendBody)
+            output._internal._sendBuffer.clear();
+      }
 
       import std.utf : UTFException;
 
@@ -363,7 +368,6 @@ struct Worker
                output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
                output._internal._sendBody = false;
                output.status = 400;
-               output.sendHeaders();
                return false;
             }
 
@@ -419,7 +423,7 @@ struct Worker
                debug warning("HTTP Request with absolute uri");
                output.status = 400;
                output._internal._sendBody = false;
-               output.sendHeaders();
+               //output.sendHeaders();
                return false;
             }
 
@@ -473,7 +477,6 @@ struct Worker
             {
                output.status = 400;
                output._internal._sendBody = false;
-               output.sendHeaders();
                return false;
             }
 
@@ -481,13 +484,6 @@ struct Worker
                config.keepAlive &&
                output._internal._httpVersion == HttpVersion.HTTP11 &&
                sicmp(request.header.read("connection", "keep-alive").strip, "keep-alive") == 0;
-
-
-            if (output._internal._keepAlive)
-            {
-               if (output._internal._sendBody) output._internal._headers ~= Output.KeyValue("transfer-encoding", "chunked");
-               else output._internal._headers ~= Output.KeyValue("content-length", "0");
-            }
 
             version(debugRequest) log("-- REQ: ", request.uri);
             version(debugRequest) log("-- PARSING STATUS: ", request._internal._parsingStatus);
@@ -503,27 +499,13 @@ struct Worker
                {
                   callHandlers!Modules(request, output);
 
-                  if (!output._internal._dirty && !output.headersSent)
+                  if (!output._internal._dirty)
                   {
                      output.status = 404;
                      output._internal._sendBody = false;
                   }
 
-                  if (!output._internal._headersSent)
-                     output.sendHeaders();
-
-                  if (output._internal._keepAlive)
-                  {
-                     output.sendData!true([]);
-                     return true;
-                  }
-
-                  if (output._internal._sendBuffer.length >= 32*1024)
-                  {
-                     critical("If you are sending a big response, please use `serveFile` method. With keep-alive disabled, your response is truncated to 32KB.");
-                  }
-
-                  return false;
+                  return (output._internal._keepAlive);
 
                }
 
@@ -533,20 +515,8 @@ struct Worker
                   critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg));
                   critical(format("-------\n%s",e.info));
 
-                  if (!output.headersSent)
-                  {
-                     output.status = 500;
-                     output.sendHeaders();
-
-                     if (output._internal._keepAlive)
-                     {
-                        output.sendData([]);
-                        return true;
-                     }
-
-                     return false;
-                  }
-
+                  output.status = 500;
+                  return (output._internal._keepAlive);
                }
 
                // Even worse.
@@ -561,22 +531,11 @@ struct Worker
             }
             else
             {
-               if (!output.headersSent)
-               {
-                  if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
-                  else output.status = 400;
+               if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
+               else output.status = 400;
 
-                  output._internal._sendBody = false;
-                  output.sendHeaders();
-
-                  if (output._internal._keepAlive)
-                  {
-                     output.sendData([]);
-                     return true;
-                  }
-
-                  return false;
-               }
+               output._internal._sendBody = false;
+               return (output._internal._keepAlive);
 
                debug warning("Parsing error:", request._internal._parsingStatus);
             }
@@ -585,23 +544,15 @@ struct Worker
       }
       catch(UTFException e)
       {
-         if (!output.headersSent)
-         {
-            output.status = 400;
-            output._internal._sendBody = false;
-            output.sendHeaders();
-         }
+         output.status = 400;
+         output._internal._sendBody = false;
 
          debug warning("UTFException: ", e.toString);
       }
       catch(Exception e) {
 
-         if (!output.headersSent)
-         {
-            output.status = 500;
-            output._internal._sendBody = false;
-            output.sendHeaders();
-         }
+         output.status = 500;
+         output._internal._sendBody = false;
 
          debug critical("Unhandled exception: ", e.toString);
       }

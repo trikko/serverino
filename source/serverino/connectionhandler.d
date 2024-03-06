@@ -225,10 +225,15 @@ package class ConnectionHandler
          {
             bufferSent = 0;
             sendBuffer.clear();
-
-            if (!isKeepAlive)
-                  reset();
          }
+      }
+
+      if (completed())
+      {
+         detachWorker();
+
+         if (status != ConnectionHandler.State.KEEP_ALIVE)
+            reset();
       }
    }
 
@@ -258,11 +263,14 @@ package class ConnectionHandler
          {
             responseSent += sent;
             if (sent < data.length) sendBuffer.append(data[sent..data.length]);
-            else
-            {
-               if (!isKeepAlive)
-                  reset();
-            }
+         }
+
+         if (completed())
+         {
+            detachWorker();
+
+            if (status != ConnectionHandler.State.KEEP_ALIVE)
+               reset();
          }
       }
       else
@@ -453,7 +461,14 @@ package class ConnectionHandler
                      char[] value = cast(char[])row[headerColon+1..$].strip;
 
                      if (key == "expect" && value.toLower == "100-continue") request.expect100 = true;
-                     else if (key == "connection") request.connection = cast(ProtoRequest.Connection)value.toLower;
+                     else if (key == "connection")
+                     {
+                        import std.uni: sicmp;
+
+                        if (sicmp(value, "keep-alive") == 0) request.connection = ProtoRequest.Connection.KeepAlive;
+                        else if (sicmp(value, "close") == 0) request.connection = ProtoRequest.Connection.Close;
+                        else request.connection = ProtoRequest.connection.Unknown;
+                     }
                      else
                      try { if (key == "content-length") request.contentLength = value.to!size_t; }
                      catch (Exception e) { request.isValid = false; return (char[]).init; }

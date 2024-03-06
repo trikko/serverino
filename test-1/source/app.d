@@ -33,6 +33,21 @@ import std;
 
 mixin ServerinoTest!tagged;
 
+@endpoint @priority(15000) @route!"/big-data"
+void big_data(Request r, Output o)
+{
+   iota(64_000).each!(i => o ~= "Hello World!");
+}
+
+@endpoint @priority(15000) @route!"/headers-editing"
+void headers_editing(Request r, Output o)
+{
+   o.status = 500;
+   o ~= "Hello World!";
+   o.addHeader("Content-Type", "text/plain");
+   o.status = 200;
+   o = false;
+}
 
 @endpoint @priority(15000) @route!"/set cookies"
 void cookie_test(Request r, Output o)
@@ -502,4 +517,32 @@ Content-Type: application/json\r
       assert(cookies.canFind("test5=; Max-Age=-1; path=%2F; domain=cookie.localhost; SameSite=Lax"));
    }
 
+   // Headers editing
+   {
+      string content;
+
+      auto http = HTTP("http://127.0.0.1:8080/headers-editing");
+      http.onReceiveHeader((key, value) {
+         if (key.toLower == "content-type") assert(value == "text/plain");
+         if (key.toLower == "content-length") assert(value == "0");
+      });
+
+      http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+      http.perform();
+
+      assert(content.length == 0);
+      assert(http.statusLine.code == 200);
+   }
+
+   // Big
+   {
+      string content;
+
+      auto http = HTTP("http://127.0.0.1:8080/big-data");
+      http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+      http.perform();
+
+      assert(content.length == "Hello World!".length * 64_000);
+      assert(http.statusLine.code == 200);
+   }
 }

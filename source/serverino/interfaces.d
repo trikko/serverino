@@ -749,7 +749,7 @@ struct Output
    /// Override timeout for this request
    @safe void setTimeout(Duration max) {  _internal._timeout = max; }
 
-   /++ You can add a http header. But you can't if body is already sent.
+   /++ Add a http header.
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
@@ -759,10 +759,6 @@ struct Output
 	@safe void addHeader(in string key, in string value)
    {
       _internal._dirty = true;
-
-      if (_internal._headersSent)
-         throw new Exception("Can't add/edit headers. Too late. Just sent.");
-
       _internal._headers ~= KeyValue(key.toLower, value);
    }
 
@@ -786,9 +782,6 @@ struct Output
          warning("Trying to serve `", baseName(path) ,"`, but it doesn't exists.");
          return false;
       }
-
-      if (_internal._headersSent)
-         throw new Exception("Can't add/edit headers. Too late. Just sent.");
 
       size_t fs = path.getSize().to!size_t;
 
@@ -843,107 +836,13 @@ struct Output
          return false;
       }
 
-      sendHeaders();
+      //sendHeaders();
       sendData(bytesRead);
       return true;
     }
 
 
-	/// Force sending of headers. You can't add/edit headers after this.
-	@safe void sendHeaders()
-   {
-     _internal._dirty = true;
-
-      if (_internal._headersSent)
-         throw new Exception("Can't resend headers. Too late. Just sent.");
-
-      import std.uri : encodeComponent;
-      import std.array : appender;
-
-      static DataBuffer!char buffer;
-      buffer.reserve(1024, true);
-      buffer.clear();
-
-      immutable string[short] StatusCode =
-      [
-         200: "OK", 201 : "Created", 202 : "Accepted", 203 : "Non-Authoritative Information", 204 : "No Content", 205 : "Reset Content", 206 : "Partial Content",
-
-         300 : "Multiple Choices", 301 : "Moved Permanently", 302 : "Found", 303 : "See Other", 304 : "Not Modified", 305 : "Use Proxy", 307 : "Temporary Redirect",
-
-         400 : "Bad Request", 401 : "Unauthorized", 402 : "Payment Required", 403 : "Forbidden", 404 : "Not Found", 405 : "Method Not Allowed",
-         406 : "Not Acceptable", 407 : "Proxy Authentication Required", 408 : "Request Timeout", 409 : "Conflict", 410 : "Gone",
-         411 : "Lenght Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
-         416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content",
-
-         500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
-      ];
-
-      string statusDescription;
-
-      auto item = _internal._status in StatusCode;
-      if (item != null) statusDescription = *item;
-      else statusDescription = "Unknown";
-
-      bool has_content_type = false;
-      buffer.append(format("%s %s %s\r\n", _internal._httpVersion, status, statusDescription));
-
-      if (!_internal._keepAlive) buffer.append("connection: close\r\n");
-      else buffer.append("connection: keep-alive\r\n");
-
-      // send user-defined headers
-      foreach(const ref header;_internal._headers)
-      {
-         if (!_internal._sendBody && (header.key == "content-length" || header.key == "transfer-encoding"))
-            continue;
-
-         buffer.append(format("%s: %s\r\n", header.key, header.value));
-         if (header.key == "content-type") has_content_type = true;
-      }
-
-      if (!_internal._sendBody)
-          buffer.append(format("content-length: 0\r\n"));
-
-      // Default content-type is text/html if not defined by user
-      if (!has_content_type && _internal._sendBody)
-         buffer.append(format("content-type: text/html;charset=utf-8\r\n"));
-
-      // If required, I add headers to write cookies
-      foreach(Cookie c;_internal._cookies)
-      {
-         buffer.append(format("set-cookie: %s=%s", encodeComponent(c._name), encodeComponent(c._value)));
-
-         if (c._maxAge != Duration.zero)
-         {
-            if (c._maxAge.isNegative) buffer.append("; Max-Age=-1");
-            else buffer.append(format("; Max-Age=%s", c._maxAge.total!"seconds"));
-         }
-         else if (c._expire != SysTime.init)
-         {
-            buffer.append(format("; Expires=%s",  toHTTPDate(c._expire)));
-         }
-
-         if (!c._path.length == 0) buffer.append(format("; path=%s", c._path.encodeComponent()));
-         if (!c._domain.length == 0) buffer.append(format("; domain=%s", c._domain.encodeComponent()));
-
-         if (c._sameSite != Cookie.SameSite.NotSet)
-         {
-            if (c._sameSite == Cookie.SameSite.None) c._secure = true;
-            buffer.append(format("; SameSite=%s", c._sameSite.to!string));
-         }
-
-         if (c._secure) buffer.append(format("; Secure"));
-         if (c._httpOnly) buffer.append(format("; HttpOnly"));
-
-         buffer.append("\r\n");
-      }
-
-      buffer.append("\r\n");
-      sendData(buffer.array);
-      _internal._headersSent = true;
-      buffer.clear();
-   }
-
-   /++ Add or edit a cookie. You can't if body is already sent.
+   /++ Add or edit a cookie.
    + To delete a cookie, use cookie.invalidate() and then setCookie(cookie)
    +/
    @safe void setCookie(Cookie c)
@@ -952,9 +851,6 @@ struct Output
 
       if (!c._valid)
          throw new Exception("Invalid cookie. Please use Cookie(name, value) to create a valid cookie.");
-
-      if (_internal._headersSent)
-         throw new Exception("Can't set cookies. Too late. Headers just sent.");
 
      _internal._cookies ~= c;
    }
@@ -967,10 +863,6 @@ struct Output
    @safe @property void status(ushort status)
    {
       _internal._dirty = true;
-
-      if (_internal._headersSent)
-         throw new Exception("Can't set status. Too late. Just sent.");
-
      _internal._status = status;
    }
 
@@ -984,16 +876,13 @@ struct Output
 	void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
 
    /**
-   * Mute/unmute output. You must set this before writing any data to output
+   * Mute/unmute output. If false, serverino will not send any data to user.
    * --------------------
    * output = false; // Mute the output.
    * output ~= "Hello world"; // Serverino will not send this to user.
    * --------------------
    */
    void opAssign(in bool v) {
-      if (_internal._headersSent)
-         throw new Exception("Can't change output mode. Too late. Just sent.");
-
       _internal._sendBody = v;
    }
 
@@ -1004,15 +893,8 @@ struct Output
    @safe void write(in void[] data)
    {
       _internal._dirty = true;
-
-      if (!_internal._headersSent)
-         sendHeaders();
-
       sendData(data);
    }
-
-   /// Are headers already sent?
-   @safe @nogc nothrow bool headersSent() { return _internal._headersSent; }
 
    struct KeyValue
 	{
@@ -1027,15 +909,10 @@ struct Output
    @safe void sendData(bool force = false)(const void[] data)
    {
       _internal._dirty = true;
-
-      if ((force || data.length > 0) && (_internal._sendBody || !_internal._headersSent))
-      {
-         if (_internal._keepAlive && _internal._headersSent) _internal._sendBuffer.append(format("%X\r\n%s\r\n", data.length, cast(const char[])data));
-         else _internal._sendBuffer.append(cast(const char[])data);
-      }
+      _internal._sendBuffer.append(cast(const char[])data);
    }
 
-   @safe string toHTTPDate(SysTime t) {
+   @safe static string toHTTPDate(SysTime t) {
       string[] mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
       string[] dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -1054,15 +931,106 @@ struct Output
       bool            _keepAlive;
       string          _httpVersion;
       ushort          _status;
-      bool			    _headersSent;
       Duration        _timeout;
       bool            _dirty;
       size_t          _requestId;
       DataBuffer!char _sendBuffer;
+      DataBuffer!char _headersBuffer;
       string          _buffer;
       Socket          _channel;
       bool            _flushed;
       bool            _sendBody;
+
+
+      @safe void buildHeaders()
+      {
+         import std.uri : encodeComponent;
+         import std.array : appender;
+
+         _headersBuffer.reserve(1024, true);
+         _headersBuffer.clear();
+
+         immutable string[short] StatusCode =
+         [
+            200: "OK", 201 : "Created", 202 : "Accepted", 203 : "Non-Authoritative Information", 204 : "No Content", 205 : "Reset Content", 206 : "Partial Content",
+
+            300 : "Multiple Choices", 301 : "Moved Permanently", 302 : "Found", 303 : "See Other", 304 : "Not Modified", 305 : "Use Proxy", 307 : "Temporary Redirect",
+
+            400 : "Bad Request", 401 : "Unauthorized", 402 : "Payment Required", 403 : "Forbidden", 404 : "Not Found", 405 : "Method Not Allowed",
+            406 : "Not Acceptable", 407 : "Proxy Authentication Required", 408 : "Request Timeout", 409 : "Conflict", 410 : "Gone",
+            411 : "Lenght Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
+            416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content",
+
+            500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
+         ];
+
+         string statusDescription;
+
+         auto item = _status in StatusCode;
+         if (item != null) statusDescription = *item;
+         else statusDescription = "Unknown";
+
+         bool has_content_type = false;
+         _headersBuffer.append(format("%s %s %s\r\n", _httpVersion, _status, statusDescription));
+
+         if (!_keepAlive) _headersBuffer.append("connection: close\r\n");
+         else _headersBuffer.append("connection: keep-alive\r\n");
+
+         // send user-defined headers
+         foreach(const ref header;_headers)
+         {
+            if (!_sendBody && (header.key == "content-length" || header.key == "transfer-encoding"))
+               continue;
+
+            _headersBuffer.append(format("%s: %s\r\n", header.key, header.value));
+            if (header.key == "content-type") has_content_type = true;
+         }
+
+         if (!_sendBody)
+            _headersBuffer.append(format("content-length: 0\r\n"));
+         else
+         {
+            _headersBuffer.append("content-length: ");
+            _headersBuffer.append(_sendBuffer.length.to!string);
+            _headersBuffer.append("\r\n");
+         }
+
+         // Default content-type is text/html if not defined by user
+         if (!has_content_type && _sendBody)
+            _headersBuffer.append(format("content-type: text/html;charset=utf-8\r\n"));
+
+         // If required, I add headers to write cookies
+         foreach(Cookie c;_cookies)
+         {
+            _headersBuffer.append(format("set-cookie: %s=%s", encodeComponent(c._name), encodeComponent(c._value)));
+
+            if (c._maxAge != Duration.zero)
+            {
+               if (c._maxAge.isNegative) _headersBuffer.append("; Max-Age=-1");
+               else _headersBuffer.append(format("; Max-Age=%s", c._maxAge.total!"seconds"));
+            }
+            else if (c._expire != SysTime.init)
+            {
+               _headersBuffer.append(format("; Expires=%s",  Output.toHTTPDate(c._expire)));
+            }
+
+            if (!c._path.length == 0) _headersBuffer.append(format("; path=%s", c._path.encodeComponent()));
+            if (!c._domain.length == 0) _headersBuffer.append(format("; domain=%s", c._domain.encodeComponent()));
+
+            if (c._sameSite != Cookie.SameSite.NotSet)
+            {
+               if (c._sameSite == Cookie.SameSite.None) c._secure = true;
+               _headersBuffer.append(format("; SameSite=%s", c._sameSite.to!string));
+            }
+
+            if (c._secure) _headersBuffer.append(format("; Secure"));
+            if (c._httpOnly) _headersBuffer.append(format("; HttpOnly"));
+
+            _headersBuffer.append("\r\n");
+         }
+
+         _headersBuffer.append("\r\n");
+      }
 
       void clear()
       {
@@ -1071,11 +1039,11 @@ struct Output
          _httpVersion = HttpVersion.HTTP10;
          _dirty = false;
          _status = 200;
-         _headersSent = false;
          _cookies = null;
          _headers = null;
          _keepAlive = false;
          _flushed = false;
+         _headersBuffer.clear();
          _sendBuffer.clear();
          _sendBody = true;
       }
