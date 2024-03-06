@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/priority
+priority.so
+priority.dylib
+priority.dll
+priority.a
+priority.lib
+priority-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
