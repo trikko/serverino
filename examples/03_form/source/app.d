@@ -8,14 +8,16 @@ import serverino;
 
 mixin ServerinoMain;
 
-// Optional. This is used to config serverino.
+// Optional. If you want to configure custom options, you can use this function.
 // See: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
 @onServerInit ServerinoConfig configure()
 {
 	return ServerinoConfig
 		.create()
 		.addListener("0.0.0.0", 8080)
-		.setWorkers(4);
+		.setMaxRequestTime(1.seconds)
+		.setMaxRequestSize(1024*1024); // 1 MB
+		// Many other options are available. Check the docs.
 }
 
 

@@ -11,16 +11,6 @@ import parserino;
 
 mixin ServerinoMain;
 
-// Optional. This is used to config serverino.
-// See: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
-@onServerInit ServerinoConfig configure()
-{
-	return ServerinoConfig
-		.create()
-		.addListener("0.0.0.0", 8080)
-		.setWorkers(4);
-}
-
 
 @endpoint
 void example(Request request, Output output)
