@@ -34,6 +34,7 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 
 ## Documentation you need
 * [Serverino docs](https://trikko.github.io/serverino/) - Serverino reference, generated from code
+* [Examples](https://github.com/trikko/serverino/tree/master/examples) - Some ready-to-try examples
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
 
 ## Defining more than one endpoint
