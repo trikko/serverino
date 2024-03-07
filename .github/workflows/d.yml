@@ -34,3 +34,9 @@ jobs:
 
       - name: Run tests
         run: dub run serverino:test-1
+
+      - name: Build examples
+        run: dub build --root=examples/01_hello_world/
+              && dub build --root=examples/02_priority/
+              && dub build --root=examples/03_form/
+              && dub build --root=examples/04_html_dom/
