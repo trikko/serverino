@@ -1,13 +1,23 @@
-###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
+<p align="center">
+    <picture>
+      <img src="https://github.com/trikko/serverino/assets/647157/a6f462fa-8b76-43c3-9855-0671e704aa6c" height="128">
+    </picture>
+    <h1 align="center">serverino &middot; <a href="https://github.com/trikko/serverino/actions/workflows/d.yml"><img src="https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg" alt="BUILD &amp; TEST" style="max-width: 100%;"></a> <a href="https://paypal.me/andreafontana/5" rel="nofollow"><img src="https://camo.githubusercontent.com/cf3676b83230f6252e02c8bb9a707eb163872978c52a99389ad0b164c240e8e2/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f70617970616c2d6275795f6d655f615f626565722d4646454630303f6c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465" alt="Donate" data-canonical-src="https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&amp;logoColor=white" style="max-width: 100%;"></a></h1>
+</p> 
+<h6>
+<p align="center">
+<a href="#quickstart">quickstart</a> – <a href="#a-simple-webserver-in-just-three-lines">minimal example</a> – <a href="https://github.com/trikko/serverino/wiki/">wiki</a> - <a href="#documentation-you-need">docs</a> – <a href="#shielding-the-whole-thing">shielding serverino using proxy</a>
+</p>
+</h6>
 
-# serverino [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml) [![Donate](https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&logoColor=white)](https://paypal.me/andreafontana/5)
+
+
 * Ready-to-go http server
 * Cross-platform (Linux/Windows/MacOS)
 * Multi-process
 * Dynamic number of workers
 * Zero dependencies
 * Build & start your project in a few seconds
-
 
 ## Quickstart
 ```
