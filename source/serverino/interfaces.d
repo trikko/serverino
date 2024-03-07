@@ -358,6 +358,10 @@ struct Request
    + // request.cookie returns a SafeAccess!string
    + // get a cookie named "user", default to "anonymous"
    + auto user = request.cookie.read("user", "anonymous");
+   +
+   + // Access the underlying AA
+   + auto data = request.cookie.data;
+   + foreach(k,v; data) info(k, " => ", v);
    + ---
    +/
    struct SafeAccess(T)
