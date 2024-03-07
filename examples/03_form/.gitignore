@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/form
+form.so
+form.dylib
+form.dll
+form.a
+form.lib
+form-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

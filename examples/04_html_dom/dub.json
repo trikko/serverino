@@ -3,8 +3,9 @@
 		"Andrea Fontana"
 	],
 	"dependencies": {
-		"serverino": { "path": "../../" }
+		"serverino":  { "path": "../../" },
+		"parserino": "~>0.2.5"
 	},
 	"license": "proprietary",
-	"name": "hello_world"
+	"name": "html_dom"
 }

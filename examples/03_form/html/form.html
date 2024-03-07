@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example Form</title>
+    <style>
+        body {
+            background-color: #eff1ec;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #254c6b;
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"] {
+            width: auto;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        input[type="radio"] {
+            margin-right: 10px;
+        }
+        button[type="submit"] {
+
+            background-color: #254c6b;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 15px auto;
+            text-transform: uppercase;
+        }
+        fieldset {
+            border-radius: 5px;
+            position: relative;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        fieldset h1 {
+            position: absolute;
+            top: 0;
+            font-size: 18px;
+            line-height: 1;
+            margin: -9px 0 0; /* metà della dimensione del font */
+            background: #fff;
+            padding: 0 3px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Example Form</h1>
+        <form action="/form_action" method="post">
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name">
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name">
+            <fieldset>
+                <legend>Favorite Color:</legend>
+                <label><input type="radio" name="color" value="red"> Red</label>
+                <label><input type="radio" name="color" value="blue"> Blue</label>
+                <label><input type="radio" name="color" value="yellow"> Yellow</label>
+                <label><input type="radio" name="color" value="other"> Other</label>
+            </fieldset>
+            <button type="submit">SEND</button>
+        </form>
+    </div>
+</body>
+</html>
