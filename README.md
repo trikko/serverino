@@ -6,10 +6,9 @@
 </p> 
 <h6>
 <p align="center">
-<a href="#quickstart">quickstart</a> – <a href="#a-simple-webserver-in-just-three-lines">minimal example</a> – <a href="https://github.com/trikko/serverino/wiki/">wiki</a> - <a href="#documentation-you-need">docs</a> – <a href="#shielding-the-whole-thing">shielding serverino</a>
+<a href="#quickstart">quickstart</a> – <a href="#a-simple-webserver-in-just-three-lines">minimal example</a> – <a href="https://github.com/trikko/serverino/tree/master/examples">more examples</a> - <a href="https://github.com/trikko/serverino/wiki/">wiki</a> - <a href="#documentation-you-need">docs</a> – <a href="#shielding-the-whole-thing">shielding serverino</a>
 </p>
 </h6>
-
 
 
 * Ready-to-go http server
