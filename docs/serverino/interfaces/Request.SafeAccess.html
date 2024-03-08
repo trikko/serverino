@@ -60,7 +60,11 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				</div>
 				<section><pre class="code"><code class="lang-d"><span class="com">// request.cookie returns a SafeAccess!string
 // get a cookie named "user", default to "anonymous"
-</span><span class="kwd">auto <a href="../../serverino/interfaces/Request.user.html"></span><span class="pln">user</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"user"</span><span class="pun">, </span><span class="str">"anonymous"</span><span class="pun">);</span></code></pre>
+</span><span class="kwd">auto <a href="../../serverino/interfaces/Request.user.html"></span><span class="pln">user</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"user"</span><span class="pun">, </span><span class="str">"anonymous"</span><span class="pun">);
+
+</span><span class="com">// Access the underlying AA
+</span><span class="kwd">auto <a href="../../serverino/interfaces/Request.SafeAccess.data.html"></span><span class="pln">data</span></a><span class="pln"> </span><span class="pun">= </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">data</span><span class="pun">;
+</span><span class="kwd">foreach</span><span class="pun">(</span><span class="pln">k</span><span class="pun">,</span><span class="pln">v</span><span class="pun">; <a href="../../serverino/interfaces/Request.SafeAccess.data.html"></span><span class="pln">data</span></a><span class="pun">) </span><span class="pln">info</span><span class="pun">(</span><span class="pln">k</span><span class="pun">, </span><span class="str">" =&gt; "</span><span class="pun">, </span><span class="pln">v</span><span class="pun">);</span></code></pre>
 </section>
 
 				<section><h2>Properties</h2>

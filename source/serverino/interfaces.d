@@ -767,16 +767,15 @@ struct Output
    {
       string k = key.toLower;
 
-      if (["content-length", "status", "transfer-encoding"].canFind(k))
+      debug if (["content-length", "status", "transfer-encoding"].canFind(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
+         return;
       }
-      else
-      {
-         _internal._dirty = true;
-         _internal._headers ~= KeyValue(key.toLower, value);
-      }
+
+      _internal._dirty = true;
+      _internal._headers ~= KeyValue(key.toLower, value);
    }
 
    /// Ditto
