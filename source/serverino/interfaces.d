@@ -37,6 +37,7 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 
 import serverino.databuffer;
 import serverino.common;
+import core.stdc.ctype;
 
 /++ A cookie. Use `Cookie("key", "value")` to create a cookie. You can chain methods.
 + ---
@@ -753,7 +754,9 @@ struct Output
    /// Override timeout for this request
    @safe void setTimeout(Duration max) {  _internal._timeout = max; }
 
-   /++ Add a http header.
+   /++
+   + Add a http header.
+   + You can't set `content-length`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
@@ -762,8 +765,18 @@ struct Output
    +/
 	@safe void addHeader(in string key, in string value)
    {
-      _internal._dirty = true;
-      _internal._headers ~= KeyValue(key.toLower, value);
+      string k = key.toLower;
+
+      if (["content-length", "status", "transfer-encoding"].canFind(k))
+      {
+         warning("You can't set `", key, "` header. It's managed by serverino internally.");
+         if (k == "status") warning("Use `output.status = XXX` instead.");
+      }
+      else
+      {
+         _internal._dirty = true;
+         _internal._headers ~= KeyValue(key.toLower, value);
+      }
    }
 
    /// Ditto
