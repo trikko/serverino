@@ -391,7 +391,7 @@ package class ConnectionHandler
 
                   auto firstLine = request.data.indexOf("\r\n");
 
-                  if (firstLine < 14)
+                  if (firstLine < 18)
                   {
                      request.isValid = false;
                      socket.send("HTTP/1.0 400 Bad Request\r\n");
@@ -438,6 +438,15 @@ package class ConnectionHandler
                      request.isValid = false;
                      socket.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Malformed request line.");
+                     reset();
+                     return;
+                  }
+
+                  if (request.path[0] != '/')
+                  {
+                     request.isValid = false;
+                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     debug warning("Bad Request. Absolute uri?");
                      reset();
                      return;
                   }

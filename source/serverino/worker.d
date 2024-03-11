@@ -306,13 +306,6 @@ struct Worker
 
             requestLine = headersLines.front;
 
-            if (requestLine.length < 14)
-            {
-               debug warning("HTTP request line too short: ", requestLine);
-               valid = false;
-            }
-
-            else
             {
                auto fields = requestLine.splitter(" ");
                size_t popped = 0;
@@ -338,25 +331,7 @@ struct Worker
                   popped++;
                }
 
-               if (popped != 3 || !fields.empty)
-               {
-                  debug warning("HTTP request invalid: ", requestLine);
-                  valid = false;
-               }
-
-               else if (path.startsWith("http://") || path.startsWith("https://"))
-               {
-                  debug warning("Can't use absolute uri");
-                  valid = false;
-               }
-
-               else if (httpVersion != "HTTP/1.1" && httpVersion != "HTTP/1.0")
-               {
-                  debug warning("HTTP request bad http version: ", httpVersion);
-                  valid = false;
-               }
-
-               else if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
+               if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
                {
                   debug warning("HTTP method unknown: ", method);
                   valid = false;
@@ -378,7 +353,7 @@ struct Worker
                auto firstColon = l.indexOf(':');
                if (firstColon > 0)
 
-               switch(l[0..firstColon].toLower)
+               switch(l[0..firstColon])
                {
                   case "content-length":
                      contentLength = l[firstColon+1..$].strip.to!size_t;
@@ -416,16 +391,6 @@ struct Worker
             request._internal._rawRequestLine = requestLine.to!string;
 
             output._internal._httpVersion = request._internal._httpVersion;
-
-            if (!path.startsWith("/"))
-            {
-               debug warning("HTTP Request with absolute uri");
-               output.status = 400;
-               output._internal._sendBody = false;
-               //output.sendHeaders();
-               return false;
-            }
-
 
             bool insidePath = true;
             size_t pathLen = 0;
