@@ -433,7 +433,7 @@ struct Request
          {
             auto first = h.indexOf(":");
             if (first < 0) continue;
-            _header[h[0..first].toLower] = h[first+1..$].strip;
+            _header[h[0..first]] = h[first+1..$];
          }
 
          _worker = myPID;
