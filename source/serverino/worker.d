@@ -407,7 +407,6 @@ struct Worker
          version(debugRequest) log("-- PARSING DATA");
 
          {
-            import std.regex : ctRegex, matchFirst;
             import std.algorithm : max;
             import std.uni : sicmp;
 
@@ -427,8 +426,46 @@ struct Worker
                return false;
             }
 
-            auto uriRegex = ctRegex!(`^(/([^?#]*))(\?([^#]*))?(#(.*))?`, "g");
-            auto matches = path.to!string.matchFirst(uriRegex);
+
+            bool insidePath = true;
+            size_t pathLen = 0;
+            size_t queryStart = 0;
+            size_t queryLen = 0;
+
+            foreach(i, const x; path)
+            {
+               if (insidePath)
+               {
+                  if (x == '?')
+                  {
+                     pathLen = i;
+                     queryStart = i+1;
+                     insidePath = false;
+                  }
+                  else if (x == '#')
+                  {
+                     pathLen = i;
+                     break;
+                  }
+               }
+               else
+               {
+                  // Should not happen!
+                  if (x == '#')
+                  {
+                     queryLen = i;
+                     break;
+                  }
+               }
+            }
+
+            if (pathLen == 0)
+            {
+               pathLen = path.length;
+               queryStart = path.length;
+               queryLen = path.length;
+            }
+            else if (queryLen == 0) queryLen = path.length;
 
             // Just to prevent uri attack like
             // GET /../../non_public_file
@@ -465,8 +502,8 @@ struct Worker
                   else return "/" ~ norm;
             }
 
-            request._internal._uri            = normalize(matches[1]);
-            request._internal._rawQueryString = matches[4];
+            request._internal._uri            = normalize(cast(string)path[0..pathLen]);
+            request._internal._rawQueryString = cast(string)path[queryStart..queryLen];
             request._internal._method         = method.to!string;
 
             output._internal._sendBody = (!["CONNECT", "HEAD", "TRACE"].assumeSorted.contains(request._internal._method));
