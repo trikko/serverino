@@ -33,6 +33,14 @@ import std;
 
 mixin ServerinoTest!tagged;
 
+@endpoint @priority(15000) @route!"/servefile"
+void serve_file(Request r, Output o)
+{
+   import std.file : write;
+   write("test_serverino_file.json", `{"test":1}`);
+   o.serveFile("test_serverino_file.json");
+}
+
 @endpoint @priority(15000) @route!"/big-data"
 void big_data(Request r, Output o)
 {
@@ -544,5 +552,31 @@ Content-Type: application/json\r
 
       assert(content.length == "Hello World!".length * 64_000);
       assert(http.statusLine.code == 200);
+   }
+
+   // ServeFile
+   {
+      import std.stdio : remove;
+
+      bool hasContentType = false;
+
+      auto http = HTTP("http://localhost:8080/servefile");
+      http.onReceiveHeader((key, value)
+      {
+         if (key.toLower == "content-type")
+         {
+            hasContentType = true;
+            assert(value == "application/json");
+         }
+      });
+
+      http.onReceive = (ubyte[] data) { return data.length; };
+
+      http.perform();
+
+      assert(hasContentType == true);
+
+      remove("test_serverino_file.json");
+
    }
 }
