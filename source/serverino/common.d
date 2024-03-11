@@ -35,6 +35,12 @@ public static int SERVERINO_MINOR = 6;
 public static int SERVERINO_REVISION = 1;
 
 
+package struct WorkerPayload
+{
+	bool isKeepAlive = false;
+	size_t contentLength = 0;
+}
+
 version(Windows)
 {
 	import core.sys.windows.winsock2;

@@ -144,16 +144,16 @@ struct Worker
 
          if (cas(&justSent, false, true))
          {
-            size_t[1] sz;
-            bool[1] ka;
+            WorkerPayload wp;
+
             output._internal.clear();
             output.status = 504;
             output._internal.buildHeaders();
-            ka[0] = false;
+            wp.isKeepAlive = false;
             processedStartedAt = CoarseTime.zero;
-            sz[0] = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
+            wp.contentLength = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
 
-            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~ output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
+            channel.send((cast(char*)&wp)[0..wp.sizeof] ~ output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
          }
 
          channel.close();
@@ -170,8 +170,6 @@ struct Worker
          request._internal.clear();
 
          ubyte[32*1024] buffer;
-         size_t[1] sz;
-         bool[1] ka;
 
          idlingAt = CoarseTime.currTime;
 
@@ -246,11 +244,14 @@ struct Worker
 
          requestId++;
          processedStartedAt = CoarseTime.currTime;
-         ka[0] = parseHttpRequest!Modules(config, data.array);
+
+         WorkerPayload wp;
+         wp.isKeepAlive = parseHttpRequest!Modules(config, data.array);
          processedStartedAt = CoarseTime.zero;
-         sz[0] = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
+         wp.contentLength = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
+
          if (cas(&justSent, false, true))
-            channel.send((cast(char*)ka.ptr)[0..bool.sizeof] ~ (cast(char*)sz.ptr)[0..size_t.sizeof] ~  output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
+            channel.send((cast(char*)&wp)[0..wp.sizeof] ~  output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
       }
 
 

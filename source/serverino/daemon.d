@@ -412,9 +412,11 @@ struct Daemon
                   }
                   if (r.responseLength == 0)
                   {
-                     r.isKeepAlive = *(cast(bool*)(buffer.ptr));
-                     r.setResponseLength(*(cast(size_t*)buffer[bool.sizeof..bool.sizeof + size_t.sizeof]));
-                     r.write(cast(char[])buffer[bool.sizeof + size_t.sizeof..bytes]);
+                     WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
+
+                     r.isKeepAlive = wp.isKeepAlive;
+                     r.setResponseLength(wp.contentLength);
+                     r.write(cast(char[])buffer[WorkerPayload.sizeof..bytes]);
                   }
                   else r.write(cast(char[])buffer[0..bytes]);
                }
