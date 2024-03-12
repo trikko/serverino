@@ -426,7 +426,7 @@ struct Daemon
 
 
 
-         foreach(idx; ConnectionHandler.alive.asRange.array)
+         foreach(idx; ConnectionHandler.alive.asRange)
          {
             auto connectionHandler = ConnectionHandler.instances[idx];
 
@@ -505,7 +505,7 @@ struct Daemon
          listener.socket.close();
       }
 
-      foreach(ref idx; workersAlive.array)
+      foreach(ref idx; workersAlive)
       {
          WorkerInfo w = WorkerInfo.instances[idx];
 
