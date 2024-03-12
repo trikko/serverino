@@ -775,7 +775,7 @@ struct Output
       }
 
       _internal._dirty = true;
-      _internal._headers ~= KeyValue(key, value);
+      _internal._headers ~= KeyValue(k, value);
    }
 
    /// Ditto
@@ -850,7 +850,7 @@ struct Output
                header = mimes[path.extension];
          }
 
-         addHeader("Content-Type", header);
+         addHeader("content-type", header);
       }
 
       ubyte[] buffer;
