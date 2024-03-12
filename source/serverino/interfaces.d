@@ -800,8 +800,7 @@ struct Output
       }
 
       size_t fs = path.getSize().to!size_t;
-
-      addHeader("Content-Length", fs.to!string);
+      _internal._headers ~= KeyValue("content-length", fs.to!string);
 
       if (!_internal._headers.canFind!(x=>x.key == "content-type"))
       {
