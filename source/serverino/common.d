@@ -259,8 +259,8 @@ package struct SimpleList
       return EOL;
    }
 
-   size_t length() { return count; }
-   bool empty() { return head == size_t.max; }
+   pragma(inline, true) size_t length() { return count; }
+   pragma(inline, true) bool empty() { return head == size_t.max; }
 
    private:
 
