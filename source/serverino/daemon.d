@@ -181,9 +181,9 @@ struct Daemon
    {
       import std.range : chain;
       return chain(
+         WorkerInfo.lookup[WorkerInfo.State.EXITING].asRange,
          WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange,
-         WorkerInfo.lookup[WorkerInfo.State.PROCESSING].asRange,
-         WorkerInfo.lookup[WorkerInfo.State.EXITING].asRange
+         WorkerInfo.lookup[WorkerInfo.State.PROCESSING].asRange
       );
    }
 
@@ -365,11 +365,21 @@ struct Daemon
          if (exitRequested)
             break;
 
-         auto wa = workersAlive.array;
-         foreach(idx; wa)
+         auto wa = workersAlive;
+         typeof(wa.front) nextIdx;
+
+         while(!wa.empty)
          {
             if (updates == 0)
                break;
+
+            auto idx = wa.front;
+            wa.popFront;
+
+            if (!wa.empty)
+               nextIdx = wa.front;
+
+            scope(exit) idx = nextIdx;
 
             WorkerInfo w = WorkerInfo.instances[idx];
             ConnectionHandler r = w.assignedConnectionHandler;
