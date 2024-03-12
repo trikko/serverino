@@ -312,8 +312,7 @@ package class ConnectionHandler
       uint len = 0;
       if(request.data.length == 0)
       {
-	      request.data.reserve(32*1024);
-		   request.data ~= (cast(char*)(&len))[0..uint.sizeof];
+	      request.data ~= (cast(char*)(&len))[0..uint.sizeof];
       }
 
       char[32*1024] buffer;
