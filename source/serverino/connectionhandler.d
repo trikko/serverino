@@ -32,7 +32,9 @@ import serverino.config : DaemonConfigPtr;
 import std.socket;
 
 
-import std.string : toLower, strip, join;
+import std.ascii : toLower;
+import std.string: join;
+import std.algorithm : strip;
 import std.conv : text, to;
 import std.format : format;
 import std.experimental.logger : log, info, warning;
@@ -465,8 +467,34 @@ package class ConnectionHandler
                         return (char[]).init;
                      }
 
-                     char[] key = cast(char[])row[0..headerColon].toLower.strip;
-                     char[] value = cast(char[])row[headerColon+1..$].strip;
+                     char[] key = cast(char[])row[0..headerColon].strip!(x =>x==' ' || x=='\t');
+                     char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
+
+                     foreach(idx, ref k; key)
+                     {
+                        if (k > 0xF9)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+                        else if (k >= 'A' && k <= 'Z')
+                          k |= 32;
+                     }
+
+                     foreach(idx, ref k; value)
+                     {
+                        if (k > 0xF9)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+                     }
+
+                     if (key.length == 0 || value.length == 0)
+                     {
+                        request.isValid = false;
+                        return (char[]).init;
+                     }
 
                      // 100-continue
                      if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
