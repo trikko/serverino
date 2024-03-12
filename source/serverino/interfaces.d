@@ -775,7 +775,7 @@ struct Output
       }
 
       _internal._dirty = true;
-      _internal._headers ~= KeyValue(key.toLower, value);
+      _internal._headers ~= KeyValue(key, value);
    }
 
    /// Ditto

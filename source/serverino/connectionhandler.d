@@ -469,7 +469,8 @@ package class ConnectionHandler
                      char[] key = cast(char[])row[0..headerColon].toLower.strip;
                      char[] value = cast(char[])row[headerColon+1..$].strip;
 
-                     if (key == "expect" && value.toLower == "100-continue") request.expect100 = true;
+                     // 100-continue
+                     if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
                      else if (key == "connection")
                      {
                         import std.uni: sicmp;
