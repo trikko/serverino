@@ -466,7 +466,31 @@ package class ConnectionHandler
                      char[] key = cast(char[])row[0..headerColon].strip!(x =>x==' ' || x=='\t');
                      char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
 
-                     key.fastAsciiToLowerCase();
+                     foreach(idx, ref k; key)
+                     {
+                        if (k > 0xF9)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+                        else if (k >= 'A' && k <= 'Z')
+                          k |= 32;
+                     }
+
+                     foreach(idx, ref k; value)
+                     {
+                        if (k > 0xF9)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+                     }
+
+                     if (key.length == 0 || value.length == 0)
+                     {
+                        request.isValid = false;
+                        return (char[]).init;
+                     }
 
                      // 100-continue
                      if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
@@ -608,26 +632,4 @@ package class ConnectionHandler
    static SimpleList          dead;
    ConnectionHandler.State    status;
    static ConnectionHandler[] instances;
-}
-
-
-pragma(inline, true) void fastAsciiToLowerCase(ref char[] s)
-{
-   static immutable ulong mask = 0x2020202020202020;
-   immutable size_t l = s.length;
-
-   char* raw = s.ptr;
-   size_t i = 0;
-
-   for (; i+8 < l; i+=8)
-   {
-      ulong *lng = cast(ulong*)(raw + i);
-      *lng |=  mask;
-   }
-
-   for (; i < l; i++)
-   {
-      *(raw+i) |= 0x20;
-   }
-
 }
