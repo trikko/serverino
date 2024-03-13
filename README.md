@@ -1,16 +1,9 @@
-<p align="center">
-    <picture>
-      <img src="https://github.com/trikko/serverino/assets/647157/a6f462fa-8b76-43c3-9855-0671e704aa6c" height="128">
-    </picture>
-    <h1 align="center">serverino &middot; <a href="https://github.com/trikko/serverino/actions/workflows/d.yml"><img src="https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg" alt="BUILD &amp; TEST" style="max-width: 100%;"></a> <a href="https://paypal.me/andreafontana/5" rel="nofollow"><img src="https://camo.githubusercontent.com/cf3676b83230f6252e02c8bb9a707eb163872978c52a99389ad0b164c240e8e2/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f70617970616c2d6275795f6d655f615f626565722d4646454630303f6c6f676f3d70617970616c266c6f676f436f6c6f723d7768697465" alt="Donate" data-canonical-src="https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&amp;logoColor=white" style="max-width: 100%;"></a></h1>
-</p> 
-<h6>
-<p align="center">
-<a href="#quickstart">quickstart</a> – <a href="#a-simple-webserver-in-just-three-lines">minimal example</a> – <a href="https://github.com/trikko/serverino/tree/master/examples">more examples</a> - <a href="https://github.com/trikko/serverino/wiki/">wiki</a> - <a href="#documentation-you-need">docs</a> – <a href="#shielding-the-whole-thing">shielding serverino</a>
-</p>
-</h6>
-
-
+serverino
+<img align="left" alt="Logo" width="100" src="https://github.com/trikko/serverino/assets/647157/a6f462fa-8b76-43c3-9855-0671e704aa6c" height="96">
+=======
+[![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml) [![Donate](https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&logoColor=white)](https://paypal.me/andreafontana/5)
+###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [more examples](https://github.com/trikko/serverino/tree/master/examples/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
+---
 * Ready-to-go http server
 * Cross-platform (Linux/Windows/MacOS)
 * Multi-process
@@ -29,7 +22,7 @@ dub run
 ```d
 import serverino;
 mixin ServerinoMain;
-void hello(const Request req, Output output) { output ~= req.dump(); }
+void simple(Request request, Output output) { output ~= request.dump(); }
 ```
 
 ## Documentation you need
@@ -43,63 +36,65 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 The calling order is defined by ```@priority```
 
 ```d
+module app;
+
+import std;
 import serverino;
+
 mixin ServerinoMain;
 
-// This function will never block the execution of other endpoints since it doesn't write anything to output
-// In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
-@priority(10) @endpoint void logger(Request req, Output output)
+// This endpoint handles the root of the server. Try: http://localhost:8080/
+@endpoint @route!"/"
+void homepage(Request request, Output output)
 {
-   import std.experimental.logger; // std.experimental.logger works fine!
-   log(req.uri);
+	output ~= `<html><body>`;
+	output ~= `<a href="/private/profile">Private page</a><br>`;
+	output ~= `<a href="/private/asdasd">Private (404) page</a>`;
+	output ~= `</body></html>`;
 }
 
-// We accept only GET request in this example
-@priority(5) @endpoint void checkMethod(Request req, Output output)
-{
-   if (req.method != Request.Method.Get)
-   {
-      // We set a 405 (method not allowed) status here. 
-      // If we change the output no other endpoints will be called.
-      output.status = 405;
-   }
+// This endpoint shows a private page: it's protected by the auth endpoint below.
+@endpoint @route!"/private/profile"
+void user(Request request, Output output) 
+{ 
+	output ~= "Hello user!"; 
 }
 
-// This endpoint (default priority == 0) handles the homepage
-// Request and Output can be used in @safe code
-@safe
-@endpoint void hello(Request req, Output output)
+// This endpoint shows a private page: it's protected by the auth endpoint below.
+@endpoint 
+void blah(Request request, Output output)
 {
-   // Skip this endpoint if uri is not "/"
-   if (req.uri != "/") return;
+	// Same as marking this endpoint with @route!"/private/dump" 
+	if (request.uri != "/private/dump") 
+		return;
 
-   output ~= "Hello world!";
+	output ~= request.dump();
 }
 
-// This function will be executed only if `hello(...)` doesn't write anything to output.
-@priority(-10000) @endpoint void notfound(const Request req, Output output)
+// This endpoint simply checks if the user and password are correct for all the private pages.
+// Since it has a higher priority than the previous endpoints, it will be called first.
+@priority(10)
+@endpoint @route!(r => r.uri.startsWith("/private/"))
+void auth(Request request, Output output)
 {
-   output.status = 404;
-   output ~= "Not found";
-}
-```
+	if (request.user != "user" || request.password != "password")
+	{
+		// If the user and password are not correct, we return a 401 status code and a www-authenticate header.
+		output.status = 401;
+		output.addHeader("www-authenticate",`Basic realm="my serverino"`);
+	}
 
-## @onServerInit UDA
-Use ```@onServerInit``` to configure your server
-```d
-// Try also `setup(string args[])` if you need to read arguments passed to your application
-@onServerInit ServerinoConfig setup()
-{
-   ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
-   sc.addListener("127.0.0.1", 8080);
-   sc.addListener("127.0.0.1", 8081);
-   sc.addListener!(ServerinoConfig.ListenerProtocol.IPV6)("localhost", 8082); // IPV6
-   sc.setWorkers(2);
-   // etc...
-
-   return sc;
+	// If the user and password are correct, we call the next matching endpoint.
+	// (the next matching endpoint will be called only if the current endpoint doesn't write anything)
 }
 
+// This endpoint has the highest priority between the endpoints and it logs all the requests.
+@priority(12) @endpoint
+void requestLog(Request request)
+{
+	// There's no http output, so the next endpoint will be called.
+	info("Request: ", request.uri);
+}
 ```
 
 ## Shielding the whole thing
