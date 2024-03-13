@@ -55,11 +55,21 @@ void homepage(Request request, Output output)
 
 // This endpoint shows a private page: it's protected by the auth endpoint below.
 @endpoint @route!"/private/profile"
-void user(Request request, Output output) { output ~= "Hello user!"; }
+void user(Request request, Output output) 
+{ 
+	output ~= "Hello user!"; 
+}
 
 // This endpoint shows a private page: it's protected by the auth endpoint below.
-@endpoint @route!"/private/dump"
-void blah(Request request, Output output) { output ~= request.dump(); }
+@endpoint 
+void blah(Request request, Output output)
+{
+	// Same as marking this endpoint with @route!"/private/dump" 
+	if (request.uri != "/private/dump") 
+		return;
+
+	output ~= request.dump();
+}
 
 // This endpoint simply checks if the user and password are correct for all the private pages.
 // Since it has a higher priority than the previous endpoints, it will be called first.
@@ -85,24 +95,6 @@ void requestLog(Request request)
 	// There's no http output, so the next endpoint will be called.
 	info("Request: ", request.uri);
 }
-```
-
-## @onServerInit UDA
-Use ```@onServerInit``` to configure your server
-```d
-// Try also `setup(string args[])` if you need to read arguments passed to your application
-@onServerInit ServerinoConfig setup()
-{
-   ServerinoConfig sc = ServerinoConfig.create(); // Config with default params
-   sc.addListener("127.0.0.1", 8080);
-   sc.addListener("127.0.0.1", 8081);
-   sc.addListener!(ServerinoConfig.ListenerProtocol.IPV6)("localhost", 8082); // IPV6
-   sc.setWorkers(2);
-   // etc...
-
-   return sc;
-}
-
 ```
 
 ## Shielding the whole thing
