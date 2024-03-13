@@ -62,7 +62,7 @@ void user(Request request, Output output) { output ~= "Hello user!"; }
 void blah(Request request, Output output) { output ~= request.dump(); }
 
 // This endpoint simply checks if the user and password are correct for all the private pages.
-// Since it has a higher priority than the previous endpoint, it will be called first.
+// Since it has a higher priority than the previous endpoints, it will be called first.
 @priority(10)
 @endpoint @route!(r => r.uri.startsWith("/private/"))
 void auth(Request request, Output output)
