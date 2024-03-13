@@ -36,44 +36,54 @@ void hello(const Request req, Output output) { output ~= req.dump(); }
 The calling order is defined by ```@priority```
 
 ```d
+module app;
+
+import std;
 import serverino;
+
 mixin ServerinoMain;
 
-// This function will never block the execution of other endpoints since it doesn't write anything to output
-// In this case `output` param is not needed and this works too: `@priority(10) @endpoint void logger(Request req)`
-@priority(10) @endpoint void logger(Request req, Output output)
+// This endpoint handles the root of the server. Try: http://localhost:8080/
+@endpoint @route!"/"
+void homepage(Request request, Output output)
 {
-   import std.experimental.logger; // std.experimental.logger works fine!
-   log(req.uri);
+	output ~= `<html><body>`;
+	output ~= `<a href="/private/profile">Private page</a><br>`;
+	output ~= `<a href="/private/asdasd">Private (404) page</a>`;
+	output ~= `</body></html>`;
 }
 
-// We accept only GET request in this example
-@priority(5) @endpoint void checkMethod(Request req, Output output)
+// This endpoint shows a private page: it's protected by the auth endpoint below.
+@endpoint @route!"/private/profile"
+void user(Request request, Output output) { output ~= "Hello user!"; }
+
+// This endpoint shows a private page: it's protected by the auth endpoint below.
+@endpoint @route!"/private/dump"
+void blah(Request request, Output output) { output ~= request.dump(); }
+
+// This endpoint simply checks if the user and password are correct for all the private pages.
+// Since it has a higher priority than the previous endpoint, it will be called first.
+@priority(10)
+@endpoint @route!(r => r.uri.startsWith("/private/"))
+void auth(Request request, Output output)
 {
-   if (req.method != Request.Method.Get)
-   {
-      // We set a 405 (method not allowed) status here. 
-      // If we change the output no other endpoints will be called.
-      output.status = 405;
-   }
+	if (request.user != "user" || request.password != "password")
+	{
+		// If the user and password are not correct, we return a 401 status code and a www-authenticate header.
+		output.status = 401;
+		output.addHeader("www-authenticate",`Basic realm="my serverino"`);
+	}
+
+	// If the user and password are correct, we call the next endpoint.
+	// (the next endpoint will be called only if the current endpoint doesn't write anything)
 }
 
-// This endpoint (default priority == 0) handles the homepage
-// Request and Output can be used in @safe code
-@safe
-@endpoint void hello(Request req, Output output)
+// This endpoint has the highest priority between the endpoints and it logs all the requests.
+@priority(12) @endpoint
+void requestLog(Request request)
 {
-   // Skip this endpoint if uri is not "/"
-   if (req.uri != "/") return;
-
-   output ~= "Hello world!";
-}
-
-// This function will be executed only if `hello(...)` doesn't write anything to output.
-@priority(-10000) @endpoint void notfound(const Request req, Output output)
-{
-   output.status = 404;
-   output ~= "Not found";
+	// There's no http output, so the next endpoint will be called.
+	info("Request: ", request.uri);
 }
 ```
 
