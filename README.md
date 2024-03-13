@@ -84,8 +84,8 @@ void auth(Request request, Output output)
 		output.addHeader("www-authenticate",`Basic realm="my serverino"`);
 	}
 
-	// If the user and password are correct, we call the next endpoint.
-	// (the next endpoint will be called only if the current endpoint doesn't write anything)
+	// If the user and password are correct, we call the next matching endpoint.
+	// (the next matching endpoint will be called only if the current endpoint doesn't write anything)
 }
 
 // This endpoint has the highest priority between the endpoints and it logs all the requests.
