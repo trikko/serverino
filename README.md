@@ -22,7 +22,7 @@ dub run
 ```d
 import serverino;
 mixin ServerinoMain;
-void hello(const Request req, Output output) { output ~= req.dump(); }
+void simple(Request request, Output output) { output ~= request.dump(); }
 ```
 
 ## Documentation you need
