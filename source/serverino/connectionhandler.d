@@ -339,10 +339,6 @@ package class ConnectionHandler
             reset();
             return;
          }
-         else if (bytesRead == Socket.ERROR && wouldHaveBlocked)
-         {
-            assert(0, "wouldHaveBlocked");
-         }
          else if (started == false) started = true;
 
       }
