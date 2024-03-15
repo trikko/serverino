@@ -458,6 +458,7 @@ struct Daemon
 
             if (ssRead.isSet(communicator.clientSkt))
             {
+               updates--;
                communicator.lastRecv = now;
                communicator.read();
             }
@@ -469,6 +470,7 @@ struct Daemon
 
             if (updates > 0 && communicator.clientSkt !is null && ssWrite.isSet(communicator.clientSkt))
             {
+               updates--;
                communicator.write();
             }
          }
