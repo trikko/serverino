@@ -23,7 +23,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
 
-module serverino.connectionhandler;
+module serverino.communicator;
 
 import serverino.common;
 import serverino.databuffer;
@@ -92,7 +92,7 @@ package class ProtoRequest
    ProtoRequest next = null;
 }
 
-package class ConnectionHandler
+package class Communicator
 {
    enum State
    {
@@ -174,7 +174,7 @@ package class ConnectionHandler
    {
       if (this.assignedWorker !is null)
       {
-         this.assignedWorker.assignedConnectionHandler = null;
+         this.assignedWorker.assignedCommunicator = null;
          this.assignedWorker.setStatus(WorkerInfo.State.IDLING);
          this.assignedWorker = null;
       }
@@ -186,7 +186,7 @@ package class ConnectionHandler
    void assignWorker(ref WorkerInfo wi)
    {
       this.assignedWorker = wi;
-      wi.assignedConnectionHandler = this;
+      wi.assignedCommunicator = this;
 
       wi.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestToProcess;
@@ -667,6 +667,6 @@ package class ConnectionHandler
 
    static SimpleList          alive;
    static SimpleList          dead;
-   ConnectionHandler.State    status;
-   static ConnectionHandler[] instances;
+   Communicator.State    status;
+   static Communicator[] instances;
 }

@@ -26,7 +26,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.daemon;
 
 import serverino.common;
-import serverino.connectionhandler;
+import serverino.communicator;
 import serverino.config;
 
 import std.stdio : File;
@@ -123,7 +123,7 @@ package class WorkerInfo
          channel = null;
       }
 
-      assignedConnectionHandler = null;
+      assignedCommunicator = null;
    }
 
    void setStatus(State s)
@@ -150,7 +150,7 @@ package:
 
    State                   status      = State.STOPPED;
    Socket                  channel     = null;
-   ConnectionHandler       assignedConnectionHandler = null;
+   Communicator       assignedCommunicator = null;
 
    static WorkerInfo[]   instances;
    static SimpleList[5]  lookup;
@@ -262,11 +262,11 @@ struct Daemon
       foreach(i; 0..config.maxWorkers)
          new WorkerInfo();
 
-      ConnectionHandler.alive = SimpleList();
-      ConnectionHandler.dead = SimpleList();
+      Communicator.alive = SimpleList();
+      Communicator.dead = SimpleList();
 
       foreach(idx; 0..128)
-         new ConnectionHandler(config);
+         new Communicator(config);
 
       // We use a socketset to check for updates
       SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
@@ -290,12 +290,12 @@ struct Daemon
          foreach(idx; workersAlive)
             ssRead.add(WorkerInfo.instances[idx].channel);
 
-         foreach(idx; ConnectionHandler.alive.asRange)
+         foreach(idx; Communicator.alive.asRange)
          {
-            ssRead.add(ConnectionHandler.instances[idx].socket);
+            ssRead.add(Communicator.instances[idx].socket);
 
-            if (!ConnectionHandler.instances[idx].completed)
-               ssWrite.add(ConnectionHandler.instances[idx].socket);
+            if (!Communicator.instances[idx].completed)
+               ssWrite.add(Communicator.instances[idx].socket);
          }
 
          // Check for new requests
@@ -314,26 +314,26 @@ struct Daemon
             {
                lastCheck = now;
 
-               ConnectionHandler[] toReset;
-               foreach(idx; ConnectionHandler.alive.asRange)
+               Communicator[] toReset;
+               foreach(idx; Communicator.alive.asRange)
                {
-                  auto connectionHandler = ConnectionHandler.instances[idx];
+                  auto Communicator = Communicator.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (connectionHandler.status == ConnectionHandler.State.KEEP_ALIVE && connectionHandler.lastRequest != CoarseTime.zero && now - connectionHandler.lastRequest > 5.dur!"seconds")
-                     toReset ~= connectionHandler;
+                  if (Communicator.status == Communicator.State.KEEP_ALIVE && Communicator.lastRequest != CoarseTime.zero && now - Communicator.lastRequest > 5.dur!"seconds")
+                     toReset ~= Communicator;
 
                   // Http timeout hit.
-                  else if (connectionHandler.status == ConnectionHandler.State.ASSIGNED || connectionHandler.status == ConnectionHandler.State.READING_BODY || connectionHandler.status == ConnectionHandler.State.READING_HEADERS )
+                  else if (Communicator.status == Communicator.State.ASSIGNED || Communicator.status == Communicator.State.READING_BODY || Communicator.status == Communicator.State.READING_HEADERS )
                   {
-                     if (connectionHandler.lastRecv != CoarseTime.zero && now - connectionHandler.lastRecv > config.maxHttpWaiting)
+                     if (Communicator.lastRecv != CoarseTime.zero && now - Communicator.lastRecv > config.maxHttpWaiting)
                      {
-                        if (connectionHandler.started)
+                        if (Communicator.started)
                         {
                            debug warning("Connection closed. [REASON: http timeout]");
-                           connectionHandler.socket.send("HTTP/1.0 408 Request Timeout\r\n");
+                           Communicator.socket.send("HTTP/1.0 408 Request Timeout\r\n");
                         }
-                        toReset ~= connectionHandler;
+                        toReset ~= Communicator;
                      }
                   }
                }
@@ -344,9 +344,9 @@ struct Daemon
             }
 
             size_t cnt = 0;
-            foreach(r; ConnectionHandler.dead.asRange)
+            foreach(r; Communicator.dead.asRange)
             {
-               if (r == ConnectionHandler.instances.length - 1 && r > 5)
+               if (r == Communicator.instances.length - 1 && r > 5)
                   cnt++;
 
                else break;
@@ -354,8 +354,8 @@ struct Daemon
 
             for(size_t i = 0; i < cnt; ++i)
             {
-               ConnectionHandler.dead.remove(ConnectionHandler.instances.length-1);
-               ConnectionHandler.instances.length--;
+               Communicator.dead.remove(Communicator.instances.length-1);
+               Communicator.instances.length--;
             }
          }
 
@@ -382,7 +382,7 @@ struct Daemon
             scope(exit) idx = nextIdx;
 
             WorkerInfo w = WorkerInfo.instances[idx];
-            ConnectionHandler r = w.assignedConnectionHandler;
+            Communicator r = w.assignedCommunicator;
 
             if (ssRead.isSet(w.channel))
             {
@@ -436,31 +436,31 @@ struct Daemon
 
 
 
-         foreach(idx; ConnectionHandler.alive.asRange)
+         foreach(idx; Communicator.alive.asRange)
          {
-            auto connectionHandler = ConnectionHandler.instances[idx];
+            auto Communicator = Communicator.instances[idx];
 
-            if(connectionHandler.socket is null)
+            if(Communicator.socket is null)
                continue;
 
-            if (ssRead.isSet(connectionHandler.socket))
+            if (ssRead.isSet(Communicator.socket))
             {
-               connectionHandler.lastRecv = now;
-               connectionHandler.read();
+               Communicator.lastRecv = now;
+               Communicator.read();
             }
-            else if(connectionHandler.hasQueuedRequests)
+            else if(Communicator.hasQueuedRequests)
             {
-               connectionHandler.lastRecv = now;
-               connectionHandler.read(true);
+               Communicator.lastRecv = now;
+               Communicator.read(true);
             }
 
-            if (updates > 0 && connectionHandler.socket !is null && ssWrite.isSet(connectionHandler.socket))
+            if (updates > 0 && Communicator.socket !is null && ssWrite.isSet(Communicator.socket))
             {
-               connectionHandler.write();
+               Communicator.write();
             }
          }
 
-         foreach(ref r; ConnectionHandler.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.assignedWorker is null))
+         foreach(ref r; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.assignedWorker is null))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
 
@@ -491,19 +491,19 @@ struct Daemon
                updates--;
 
                // We have an incoming connection to handle
-               ConnectionHandler connectionHandler;
+               Communicator communicator;
 
                // First: check if any idling worker is available
-               auto idling = ConnectionHandler.dead.asRange;
+               auto idling = Communicator.dead.asRange;
 
-               if (!idling.empty) connectionHandler = ConnectionHandler.instances[idling.front];
-               else connectionHandler = new ConnectionHandler(config);
+               if (!idling.empty) communicator = Communicator.instances[idling.front];
+               else communicator = new Communicator(config);
 
 
-               connectionHandler.lastRecv = now;
+               communicator.lastRecv = now;
 
                auto nextId = requestId++;
-               connectionHandler.assignSocket(listener.socket.accept(), nextId);
+               communicator.assignSocket(listener.socket.accept(), nextId);
             }
          }
 
