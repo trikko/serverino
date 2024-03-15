@@ -32,7 +32,7 @@ alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 public static int SERVERINO_MAJOR = 0;
 public static int SERVERINO_MINOR = 6;
-public static int SERVERINO_REVISION = 3;
+public static int SERVERINO_REVISION = 4;
 
 
 package struct WorkerPayload
