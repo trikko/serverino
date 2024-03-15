@@ -438,7 +438,6 @@ struct Request
 
          _worker = myPID;
 
-
          if ("host" in _header) _host = _header["host"];
 
          // Read get params
