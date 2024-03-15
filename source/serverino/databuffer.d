@@ -24,6 +24,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 */
 module serverino.databuffer;
 
+// Apparently this custom implementation has better performance than std.array.Appender
 package struct DataBuffer(T)
 {
    private:

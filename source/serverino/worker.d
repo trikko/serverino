@@ -280,7 +280,6 @@ struct Worker
          char[]			requestLine;
          char[]			headers;
 
-         bool			headersParsed = false;
          bool 			hasContentLength = false;
 
 
@@ -298,12 +297,6 @@ struct Worker
             data = data[headersEnd+4..$];
 
             auto headersLines = headers.splitter("\r\n");
-
-            if (headersLines.empty)
-            {
-               debug warning("HTTP Request: empty request");
-               valid = false;
-            }
 
             requestLine = headersLines.front;
 

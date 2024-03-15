@@ -48,8 +48,6 @@ package class WorkerInfo
    {
       IDLING = 0, // Worker is waiting for a request.
       PROCESSING, // Worker is processing a request.
-      EXITING,    // Worker is exiting.
-      INVALID,    // Worker is in an invalid state.
       STOPPED     // Worker is stopped.
    }
 
@@ -161,7 +159,7 @@ package:
    Communicator            communicator = null;
 
    static WorkerInfo[]   instances;
-   static SimpleList[5]  lookup;
+   static SimpleList[3]  lookup;
 }
 
 version(Posix)
@@ -188,24 +186,21 @@ struct Daemon
    }
 
    // Create a lazy list of busy workers.
+   pragma(inline, true)
    auto ref workersAlive()
    {
       import std.range : chain;
       return chain(
-         WorkerInfo.lookup[WorkerInfo.State.EXITING].asRange,
          WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange,
          WorkerInfo.lookup[WorkerInfo.State.PROCESSING].asRange
       );
    }
 
    // Create a lazy list of workers we can reuse.
+   pragma(inline, true);
    auto ref workersDead()
    {
-      import std.range : chain;
-      return chain(
-         WorkerInfo.lookup[WorkerInfo.State.STOPPED].asRange,
-         WorkerInfo.lookup[WorkerInfo.State.INVALID].asRange
-      );
+      return WorkerInfo.lookup[WorkerInfo.State.STOPPED].asRange;
    }
 
 
@@ -379,8 +374,9 @@ struct Daemon
             break;
 
          auto wa = workersAlive;
-         typeof(wa.front) nextIdx;
+         size_t nextIdx;
 
+         // Check the workers for updates
          while(!wa.empty)
          {
             if (updates == 0)
@@ -447,8 +443,7 @@ struct Daemon
 
          }
 
-
-
+         // Check the communicators for updates
          foreach(idx; Communicator.alive.asRange)
          {
             auto communicator = Communicator.instances[idx];
@@ -475,6 +470,7 @@ struct Daemon
             }
          }
 
+         // Check for communicators that need a worker.
          foreach(ref communicator; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.worker is null))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
@@ -489,11 +485,11 @@ struct Daemon
                   WorkerInfo.instances[dead.front].init;
                   communicator.setWorker(WorkerInfo.instances[dead.front]);
                }
-
+               else break; // All workers are busy. Will try again later.
             }
-
          }
 
+         // Check for new incoming connections.
          foreach(ref listener; config.listeners)
          {
 
@@ -508,12 +504,11 @@ struct Daemon
                // We have an incoming connection to handle
                Communicator communicator;
 
-               // First: check if any idling worker is available
+               // First: check if any idling communicator is available
                auto idling = Communicator.dead.asRange;
 
                if (!idling.empty) communicator = Communicator.instances[idling.front];
                else communicator = new Communicator(config);
-
 
                communicator.lastRecv = now;
 
@@ -524,12 +519,16 @@ struct Daemon
 
       }
 
+      // Exit requested, shutdown everything.
+
+      // Close all the listeners.
       foreach(ref listener; config.listeners)
       {
          listener.socket.shutdown(SocketShutdown.BOTH);
          listener.socket.close();
       }
 
+      // Kill all the workers.
       foreach(ref idx; workersAlive)
       {
          WorkerInfo worker = WorkerInfo.instances[idx];
@@ -545,8 +544,10 @@ struct Daemon
          catch (Exception e) { }
       }
 
+      // Call the onDaemonStop functions.
       tryUninit!Modules();
 
+      // Force exit.
       import core.stdc.stdlib : exit;
       exit(0);
    }
@@ -563,9 +564,7 @@ private:
 
          if (!worker.unixSocket.isAlive)
          {
-            worker.setStatus(WorkerInfo.State.INVALID);
             log("Killing ", worker.pi.id, ". Invalid state.");
-
             worker.pi.kill();
             worker.setStatus(WorkerInfo.State.STOPPED);
          }
