@@ -186,7 +186,6 @@ package class ConnectionHandler
 
    void assignWorker(ref WorkerInfo wi)
    {
-
       this.assignedWorker = wi;
       wi.assignedConnectionHandler = this;
 
@@ -195,6 +194,7 @@ package class ConnectionHandler
       uint len = cast(uint)(current.data.length) - cast(uint)uint.sizeof;
       current.data[0..uint.sizeof] = (cast(char*)&len)[0..uint.sizeof];
 
+      isKeepAlive = current.connection == ProtoRequest.Connection.KeepAlive;
       wi.channel.send(current.data);
 
       requestToProcess = requestToProcess.next;
@@ -234,7 +234,7 @@ package class ConnectionHandler
       {
          detachWorker();
 
-         if (status != ConnectionHandler.State.KEEP_ALIVE)
+         if (!isKeepAlive)
             reset();
       }
    }
@@ -271,7 +271,7 @@ package class ConnectionHandler
          {
             detachWorker();
 
-            if (status != ConnectionHandler.State.KEEP_ALIVE)
+            if (!isKeepAlive)
                reset();
          }
       }
@@ -387,6 +387,13 @@ package class ConnectionHandler
                   request.isValid = true;
 
                   auto firstLine = request.data.indexOf("\r\n");
+
+                  // HACK: A single line (http 1.0?) request.
+                  if (firstLine < 0)
+                  {
+                     firstLine = request.data.length;
+                     request.data ~= "\r\n";
+                  }
 
                   if (firstLine < 18)
                   {
@@ -560,11 +567,25 @@ package class ConnectionHandler
                   }
                   else
                   {
-                     newRequest = true;
+                     hasQueuedRequests = leftover.length > 0;
+
+                     // New request read, without body
+
+                     if (hasQueuedRequests)
+                     {
+                        // Partial request in queue, parse again
+                        doAgain = true;
+                        newRequest = true;
+                     }
+                     else
+                     {
+                        doAgain = false;
+                        newRequest = false;
+                     }
+
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
 
-                     hasQueuedRequests = leftover.length > 0;
                   }
                }
                else leftover = bufferRead.dup;
@@ -581,18 +602,35 @@ package class ConnectionHandler
 
             if (request.data.length >= request.headersLength + request.contentLength)
             {
+               // New request read, with body
                leftover = request.data[request.headersLength + request.contentLength..$];
-               doAgain = leftover.length > 0;
-               newRequest = true;
                request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
+
+               hasQueuedRequests = leftover.length > 0;
+
+               if (hasQueuedRequests)
+               {
+                  // Partial request in queue, parse again
+                  doAgain = true;
+                  newRequest = true;
+               }
+               else
+               {
+                  // No more data
+                  doAgain = false;
+                  newRequest = false;
+               }
+
                if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                else status = State.READY;
+
             }
          }
 
          if (doAgain && newRequest)
          {
+            // New request
             request.next = new ProtoRequest();
             request = request.next;
             status = State.READING_HEADERS;

@@ -1,0 +1,5 @@
+name "test-01"
+authors "Andrea Fontana"
+copyright "Copyright © 2023-2024, Andrea Fontana"
+license "MIT"
+dependency "serverino" path="../../"

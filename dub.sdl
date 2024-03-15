@@ -11,7 +11,8 @@ configuration "lib" {
 sourcePaths "source"
 
 subPackage "./init-exec"
-subPackage "./test-1"
+subPackage "./tests/test-01"
+subPackage "./tests/test-02"
 
 dependency ":init-exec" version="*"
 x:ddoxTool "scod"
