@@ -85,7 +85,6 @@ package class ProtoRequest
    Connection  connection = Connection.Unknown;
    HttpVersion httpVersion = HttpVersion.Unknown;
 
-   //char[]   body;
    char[]   data;
 
    size_t   headersLength;
