@@ -103,7 +103,6 @@ package class ConnectionHandler
       KEEP_ALIVE
    }
 
-   bool waitingFromWorker = false;
    DaemonConfigPtr config;
 
    this(DaemonConfigPtr config) {
