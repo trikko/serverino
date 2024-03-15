@@ -4,12 +4,10 @@ serverino
 [![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml) [![Donate](https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&logoColor=white)](https://paypal.me/andreafontana/5)
 ###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [more examples](https://github.com/trikko/serverino/tree/master/examples/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
 ---
-* Ready-to-go http server
-* Cross-platform (Linux/Windows/MacOS)
-* Multi-process
-* Dynamic number of workers
-* Zero dependencies
-* Build & start your project in a few seconds
+* 🚀 **Quick build & start**: *build & run your server in seconds.*
+* 🙌 **Zero dependencies**: *serverino doesn’t rely on any external library.*
+* 💪 **High performance**: *capable of managing tens of thousands of connections per second.*
+* 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
 
 ## Quickstart
 ```
