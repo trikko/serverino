@@ -41,7 +41,11 @@ import std.experimental.logger : log, info, warning;
 
 extern(C) long syscall(long number, ...);
 
-
+/*
+ * The `ProtoRequest` class is a draft of a HTTP request.
+ * Full request will be parsed by the assigned worker.
+ * This is a linked list, so it can be used to store multiple requests.
+ */
 package class ProtoRequest
 {
    enum Connection
@@ -73,78 +77,97 @@ package class ProtoRequest
       return s;
    }
 
-   bool     isValid = false;
 
-   bool     headersDone = false;
-   bool     expect100 = false;
-   size_t   contentLength = 0;
+   bool     isValid = false;     // First checks on incoming data can invalidate request
 
-   char[]   method;
-   char[]   path;
+   bool     headersDone = false; // Headers are read
+   bool     expect100 = false;   // Should we send 100-continue?
+
+   size_t   contentLength = 0;   // Content length
+   size_t   headersLength;
+
+   char[]   method;              // HTTP method
+   char[]   path;                // Request path
+
+   char[]   data;                // Request data
+
+   ProtoRequest next = null;     // Next request in the queue
 
    Connection  connection = Connection.Unknown;
    HttpVersion httpVersion = HttpVersion.Unknown;
-
-   char[]   data;
-
-   size_t   headersLength;
-   ProtoRequest next = null;
 }
 
+/*
+ * The `Communicator` class receives and sends data to the client.
+ * It is also responsible for the first raw parsing of the incoming data.
+ * It communicates thru a unix socket with the assigned worker to process the request..
+*/
 package class Communicator
 {
    enum State
    {
-      READY = 0,
-      ASSIGNED,
-      READING_HEADERS,
-      READING_BODY,
-      KEEP_ALIVE
+      READY = 0,        // Waiting to be paired with a client
+      PAIRED,           // Paired with a client
+      READING_HEADERS,  // Reading headers from client
+      READING_BODY,     // Reading body from client
+      KEEP_ALIVE        // Keep alive if the client wants to
    }
 
    DaemonConfigPtr config;
 
    this(DaemonConfigPtr config) {
+
+      // Every new instance is added to the list of instances
       id = instances.length;
       instances ~= this;
       dead.insertBack(id);
       this.config = config;
-   }
 
+   }
 
    void setResponseLength(size_t s) { responseLength = s; responseSent = 0; }
    bool completed() { return responseLength == responseSent; }
 
-   void assignSocket(Socket s, ulong requestId)
+   // Unset the client socket and move the communicator to the ready state
+   pragma(inline, true)
+   void unsetClientSocket()
    {
-      if (requestId != ulong.max)
-         this.requestId = format("%06s", requestId);
+      status = State.READY;
 
-      status = State.ASSIGNED;
-
-      if (s is null && this.socket !is null)
+      if (this.clientSkt !is null)
       {
          alive.remove(id);
          dead.insertBack(id);
+         this.clientSkt = null;
       }
+   }
 
-      if (s !is null && this.socket is null)
+   // Assign a client socket to the communicator and move it to the paired state
+   pragma(inline, true)
+   void setClientSocket(Socket s, ulong requestId)
+   {
+      this.requestId = format("%06s", requestId);
+
+      status = State.PAIRED;
+
+      if (s !is null && this.clientSkt is null)
       {
          dead.remove(id);
          alive.insertFront(id);
          s.blocking = false;
       }
 
-      this.socket = s;
+      this.clientSkt = s;
    }
 
+   // Reset the communicator to the initial state and clear the requests queue
    void reset()
    {
-      if (socket !is null)
+      if (clientSkt !is null)
       {
-         socket.shutdown(SocketShutdown.BOTH);
-         socket.close();
-         assignSocket(null, ulong.max);
+         clientSkt.shutdown(SocketShutdown.BOTH);
+         clientSkt.close();
+         unsetClientSocket();
       }
 
       status = State.READY;
@@ -162,43 +185,49 @@ package class Communicator
 
       requestToProcess = null;
 
-      started = false;
+      requestDataReceived = false;
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
 
       hasQueuedRequests = false;
    }
 
-   void detachWorker()
+   // If this communicator has a worker assigned, unset it
+   pragma(inline, true)
+   void unsetWorker()
    {
-      if (this.assignedWorker !is null)
+
+      if (this.worker !is null)
       {
-         this.assignedWorker.assignedCommunicator = null;
-         this.assignedWorker.setStatus(WorkerInfo.State.IDLING);
-         this.assignedWorker = null;
+         this.worker.communicator = null;
+         this.worker.setStatus(WorkerInfo.State.IDLING);
+         this.worker = null;
       }
 
       responseLength = 0;
       responseSent = 0;
    }
 
-   void assignWorker(ref WorkerInfo wi)
+   // Assign a worker to the communicator
+   pragma(inline, true)
+   void setWorker(ref WorkerInfo worker)
    {
-      this.assignedWorker = wi;
-      wi.assignedCommunicator = this;
+      this.worker = worker;
+      worker.communicator = this;
 
-      wi.setStatus(WorkerInfo.State.PROCESSING);
+      worker.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestToProcess;
       uint len = cast(uint)(current.data.length) - cast(uint)uint.sizeof;
       current.data[0..uint.sizeof] = (cast(char*)&len)[0..uint.sizeof];
 
       isKeepAlive = current.connection == ProtoRequest.Connection.KeepAlive;
-      wi.channel.send(current.data);
+      worker.unixSocket.send(current.data);
 
       requestToProcess = requestToProcess.next;
       lastRequest = CoarseTime.currTime;
    }
 
+   // Write the buffered data to the client socket
    void write()
    {
       auto maxToSend = bufferSent + 32*1024;
@@ -207,7 +236,7 @@ package class Communicator
       if (maxToSend == 0)
          return;
 
-      auto sent = socket.send(sendBuffer.array[bufferSent..maxToSend]);
+      auto sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
 
       if (sent == Socket.ERROR)
       {
@@ -228,18 +257,21 @@ package class Communicator
          }
       }
 
+      // If the response is completed, unset the worker
+      // and if the client is not keep alive, reset the communicator
       if (completed())
       {
-         detachWorker();
+         unsetWorker();
 
          if (!isKeepAlive)
             reset();
       }
    }
 
+   // Try to write the data to the client socket, it buffers the data if the socket is not ready
    void write(char[] data)
    {
-      if (socket is null)
+      if (clientSkt is null)
       {
          reset();
          return;
@@ -247,7 +279,7 @@ package class Communicator
 
       if (sendBuffer.length == 0)
       {
-         auto sent = socket.send(data);
+         auto sent = clientSkt.send(data);
 
          if (sent == Socket.ERROR)
          {
@@ -265,9 +297,11 @@ package class Communicator
             if (sent < data.length) sendBuffer.append(data[sent..data.length]);
          }
 
+         // If the response is completed, unset the worker
+         // and if the client is not keep alive, reset the communicator
          if (completed())
          {
-            detachWorker();
+            unsetWorker();
 
             if (!isKeepAlive)
                reset();
@@ -280,12 +314,15 @@ package class Communicator
       }
    }
 
+   // Read the data from the client socket and parse the incoming data
    void read(bool fromBuffer = false)
    {
       import std.string: indexOf;
 
-      if (status == State.ASSIGNED || status == State.KEEP_ALIVE)
+      // Create a new request if the current one is completed
+      if (status == State.PAIRED || status == State.KEEP_ALIVE)
       {
+         // Queue a new request
          if (requestToProcess is null) requestToProcess = new ProtoRequest();
          else
          {
@@ -294,21 +331,17 @@ package class Communicator
                tmp = tmp.next;
 
             tmp.next = new ProtoRequest();
+            requestToProcess = tmp.next;
          }
 
 	      status = State.READING_HEADERS;
       }
 
-      if (requestToProcess is null)
-      {
-         reset();
-         return;
-      }
-
       ProtoRequest request = requestToProcess;
-      while(request.next !is null)
-         request = request.next;
 
+      // First 2 bytes are the length of the request
+      // They will be overwritten by the actual length of the request
+      // and sent to the worker through the unix socket
       uint len = 0;
       if(request.data.length == 0)
       {
@@ -318,9 +351,11 @@ package class Communicator
       char[32*1024] buffer;
       ptrdiff_t bytesRead = 0;
 
+      // Read the data from the client socket if it's not buffered
+      // Set the started flag to true if the first data is read to check for timeouts
       if (!fromBuffer)
       {
-         bytesRead = socket.receive(buffer);
+         bytesRead = clientSkt.receive(buffer);
 
          if (bytesRead < 0)
          {
@@ -337,49 +372,54 @@ package class Communicator
             reset();
             return;
          }
-         else if (started == false) started = true;
+         else if (requestDataReceived == false) requestDataReceived = true;
 
       }
       else
       {
          bytesRead = 0;
-         started = true;
+         requestDataReceived = true;
       }
 
       auto bufferRead = buffer[0..bytesRead];
 
+      // If there's leftover data from the previous read, append it to the current buffer
       if (leftover.length)
       {
          bufferRead = leftover ~ bufferRead;
          leftover.length = 0;
       }
 
-      bool doAgain = true;
-
-      while(doAgain)
+      bool tryParse = true;
+      while(tryParse)
       {
-         bool newRequest = false;
-         doAgain = false;
+         bool enqueueNewRequest = false;
+         tryParse = false;
 
          if (status == State.READING_HEADERS)
          {
+            // We are still waiting for the headers to be completed
             if (!request.headersDone)
             {
                auto headersEnd = bufferRead.indexOf("\r\n\r\n");
 
+               // Are the headers completed?
                if (headersEnd >= 0)
                {
                   if (headersEnd > config.maxRequestSize)
                   {
-                     socket.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                     clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
                      reset();
                      return;
                   }
 
                   import std.algorithm : splitter, map, joiner;
 
+                  // Extra data after the headers is stored in the leftover buffer
                   request.data ~= bufferRead[0..headersEnd];
                   leftover = bufferRead[headersEnd+4..$];
+
+                  // The headers are completed
                   bufferRead.length = 0;
                   request.headersDone = true;
                   request.isValid = true;
@@ -396,7 +436,7 @@ package class Communicator
                   if (firstLine < 18)
                   {
                      request.isValid = false;
-                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Request line too short.");
                      reset();
                      return;
@@ -426,10 +466,11 @@ package class Communicator
                      popped++;
                   }
 
+                  // HTTP version must be 1.0 or 1.1
                   if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
                   {
                      request.isValid = false;
-                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Http version unknown.");
                      reset();
                      return;
@@ -438,7 +479,7 @@ package class Communicator
                   if (popped != 3 || !fields.empty)
                   {
                      request.isValid = false;
-                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Malformed request line.");
                      reset();
                      return;
@@ -447,12 +488,13 @@ package class Communicator
                   if (request.path[0] != '/')
                   {
                      request.isValid = false;
-                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Absolute uri?");
                      reset();
                      return;
                   }
 
+                  // Parse headers for 100-continue, content-length and connection
                   auto hdrs = request.data[firstLine+2..$]
                   .splitter("\r\n")
                   .map!((char[] row)
@@ -468,9 +510,12 @@ package class Communicator
                         return (char[]).init;
                      }
 
+                     // Headers keys are case insensitive, so we lowercase them
+                     // We strip the leading and trailing spaces from both key and value
                      char[] key = cast(char[])row[0..headerColon].strip!(x =>x==' ' || x=='\t');
                      char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
 
+                     // Fast way to lowercase the key. Check if it is ASCII only.
                      foreach(idx, ref k; key)
                      {
                         if (k > 0xF9)
@@ -518,11 +563,12 @@ package class Communicator
 
                   request.data.length = firstLine+2 + hdrs.length;
 
+                  // If required by configuration, add the remote ip to the headers
+                  // It is disabled by default, as it is a slow operation and it is not always needed
                   string ra = string.init;
-
                   if(config.withRemoteIp)
                   {
-                     ra = "x-remote-ip:" ~ socket.remoteAddress().toAddrString() ~ "\r\n";
+                     ra = "x-remote-ip:" ~ clientSkt.remoteAddress().toAddrString() ~ "\r\n";
                      request.data.length += ra.length;
                      request.data[firstLine+2..firstLine+2+ra.length] = ra;
                   }
@@ -531,13 +577,13 @@ package class Communicator
 
                   if (request.isValid == false)
                   {
-                     socket.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
                      debug warning("Bad Request. Malformed request.");
                      reset();
                      return;
                   }
 
-
+                  // Keep alive is the default for HTTP/1.1, close for HTTP/1.0
                   if (request.connection == ProtoRequest.Connection.Unknown)
                   {
                      if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11) request.connection = ProtoRequest.Connection.KeepAlive;
@@ -546,40 +592,31 @@ package class Communicator
 
                   request.headersLength = request.data.length;
 
+                  // If the request has a body, we need to read it
                   if (request.contentLength != 0)
                   {
                      if (request.headersLength + request.contentLength  > config.maxRequestSize)
                      {
-                        socket.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
                         reset();
                         return;
                      }
 
                      request.data.reserve(request.headersLength + request.contentLength);
                      request.isValid = false;
-                     doAgain = true;
+                     tryParse = true;
 		               status = State.READING_BODY;
 
+                     // If required, we send the 100-continue response now
                      if (request.expect100)
-                        socket.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
+                        clientSkt.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
                   }
                   else
                   {
+                     // No body, we can process the request
+                     requestDataReceived = false;
                      hasQueuedRequests = leftover.length > 0;
-
-                     // New request read, without body
-
-                     if (hasQueuedRequests)
-                     {
-                        // Partial request in queue, parse again
-                        doAgain = true;
-                        newRequest = true;
-                     }
-                     else
-                     {
-                        doAgain = false;
-                        newRequest = false;
-                     }
+                     enqueueNewRequest = hasQueuedRequests;
 
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
@@ -592,6 +629,7 @@ package class Communicator
          }
          else if (status == State.READING_BODY)
          {
+            // We are reading the body of the request
             request.data ~= leftover;
             request.data ~= bufferRead;
 
@@ -600,25 +638,14 @@ package class Communicator
 
             if (request.data.length >= request.headersLength + request.contentLength)
             {
-               // New request read, with body
+               // We read the whole body, process the request
+               requestDataReceived = false;
                leftover = request.data[request.headersLength + request.contentLength..$];
                request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
 
                hasQueuedRequests = leftover.length > 0;
-
-               if (hasQueuedRequests)
-               {
-                  // Partial request in queue, parse again
-                  doAgain = true;
-                  newRequest = true;
-               }
-               else
-               {
-                  // No more data
-                  doAgain = false;
-                  newRequest = false;
-               }
+               enqueueNewRequest = hasQueuedRequests;
 
                if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                else status = State.READY;
@@ -626,9 +653,9 @@ package class Communicator
             }
          }
 
-         if (doAgain && newRequest)
+         if (enqueueNewRequest)
          {
-            // New request
+            // There's a (partial) new request in the buffer, we need to create a new request
             request.next = new ProtoRequest();
             request = request.next;
             status = State.READING_HEADERS;
@@ -640,6 +667,8 @@ package class Communicator
             bufferRead = leftover;
             leftover.length = 0;
 
+            // We try to parse the new request immediately
+            tryParse = true;
          }
       }
 
@@ -650,15 +679,15 @@ package class Communicator
    string            requestId;
 
    bool              hasQueuedRequests = false;
-   bool              started;
+   bool              requestDataReceived;
    bool              isKeepAlive;
    size_t            responseSent;
    size_t            responseLength;
    size_t            id;
-   Socket            socket;
+   Socket            clientSkt;
 
    ProtoRequest      requestToProcess;
-   WorkerInfo        assignedWorker;
+   WorkerInfo        worker;
    char[]            leftover;
 
    CoarseTime          lastRecv    = CoarseTime.zero;

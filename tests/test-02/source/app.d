@@ -146,4 +146,40 @@ void test()
 
 
    }
+
+   // Testing partial sending
+   {
+      import core.thread;
+
+      {
+         auto req = "GET /simple HTTP/1.1\r\nhost:localhost\r\n\r\n";
+         req ~= "GET /sleep HTTP/1.1\r\nhost:localhost\r\n\r\n";
+         req ~= "GET /simple HTTP/1.0\r\nhost:localhost\r\n\r\n";
+
+         auto sck = new TcpSocket();
+         sck.connect(new InternetAddress("localhost", 8080));
+         sck.send(req[0..5]);
+         Thread.sleep(10.msecs);
+         sck.send(req[5..50]);
+         Thread.sleep(10.msecs);
+         sck.send(req[50..$]);
+
+
+         char[] buffer;
+         char[] data;
+
+         buffer.length = 4096;
+         while(true)
+         {
+            auto ln = sck.receive(buffer);
+
+            if (ln <= 0) break;
+
+            data ~= buffer[0..ln];
+         }
+
+         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
+      }
+
+   }
 }

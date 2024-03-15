@@ -40,17 +40,20 @@ import std.array : array;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, dur;
 
+
+// The class WorkerInfo is used to keep track of the workers.
 package class WorkerInfo
 {
    enum State
    {
-      IDLING = 0,
-      PROCESSING,
-      EXITING,
-      INVALID,
-      STOPPED
+      IDLING = 0, // Worker is waiting for a request.
+      PROCESSING, // Worker is processing a request.
+      EXITING,    // Worker is exiting.
+      INVALID,    // Worker is in an invalid state.
+      STOPPED     // Worker is stopped.
    }
 
+   // New worker instances are set to STOPPED and added to the lookup table.
    this()
    {
       this.id = instances.length;
@@ -61,19 +64,22 @@ package class WorkerInfo
       lookup[State.STOPPED].insertBack(id);
    }
 
+   // Initialize the worker.
    void init()
    {
       assert(status == State.STOPPED);
 
+      // Set default status.
       clear();
 
       import std.process : pipeProcess, Redirect, Config;
       import std.file : thisExePath;
       import std.uuid : randomUUID;
 
+      // Create a new socket and bind it to a random address.
       auto uuid = randomUUID().toString();
 
-
+      // We use a unix socket on both linux and macos/windows but ...
       version(linux)
       {
          string socketAddress = "SERVERINO_SOCKET/" ~ uuid;
@@ -82,6 +88,7 @@ package class WorkerInfo
       }
       else
       {
+         // ... on windows and macos we use a temporary file.
          import std.path : buildPath;
          import std.file : tempDir;
          string socketAddress = buildPath(tempDir, uuid);
@@ -91,6 +98,7 @@ package class WorkerInfo
 
       s.listen(1);
 
+      // We start a new process and pass the socket address to it.
       auto env = Daemon.instance.workerEnvironment.dup;
       env["SERVERINO_SOCKET"] = socketAddress;
 
@@ -100,7 +108,7 @@ package class WorkerInfo
       s.blocking = false;
 
       this.pi = new ProcessInfo(pipes.pid.processID);
-      this.channel = accepted;
+      this.unixSocket = accepted;
 
       setStatus(WorkerInfo.State.IDLING);
    }
@@ -116,14 +124,14 @@ package class WorkerInfo
 
       if (this.pi) this.pi.kill();
 
-      if (this.channel)
+      if (this.unixSocket)
       {
-         channel.shutdown(SocketShutdown.BOTH);
-         channel.close();
-         channel = null;
+         unixSocket.shutdown(SocketShutdown.BOTH);
+         unixSocket.close();
+         unixSocket = null;
       }
 
-      assignedCommunicator = null;
+      communicator = null;
    }
 
    void setStatus(State s)
@@ -149,8 +157,8 @@ package:
    SysTime                 statusChangedAt;
 
    State                   status      = State.STOPPED;
-   Socket                  channel     = null;
-   Communicator       assignedCommunicator = null;
+   Socket                  unixSocket     = null;
+   Communicator            communicator = null;
 
    static WorkerInfo[]   instances;
    static SimpleList[5]  lookup;
@@ -166,10 +174,12 @@ version(Posix)
    }
 }
 
+// The Daemon class is the core of serverino.
 struct Daemon
 {
    static auto isReady() { return ready; }
 
+   // The instance method returns the singleton instance of the Daemon class.
    static auto instance()
    {
       static Daemon* _instance;
@@ -177,6 +187,7 @@ struct Daemon
       return _instance;
    }
 
+   // Create a lazy list of busy workers.
    auto ref workersAlive()
    {
       import std.range : chain;
@@ -187,6 +198,7 @@ struct Daemon
       );
    }
 
+   // Create a lazy list of workers we can reuse.
    auto ref workersDead()
    {
       import std.range : chain;
@@ -279,26 +291,26 @@ struct Daemon
 
          ready = true;
 
-         // Wait for a new request.
          ssRead.reset();
          ssWrite.reset();
 
-         // Fill socketSet
+         // Fill socketSet with listeners, waiting for new connections.
          foreach(ref listener; config.listeners)
             ssRead.add(listener.socket);
 
+         // Fill socketSet with workers, waiting updates.
          foreach(idx; workersAlive)
-            ssRead.add(WorkerInfo.instances[idx].channel);
+            ssRead.add(WorkerInfo.instances[idx].unixSocket);
 
+         // Fill socketSet with communicators, waiting for updates.
          foreach(idx; Communicator.alive.asRange)
          {
-            ssRead.add(Communicator.instances[idx].socket);
+            ssRead.add(Communicator.instances[idx].clientSkt);
 
             if (!Communicator.instances[idx].completed)
-               ssWrite.add(Communicator.instances[idx].socket);
+               ssWrite.add(Communicator.instances[idx].clientSkt);
          }
 
-         // Check for new requests
          long updates = -1;
          try { updates = Socket.select(ssRead, ssWrite, null, 1.dur!"seconds"); }
          catch (SocketException se) {
@@ -306,6 +318,7 @@ struct Daemon
             warning("Exception: ", se.msg);
          }
 
+         // Check for timeouts.
          CoarseTime now = CoarseTime.currTime;
          {
             static CoarseTime lastCheck = CoarseTime.zero;
@@ -314,48 +327,48 @@ struct Daemon
             {
                lastCheck = now;
 
+               // A list of communicators that hit the timeout.
                Communicator[] toReset;
+
                foreach(idx; Communicator.alive.asRange)
                {
-                  auto Communicator = Communicator.instances[idx];
+                  auto communicator = Communicator.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (Communicator.status == Communicator.State.KEEP_ALIVE && Communicator.lastRequest != CoarseTime.zero && now - Communicator.lastRequest > 5.dur!"seconds")
-                     toReset ~= Communicator;
+                  if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.dur!"seconds")
+                     toReset ~= communicator;
 
                   // Http timeout hit.
-                  else if (Communicator.status == Communicator.State.ASSIGNED || Communicator.status == Communicator.State.READING_BODY || Communicator.status == Communicator.State.READING_HEADERS )
+                  else if (communicator.status == Communicator.State.PAIRED || communicator.status == Communicator.State.READING_BODY || communicator.status == Communicator.State.READING_HEADERS )
                   {
-                     if (Communicator.lastRecv != CoarseTime.zero && now - Communicator.lastRecv > config.maxHttpWaiting)
+                     if (communicator.lastRecv != CoarseTime.zero && now - communicator.lastRecv > config.maxHttpWaiting)
                      {
-                        if (Communicator.started)
+                        if (communicator.requestDataReceived)
                         {
                            debug warning("Connection closed. [REASON: http timeout]");
-                           Communicator.socket.send("HTTP/1.0 408 Request Timeout\r\n");
+                           communicator.clientSkt.send("HTTP/1.0 408 Request Timeout\r\n");
                         }
-                        toReset ~= Communicator;
+                        toReset ~= communicator;
                      }
                   }
                }
 
-               foreach(r; toReset)
-                  r.reset();
+               // Reset the communicators that hit the timeout.
+               foreach(communicator; toReset)
+                  communicator.reset();
 
             }
 
-            size_t cnt = 0;
-            foreach(r; Communicator.dead.asRange)
+            // Free dead communicators.
+            if (Communicator.instances.length > 1024)
+            foreach(communicator; Communicator.dead.asRange)
             {
-               if (r == Communicator.instances.length - 1 && r > 5)
-                  cnt++;
-
-               else break;
-            }
-
-            for(size_t i = 0; i < cnt; ++i)
-            {
-               Communicator.dead.remove(Communicator.instances.length-1);
-               Communicator.instances.length--;
+               if (communicator == Communicator.instances.length - 1 && communicator > 128)
+               {
+                  Communicator.dead.remove(communicator);
+                  Communicator.instances.length--;
+                  break;
+               }
             }
          }
 
@@ -381,54 +394,54 @@ struct Daemon
 
             scope(exit) idx = nextIdx;
 
-            WorkerInfo w = WorkerInfo.instances[idx];
-            Communicator r = w.assignedCommunicator;
+            WorkerInfo worker = WorkerInfo.instances[idx];
+            Communicator communicator = worker.communicator;
 
-            if (ssRead.isSet(w.channel))
+            if (ssRead.isSet(worker.unixSocket))
             {
                updates--;
 
-               if (r is null)
+               if (communicator is null)
                {
-                  w.pi.kill();
-                  w.setStatus(WorkerInfo.State.STOPPED);
+                  worker.pi.kill();
+                  worker.setStatus(WorkerInfo.State.STOPPED);
                   continue;
                }
 
                ubyte[32*1024] buffer;
-               auto bytes = w.channel.receive(buffer);
+               auto bytes = worker.unixSocket.receive(buffer);
 
                if (bytes == Socket.ERROR)
                {
                   debug warning("Error: worker killed?");
-                  w.setStatus(WorkerInfo.State.STOPPED);
-                  w.clear();
-                  r.reset();
+                  worker.setStatus(WorkerInfo.State.STOPPED);
+                  worker.clear();
+                  communicator.reset();
                }
                else if (bytes == 0)
                {
-                  w.setStatus(WorkerInfo.State.STOPPED);
-                  w.clear();
+                  worker.setStatus(WorkerInfo.State.STOPPED);
+                  worker.clear();
 
                   // User closed socket.
-                  if (r !is null && r.socket !is null && r.socket.isAlive)
-                     r.socket.shutdown(SocketShutdown.BOTH);
+                  if (communicator !is null && communicator.clientSkt !is null && communicator.clientSkt.isAlive)
+                     communicator.clientSkt.shutdown(SocketShutdown.BOTH);
                }
                else
                {
-                  if (r is null)
+                  if (communicator is null)
                   {
                      continue;
                   }
-                  if (r.responseLength == 0)
+                  if (communicator.responseLength == 0)
                   {
                      WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
 
-                     r.isKeepAlive = wp.isKeepAlive;
-                     r.setResponseLength(wp.contentLength);
-                     r.write(cast(char[])buffer[WorkerPayload.sizeof..bytes]);
+                     communicator.isKeepAlive = wp.isKeepAlive;
+                     communicator.setResponseLength(wp.contentLength);
+                     communicator.write(cast(char[])buffer[WorkerPayload.sizeof..bytes]);
                   }
-                  else r.write(cast(char[])buffer[0..bytes]);
+                  else communicator.write(cast(char[])buffer[0..bytes]);
                }
             }
 
@@ -438,41 +451,41 @@ struct Daemon
 
          foreach(idx; Communicator.alive.asRange)
          {
-            auto Communicator = Communicator.instances[idx];
+            auto communicator = Communicator.instances[idx];
 
-            if(Communicator.socket is null)
+            if(communicator.clientSkt is null)
                continue;
 
-            if (ssRead.isSet(Communicator.socket))
+            if (ssRead.isSet(communicator.clientSkt))
             {
-               Communicator.lastRecv = now;
-               Communicator.read();
+               communicator.lastRecv = now;
+               communicator.read();
             }
-            else if(Communicator.hasQueuedRequests)
+            else if(communicator.hasQueuedRequests)
             {
-               Communicator.lastRecv = now;
-               Communicator.read(true);
+               communicator.lastRecv = now;
+               communicator.read(true);
             }
 
-            if (updates > 0 && Communicator.socket !is null && ssWrite.isSet(Communicator.socket))
+            if (updates > 0 && communicator.clientSkt !is null && ssWrite.isSet(communicator.clientSkt))
             {
-               Communicator.write();
+               communicator.write();
             }
          }
 
-         foreach(ref r; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.assignedWorker is null))
+         foreach(ref communicator; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.worker is null))
          {
             auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
 
 
-            if (!workers.empty) r.assignWorker(WorkerInfo.instances[workers.front]);
+            if (!workers.empty) communicator.setWorker(WorkerInfo.instances[workers.front]);
             else {
                auto dead = workersDead();
 
                if (!dead.empty)
                {
                   WorkerInfo.instances[dead.front].init;
-                  r.assignWorker(WorkerInfo.instances[dead.front]);
+                  communicator.setWorker(WorkerInfo.instances[dead.front]);
                }
 
             }
@@ -503,7 +516,7 @@ struct Daemon
                communicator.lastRecv = now;
 
                auto nextId = requestId++;
-               communicator.assignSocket(listener.socket.accept(), nextId);
+               communicator.setClientSocket(listener.socket.accept(), nextId);
             }
          }
 
@@ -517,14 +530,14 @@ struct Daemon
 
       foreach(ref idx; workersAlive)
       {
-         WorkerInfo w = WorkerInfo.instances[idx];
+         WorkerInfo worker = WorkerInfo.instances[idx];
 
          try
          {
-            if (w)
+            if (worker)
             {
-               if (w.channel) w.channel.shutdown(SocketShutdown.BOTH);
-               if (w.pi) w.pi.kill();
+               if (worker.unixSocket) worker.unixSocket.shutdown(SocketShutdown.BOTH);
+               if (worker.pi) worker.pi.kill();
             }
          }
          catch (Exception e) { }
@@ -542,19 +555,17 @@ private:
 
    void checkWorkers(DaemonConfigPtr config)
    {
-
-      auto now = Clock.currTime();
       foreach(k; workersAlive)
       {
-         auto w = WorkerInfo.instances[k];
+         auto worker = WorkerInfo.instances[k];
 
-         if (!w.channel.isAlive)
+         if (!worker.unixSocket.isAlive)
          {
-            w.setStatus(WorkerInfo.State.INVALID);
-            log("Killing ", w.pi.id, ". Invalid state.");
+            worker.setStatus(WorkerInfo.State.INVALID);
+            log("Killing ", worker.pi.id, ". Invalid state.");
 
-            w.pi.kill();
-            w.setStatus(WorkerInfo.State.STOPPED);
+            worker.pi.kill();
+            worker.setStatus(WorkerInfo.State.STOPPED);
          }
 
       }

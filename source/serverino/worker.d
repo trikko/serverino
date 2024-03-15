@@ -112,7 +112,7 @@ struct Worker
 
       }
 
-      // Prevent read from stding
+      // Prevent read from stdin
       {
          import std.stdio : stdin;
 
