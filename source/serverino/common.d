@@ -30,17 +30,20 @@ import std.stdio : File;
 
 alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
+// Serverino version
 public static int SERVERINO_MAJOR = 0;
 public static int SERVERINO_MINOR = 6;
 public static int SERVERINO_REVISION = 3;
 
-
+// Struct WorkerPayload is used to pass data from the worker to the daemon
+// It is prepended to the actual response payload
 package struct WorkerPayload
 {
 	bool isKeepAlive = false;
 	size_t contentLength = 0;
 }
 
+// An implementation of unix domain sockets for Windows
 version(Windows)
 {
 	import core.sys.windows.winsock2;
@@ -138,6 +141,7 @@ version(Windows)
 		}
 }
 
+// A simple list implementation
 package struct SimpleList
 {
    private struct SLElement
@@ -272,6 +276,8 @@ package struct SimpleList
    size_t count = 0;
 }
 
+// ProcessInfo is a simple class to manage processes in a cross-platform way
+// It is used to check if a worker is running, to kill it and so on...
 class ProcessInfo
 {
 	this(int pid) { this.pid =  pid; }

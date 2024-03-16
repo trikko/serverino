@@ -31,9 +31,9 @@ import std.experimental.logger : Logger, LogLevel;
 import std.stdio : File, stderr;
 import std.compiler : version_minor;
 
-class CustomLogger : Logger
+// This is a custom logger for the serverino application
+class ServerinoLogger : Logger
 {
-
    static if (version_minor > 100)
    {
       this(LogLevel lv) shared
@@ -100,6 +100,7 @@ class CustomLogger : Logger
    private File outputStream;
 }
 
+// This is the main entry point for the serverino application
 template ServerinoMain(Modules...)
 {
    mixin ServerinoLoop!Modules;
@@ -110,6 +111,7 @@ template ServerinoMain(Modules...)
    }
 }
 
+// This is the main loop for the serverino application
 template ServerinoLoop(Modules...)
 {
    import std.meta : AliasSeq;
@@ -155,9 +157,9 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import std.compiler : version_major;
 
    static if (version_minor > 100)
-      sharedLog = new shared CustomLogger(config.daemonConfig.logLevel);
+      sharedLog = new shared ServerinoLogger(config.daemonConfig.logLevel);
    else
-      sharedLog = new CustomLogger(config.daemonConfig.logLevel);
+      sharedLog = new ServerinoLogger(config.daemonConfig.logLevel);
 
    if (config.returnCode != 0)
       return config.returnCode;
@@ -167,7 +169,7 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    DaemonConfigPtr daemonConfig = &config.daemonConfig;
    WorkerConfigPtr workerConfig = &config.workerConfig;
 
-   // Let's wake up the daemon
+   // Let's wake up the daemon or the worker
    import serverino.daemon;
    import serverino.worker;
    import std.process : environment;
