@@ -193,7 +193,7 @@ struct Worker
                if (recv == -1)
                {
 
-                  auto tm = CoarseTime.currTime;
+                  immutable tm = CoarseTime.currTime;
                   if (tm - idlingAt > config.maxWorkerIdling)
                   {
                      log("Killing worker. [REASON: maxWorkerIdling]");
@@ -527,13 +527,13 @@ struct Worker
             }
             else
             {
+               debug warning("Parsing error:", request._internal._parsingStatus);
+
                if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
                else output.status = 400;
 
                output._internal._sendBody = false;
                return (output._internal._keepAlive);
-
-               debug warning("Parsing error:", request._internal._parsingStatus);
             }
 
          }

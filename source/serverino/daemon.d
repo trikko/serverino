@@ -314,7 +314,7 @@ struct Daemon
          }
 
          // Check for timeouts.
-         CoarseTime now = CoarseTime.currTime;
+         immutable now = CoarseTime.currTime;
          {
             static CoarseTime lastCheck = CoarseTime.zero;
 

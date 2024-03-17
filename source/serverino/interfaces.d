@@ -807,7 +807,7 @@ struct Output
 
          if (guessMime)
          {
-            auto mimes =
+            static immutable mimes =
             [
                ".html" : "text/html", ".htm" : "text/html", ".shtml" : "text/html", ".css" : "text/css", ".xml" : "text/xml",
                ".gif" : "image/gif", ".jpeg" : "image/jpeg", ".jpg" : "image/jpeg", ".js" : "application/javascript",
@@ -994,7 +994,7 @@ struct Output
 
          string statusDescription;
 
-         auto item = _status in StatusCode;
+         immutable item = _status in StatusCode;
          if (item != null) statusDescription = *item;
          else statusDescription = "Unknown";
 

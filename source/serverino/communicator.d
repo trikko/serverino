@@ -62,7 +62,7 @@ package class ProtoRequest
       HTTP_11 = "HTTP/1.1"
    }
 
-   override string toString()
+   override string toString() const
    {
       string s;
       s ~= text("VALID: ", isValid, "\n");
@@ -236,7 +236,7 @@ package class Communicator
       if (maxToSend == 0)
          return;
 
-      auto sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
+      immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
 
       if (sent == Socket.ERROR)
       {

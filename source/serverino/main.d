@@ -54,7 +54,7 @@ class ServerinoLogger : Logger
       import std.process : environment, thisProcessID;
       import std.conv : to;
 
-      enum LLSTR = [
+      static immutable LLSTR = [
          LogLevel.all : "[\x1b[1ml\x1b[0m]", LogLevel.trace : "[\x1b[1;32mt\x1b[0m]",
          LogLevel.info : "[\x1b[1;32mi\x1b[0m]", LogLevel.warning : "[\x1b[1;33mw\x1b[0m]",
          LogLevel.critical : "[\x1b[1;31mc\x1b[0m]", LogLevel.fatal : "[\x1b[1;31mf\x1b[0m]",
@@ -81,7 +81,7 @@ class ServerinoLogger : Logger
          import std.stdio : write, stderr;
          import std.string : indexOf;
 
-         size_t seed = thisProcessID;
+         immutable size_t seed = thisProcessID;
 
          auto r = ((seed*123467983)%15+1)     * 255/15;
          auto g = ((r*seed*123479261)%15+1)   * 255/15;
