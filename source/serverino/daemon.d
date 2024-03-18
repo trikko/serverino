@@ -63,7 +63,7 @@ package class WorkerInfo
    }
 
    // Initialize the worker.
-   void init()
+   void reinit()
    {
       assert(status == State.STOPPED);
 
@@ -482,7 +482,7 @@ struct Daemon
 
                if (!dead.empty)
                {
-                  WorkerInfo.instances[dead.front].init;
+                  WorkerInfo.instances[dead.front].reinit();
                   communicator.setWorker(WorkerInfo.instances[dead.front]);
                }
                else break; // All workers are busy. Will try again later.
@@ -581,7 +581,7 @@ private:
          if (dead.empty) break;
 
          auto idx = dead.front();
-         WorkerInfo.instances[idx].init;
+         WorkerInfo.instances[idx].reinit();
       }
 
    }
