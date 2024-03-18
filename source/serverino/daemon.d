@@ -358,7 +358,7 @@ struct Daemon
             if (Communicator.instances.length > 1024)
             foreach(communicator; Communicator.dead.asRange)
             {
-               if (communicator == Communicator.instances.length - 1 && communicator > 128)
+               if (communicator + 1 == Communicator.instances.length && communicator > 128)
                {
                   Communicator.dead.remove(communicator);
                   Communicator.instances.length--;

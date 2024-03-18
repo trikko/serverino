@@ -396,7 +396,7 @@ struct Request
 
       private:
 
-      @safe @nogc nothrow private this(const ref T[string] data) { _data = data; }
+      @safe @nogc nothrow this(const ref T[string] data) { _data = data; }
       const T[string] _data;
    }
 
@@ -648,7 +648,7 @@ struct Request
                      {
                         _user = auth[0..delim];
 
-                        if (delim < auth.length-1)
+                        if (delim + 1 < auth.length)
                            _password = auth[delim+1..$];
                      }
 
