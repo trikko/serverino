@@ -481,13 +481,14 @@ struct Worker
                output._internal._httpVersion == HttpVersion.HTTP11 &&
                sicmp(request.header.read("connection", "keep-alive"), "keep-alive") == 0;
 
-            version(debugRequest) log("-- REQ: ", request.uri);
-            version(debugRequest) log("-- PARSING STATUS: ", request._internal._parsingStatus);
+            version(debugRequest)
+            {
+               log("-- REQ: ", request.uri);
+               log("-- PARSING STATUS: ", request._internal._parsingStatus);
 
-            try {
-               version(debugRequest) log("-- REQ: ", request);
+               try { log("-- REQ: ", request); }
+               catch (Exception e ) {log("EX:", e);}
             }
-            catch (Exception e ) {log("EX:", e);}
 
             if (request._internal._parsingStatus == Request.ParsingStatus.OK)
             {
