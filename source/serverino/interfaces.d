@@ -941,8 +941,8 @@ struct Output
    }
 
    @safe static string toHTTPDate(SysTime t) {
-      string[] mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-      string[] dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      immutable mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      immutable dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
       SysTime gmt = t.toUTC();
 
