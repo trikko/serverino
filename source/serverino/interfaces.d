@@ -807,7 +807,7 @@ struct Output
 
          if (guessMime)
          {
-            static immutable mimes =
+            immutable mimes =
             [
                ".html" : "text/html", ".htm" : "text/html", ".shtml" : "text/html", ".css" : "text/css", ".xml" : "text/xml",
                ".gif" : "image/gif", ".jpeg" : "image/jpeg", ".jpg" : "image/jpeg", ".js" : "application/javascript",
