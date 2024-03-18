@@ -34,26 +34,12 @@ import std.compiler : version_minor;
 // This is a custom logger for the serverino application
 class ServerinoLogger : Logger
 {
-   static if (version_minor > 100)
-   {
-      this(LogLevel lv) shared
-      {
-         super(lv);
-      }
-   }
-   else {
-      this(LogLevel lv)
-      {
-         super(lv);
-      }
-   }
+   static if (version_minor > 100) this(LogLevel lv) shared { super(lv); }
+   else this(LogLevel lv) { super(lv); }
 
    @trusted
    override void writeLogMsg(ref LogEntry payload)
    {
-      import std.process : environment, thisProcessID;
-      import std.conv : to;
-
       static immutable LLSTR = [
          LogLevel.all : "[\x1b[1ml\x1b[0m]", LogLevel.trace : "[\x1b[1;32mt\x1b[0m]",
          LogLevel.info : "[\x1b[1;32mi\x1b[0m]", LogLevel.warning : "[\x1b[1;33mw\x1b[0m]",
@@ -70,33 +56,42 @@ class ServerinoLogger : Logger
       if(payload.logLevel >= LogLevel.critical)
          msg = "\x1b[1;31m" ~ msg ~ "\x1b[0m";
 
-      string intro;
-
-      if (environment.get("SERVERINO_DAEMON") == null)
-      {
-         version(Windows){ intro = "\x1b[1m-\x1b[0m "; }
-         else { intro = "\x1b[1m★\x1b[0m "; }
-      }
-      else {
-         import std.stdio : write, stderr;
-         import std.string : indexOf;
-
-         immutable size_t seed = thisProcessID;
-
-         auto r = ((seed*123467983)%15+1)     * 255/15;
-         auto g = ((r*seed*123479261)%15+1)   * 255/15;
-         auto b = ((g*seed*123490957)%15+1)   * 255/15;
-
-         version(Windows){ intro = text("\x1b[38;2;", r, ";", g, ";", b,"mD\x1b[0m "); }
-         else { intro = text("\x1b[38;2;", r, ";", g, ";", b,"m■\x1b[0m "); }
-
-      }
-
-      intro ~= format("[%06d]", thisProcessID);
-      auto str = text(intro, " ", LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",format("%04d", payload.line), "] ", msg, "\n");
+      auto str = text(logPrefix, " ", LLSTR[payload.logLevel], " \x1b[1m", t[0..10]," ", t[11..16], "\x1b[0m ", "[", baseName(payload.file),":",format("%04d", payload.line), "] ", msg, "\n");
       stderr.write(str);
    }
 
+   // A random color for the log
+   shared static this()
+   {
+      import std.digest.sha : sha1Of;
+      import std.process : thisProcessID;
+      import std.conv : to, text;
+      import std.algorithm : map;
+      import std.array : array;
+      import std.conv : text;
+      import std.format : format;
+      import std.process : environment;
+
+      immutable int        processId   = thisProcessID;
+      immutable uint[3]    logColor    = sha1Of(processId.to!string)[0..3].map!(x => (x.to!uint/20 + 1)*19).array;
+
+      string prefix;
+
+      if (environment.get("SERVERINO_DAEMON") == null)
+      {
+         version(Windows){ prefix = "\x1b[1m-\x1b[0m "; }
+         else { prefix = "\x1b[1m★\x1b[0m "; }
+      }
+      else {
+         version(Windows){ prefix = text("\x1b[38;2;", logColor[0], ";", logColor[1], ";", logColor[2],"mD\x1b[0m "); }
+         else { prefix = text("\x1b[38;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m■\x1b[0m "); }
+      }
+
+      prefix ~= format("[%06d]", processId);
+      logPrefix = prefix;
+   }
+
+   private static immutable string logPrefix;
    private File outputStream;
 }
 
