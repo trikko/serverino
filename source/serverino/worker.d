@@ -128,7 +128,7 @@ struct Worker
 
       import core.thread : Thread;
       import core.stdc.stdlib : exit;
-      import core.atomic : cas;
+      import core.atomic : cas, atomicLoad, atomicStore;
 
       __gshared CoarseTime processedStartedAt = CoarseTime.zero;
       __gshared bool justSent = false;
@@ -137,8 +137,15 @@ struct Worker
 
          Thread.getThis().isDaemon = true;
 
-         while(processedStartedAt == CoarseTime.zero || CoarseTime.currTime - processedStartedAt < config.maxRequestTime)
+         while(true)
+         {
+            CoarseTime startedAt = atomicLoad(processedStartedAt);
+
+            if (!(startedAt == CoarseTime.zero || CoarseTime.currTime - startedAt < config.maxRequestTime))
+               break;
+
             Thread.sleep(1.dur!"seconds");
+         }
 
          log("Request timeout.");
 
@@ -243,11 +250,11 @@ struct Worker
          }
 
          requestId++;
-         processedStartedAt = CoarseTime.currTime;
+         atomicStore(processedStartedAt, CoarseTime.currTime);
 
          WorkerPayload wp;
          wp.isKeepAlive = parseHttpRequest!Modules(config, data.array);
-         processedStartedAt = CoarseTime.zero;
+         atomicStore(processedStartedAt, CoarseTime.zero);
          wp.contentLength = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
 
          if (cas(&justSent, false, true))
