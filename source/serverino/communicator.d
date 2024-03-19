@@ -359,9 +359,13 @@ package class Communicator
 
          if (bytesRead < 0)
          {
-            status = State.READY;
-            log("Socket error on read. ", lastSocketError);
-            reset();
+            if(!wouldHaveBlocked)
+            {
+               status = State.READY;
+               log("Socket error on read. ", lastSocketError);
+               reset();
+            }
+
             return;
          }
 
