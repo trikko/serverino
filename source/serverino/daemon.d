@@ -175,9 +175,11 @@ version(Posix)
 // The Daemon class is the core of serverino.
 struct Daemon
 {
-   static auto isReady() { return ready; }
 
-   // The instance method returns the singleton instance of the Daemon class.
+   /// Is serverino ready to accept requests?
+   bool bootCompleted() { return ready; }
+
+   /// The instance method returns the singleton instance of the Daemon class.
    static auto instance()
    {
       static Daemon* _instance;
@@ -185,6 +187,10 @@ struct Daemon
       return _instance;
    }
 
+   /// Shutdown the serverino daemon.
+   void shutdown() @nogc nothrow { exitRequested = true; }
+
+package:
    // Create a lazy list of busy workers.
    pragma(inline, true)
    auto ref workersAlive()
@@ -283,8 +289,6 @@ struct Daemon
       {
          // Create workers if needed. Kills old workers, freezed ones, etc.
          checkWorkers(config);
-
-         ready = true;
 
          ssRead.reset();
          ssWrite.reset();
@@ -552,8 +556,6 @@ struct Daemon
       exit(0);
    }
 
-   void shutdown() @nogc nothrow { exitRequested = true; }
-
 private:
 
    void checkWorkers(DaemonConfigPtr config)
@@ -578,15 +580,18 @@ private:
       {
          auto dead = workersDead();
 
-         if (dead.empty) break;
+         if (dead.empty)
+            break;
 
          auto idx = dead.front();
          WorkerInfo.instances[idx].reinit();
       }
 
+      if (!ready) ready = true;
+
    }
 
-   ulong requestId = 0;
+   ulong          requestId = 0;
    string[string] workerEnvironment;
 
    __gshared bool exitRequested = false;

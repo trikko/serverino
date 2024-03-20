@@ -30,7 +30,36 @@ import serverino.tests;
 
 import std;
 
-mixin ServerinoTest;
+mixin ServerinoMain;
+
+@onDaemonStart void run_tests()
+{
+   import core.thread;
+   import serverino.daemon;
+
+   new Thread({
+
+      Thread.getThis().isDaemon = true;
+
+      // Is serverino ready?
+      while(!Daemon.instance.bootCompleted)
+         Thread.sleep(10.msecs);
+
+      // Run the tests
+      try {
+         test();
+         writeln("All tests passed!");
+      }
+      catch (Throwable t)
+      {
+         writeln("Test failed");
+         writeln(t);
+      }
+
+      Daemon.instance.shutdown();
+
+   }).start();
+}
 
 @route!"/sleep"
 @endpoint void sleep(Request r, Output o)

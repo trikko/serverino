@@ -38,6 +38,7 @@ import std.algorithm : splitter, startsWith, map;
 import std.range : assumeSorted;
 import std.format : format;
 import std.conv : to;
+import core.atomic : cas, atomicLoad, atomicStore;
 
 extern(C) int dup(int a);
 extern(C) int dup2(int a, int b);
@@ -128,20 +129,20 @@ struct Worker
 
       import core.thread : Thread;
       import core.stdc.stdlib : exit;
-      import core.atomic : cas, atomicLoad, atomicStore;
-
-      __gshared CoarseTime processedStartedAt = CoarseTime.zero;
       __gshared bool justSent = false;
 
       new Thread({
 
          Thread.getThis().isDaemon = true;
+         Thread.getThis().priority = Thread.PRIORITY_MIN;
 
          while(true)
          {
-            CoarseTime startedAt = atomicLoad(processedStartedAt);
+            Thread.yield();
 
-            if (!(startedAt == CoarseTime.zero || CoarseTime.currTime - startedAt < config.maxRequestTime))
+            CoarseTime st = atomicLoad(processedStartedAt);
+
+            if (!(st == CoarseTime.zero || CoarseTime.currTime - st < config.maxRequestTime))
                break;
 
             Thread.sleep(1.dur!"seconds");
@@ -157,7 +158,7 @@ struct Worker
             output.status = 504;
             output._internal.buildHeaders();
             wp.isKeepAlive = false;
-            processedStartedAt = CoarseTime.zero;
+            atomicStore(processedStartedAt, CoarseTime.zero);
             wp.contentLength = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
 
             channel.send((cast(char*)&wp)[0..wp.sizeof] ~ output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
@@ -182,7 +183,6 @@ struct Worker
 
          import serverino.databuffer;
 
-         //TODO: Gestire richiesta > 32kb (buffer.length)
          uint size;
          bool sizeRead = false;
          ptrdiff_t recv = -1;
@@ -249,12 +249,10 @@ struct Worker
             exit(0);
          }
 
-         requestId++;
-         atomicStore(processedStartedAt, CoarseTime.currTime);
+         ++requestId;
 
          WorkerPayload wp;
          wp.isKeepAlive = parseHttpRequest!Modules(config, data.array);
-         atomicStore(processedStartedAt, CoarseTime.zero);
          wp.contentLength = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
 
          if (cas(&justSent, false, true))
@@ -501,7 +499,12 @@ struct Worker
             {
                try
                {
-                  callHandlers!Modules(request, output);
+                  {
+                     scope(exit) atomicStore(processedStartedAt, CoarseTime.zero);
+
+                     atomicStore(processedStartedAt, CoarseTime.currTime);
+                     callHandlers!Modules(request, output);
+                  }
 
                   if (!output._internal._dirty)
                   {
@@ -747,19 +750,19 @@ struct Worker
       else static assert(0, "Please add at least one endpoint. Try this: `void hello(Request req, Output output) { output ~= req.dump(); }`");
    }
 
-   char[]      mem;
-   //SharedMemory.MemHandle   memHandle;
-   ProcessInfo daemonProcess;
+   ProcessInfo    daemonProcess;
 
-   Request           request;
-   Output            output;
+   Request        request;
+   Output         output;
 
-   CoarseTime          startedAt;
-   CoarseTime          idlingAt;
+   CoarseTime     startedAt;
+   CoarseTime     idlingAt;
 
-   Socket            channel;
+   Socket         channel;
 
-   __gshared         requestId = 0;
+   static size_t        requestId = 0;
+   shared CoarseTime    processedStartedAt = CoarseTime.zero;
+
 }
 
 
