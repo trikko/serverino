@@ -31,7 +31,7 @@ import std.string : format, representation, indexOf, lastIndexOf, toLower, toStr
 import std.range : empty, assumeSorted;
 import std.algorithm : map, canFind, splitter, startsWith;
 import core.thread : Thread;
-import std.datetime : SysTime, Clock, dur, Duration, DateTime;
+import std.datetime : SysTime, Clock, seconds, Duration, DateTime;
 import std.experimental.logger : log, warning, fatal, critical;
 import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel, SocketOption, Linger, AddressFamily;
 
@@ -1063,7 +1063,7 @@ struct Output
       void clear()
       {
          // HACK
-         _timeout = 0.dur!"seconds";
+         _timeout = 0.seconds;
          _httpVersion = HttpVersion.HTTP10;
          _dirty = false;
          _status = 200;

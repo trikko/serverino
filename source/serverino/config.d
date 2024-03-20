@@ -29,7 +29,7 @@ module serverino.config;
 import std.experimental.logger : LogLevel;
 import std.socket : Socket, InternetAddress, Internet6Address, Address;
 import std.stdio : File;
-import std.datetime : Duration, dur;
+import std.datetime : Duration, seconds, hours, msecs;
 import std.traits : ReturnType;
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
@@ -145,16 +145,16 @@ struct ServerinoConfig
    @safe ref ServerinoConfig setWorkers(size_t val) return { setMinWorkers(val); setMaxWorkers(val); return this; }
 
    /// Max time a worker can live. After this time, worker is terminated.
-   @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 6.dur!"hours") return  { workerConfig.maxWorkerLifetime = dur; return this; }
+   @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 6.hours) return  { workerConfig.maxWorkerLifetime = dur; return this; }
 
    /// Max time a worker can be idle. After this time, worker is terminated.
-   @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.dur!"hours") return  { workerConfig.maxWorkerIdling = dur; return this; }
+   @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.hours) return  { workerConfig.maxWorkerIdling = dur; return this; }
 
    /// Max number of pending connections
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
 
    /// Max time a request can take. After this time, worker is terminated.
-   @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.dur!"seconds") return  { workerConfig.maxRequestTime = dur; return this; }
+   @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.seconds) return  { workerConfig.maxRequestTime = dur; return this; }
 
    /// Max size of a request. If a request is bigger than this value, error 413 is returned.
    @safe ref ServerinoConfig setMaxRequestSize(size_t bytes = 1024*1024*10) return     { daemonConfig.maxRequestSize = bytes;  return this;}
@@ -169,10 +169,10 @@ struct ServerinoConfig
    }
 
    /// How long the socket will wait for a request after the connection?
-   @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.dur!"seconds") return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
+   @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.seconds) return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
 
    /// Enable/Disable keep-alive for http/1.1
-   @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.dur!"seconds") return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
+   @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.seconds) return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
 
    /// Ditto
    @safe ref ServerinoConfig enableKeepAlive(Duration timeout) return { enableKeepAlive(true, timeout); return this; }

@@ -224,7 +224,7 @@ void test_3(Request r, Output o)
 
    import core.thread;
 
-   Thread.sleep(2000.dur!"msecs");
+   Thread.sleep(2000.msecs);
 
 }
 
@@ -233,7 +233,7 @@ ServerinoConfig conf()
 {
    return ServerinoConfig
       .create()
-      .setMaxRequestTime(1.dur!"seconds")
+      .setMaxRequestTime(1.seconds)
       .setMaxRequestSize(2000)
       .addListener("0.0.0.0", 8080)
       .addListener("0.0.0.0", 8081)

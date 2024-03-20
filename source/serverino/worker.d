@@ -32,7 +32,7 @@ import std.experimental.logger : log, warning, info, fatal, critical;
 import std.process : environment;
 import std.stdio : FILE;
 import std.socket;
-import std.datetime : dur;
+import std.datetime : seconds;
 import std.string : toStringz, indexOf, strip, toLower, empty;
 import std.algorithm : splitter, startsWith, map;
 import std.range : assumeSorted;
@@ -74,7 +74,7 @@ struct Worker
 
       channel = new Socket(AddressFamily.UNIX, SocketType.STREAM);
       channel.connect(new UnixAddress(socketAddress));
-      channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"seconds"(1));
+      channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, 1.seconds);
 
       request._internal = new Request.RequestImpl();
       output._internal = new Output.OutputImpl();
@@ -145,7 +145,7 @@ struct Worker
             if (!(st == CoarseTime.zero || CoarseTime.currTime - st < config.maxRequestTime))
                break;
 
-            Thread.sleep(1.dur!"seconds");
+            Thread.sleep(1.seconds);
          }
 
          log("Request timeout.");

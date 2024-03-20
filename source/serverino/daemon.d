@@ -38,7 +38,7 @@ import std.format : format;
 import std.socket;
 import std.array : array;
 import std.algorithm : filter;
-import std.datetime : SysTime, Clock, dur;
+import std.datetime : SysTime, Clock, seconds;
 
 
 // The class WorkerInfo is used to keep track of the workers.
@@ -311,7 +311,7 @@ package:
          }
 
          long updates = -1;
-         try { updates = Socket.select(ssRead, ssWrite, null, 1.dur!"seconds"); }
+         try { updates = Socket.select(ssRead, ssWrite, null, 1.seconds); }
          catch (SocketException se) {
             import std.experimental.logger : warning;
             warning("Exception: ", se.msg);
@@ -322,7 +322,7 @@ package:
          {
             static CoarseTime lastCheck = CoarseTime.zero;
 
-            if (now-lastCheck >= 1.dur!"seconds")
+            if (now-lastCheck >= 1.seconds)
             {
                lastCheck = now;
 
@@ -334,7 +334,7 @@ package:
                   auto communicator = Communicator.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.dur!"seconds")
+                  if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.seconds)
                      toReset ~= communicator;
 
                   // Http timeout hit.

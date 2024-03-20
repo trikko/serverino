@@ -64,7 +64,7 @@ mixin ServerinoMain;
 @endpoint void sleep(Request r, Output o)
 {
    import core.thread;
-   Thread.sleep(1.dur!"seconds");
+   Thread.sleep(1.seconds);
    o.addHeader("Content-type", "text/plain");
    o ~= "slept";
 }
@@ -82,7 +82,7 @@ ServerinoConfig conf()
 {
    return ServerinoConfig
       .create()
-      .setMaxRequestTime(1.dur!"seconds")
+      .setMaxRequestTime(1.seconds)
       .setMaxRequestSize(2000)
       .addListener("0.0.0.0", 8080)
       .setWorkers(4);
