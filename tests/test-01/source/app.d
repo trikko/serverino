@@ -26,7 +26,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 module app;
 
 import serverino;
-import serverino.tests;
 import tagged;
 
 import std;
