@@ -794,7 +794,7 @@ struct Output
 
       if (!exists(path) || !isFile(path))
       {
-         warning("Trying to serve `", baseName(path) ,"`, but it doesn't exists.");
+         warning("Trying to serve file `", baseName(path),"` (path: `" ~ path ~ "`), but it doesn't exists.");
          return false;
       }
 
