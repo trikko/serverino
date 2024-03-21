@@ -96,7 +96,7 @@ void requestLog(Request request)
 
 ## Shielding the whole thing
 > [!CAUTION]
->  I recommend securing serverino behind a full web server. Below, I’ve provided two examples of how to run serverino with *nginx* and *apache*.
+>  I recommend securing *serverino* behind a full web server. Below, I provide two examples of how to run *serverino* with *nginx* and *apache*.
 
 ### Using nginx
 It's pretty easy. Just add these lines inside your nginx configuration:
