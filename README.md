@@ -29,9 +29,8 @@ void simple(Request request, Output output) { output ~= request.dump(); }
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
 
 ## Defining more than one endpoint
-**Every function marked with ```@endpoint``` is called until one writes something to output**
-
-The calling order is defined by ```@priority```
+> [!IMPORTANT]
+> All the functions marked with ```@endpoint``` will be called one by one, in order of ```@priority``` (higher to lower), until one of them modifies the output.
 
 ```d
 module app;
@@ -96,7 +95,8 @@ void requestLog(Request request)
 ```
 
 ## Shielding the whole thing
-I would not put serverino into the wild. For using in production I suggest shielding serverino under a full webserver.
+> [!CAUTION]
+>  I recommend securing serverino behind a full web server. Below, I’ve provided two examples of how to run serverino with *nginx* and *apache*.
 
 ### Using nginx
 It's pretty easy. Just add these lines inside your nginx configuration:
