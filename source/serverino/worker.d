@@ -307,28 +307,12 @@ struct Worker
 
             {
                auto fields = requestLine.splitter(' ');
-               size_t popped = 0;
 
-               if (!fields.empty)
-               {
-                  method = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
-
-               if (!fields.empty)
-               {
-                  path = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
-
-               if (!fields.empty)
-               {
-                  httpVersion = fields.front;
-                  fields.popFront;
-                  popped++;
-               }
+               method = fields.front;
+               fields.popFront;
+               path = fields.front;
+               fields.popFront;
+               httpVersion = fields.front;
 
                if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
                {
@@ -352,14 +336,11 @@ struct Worker
                auto firstColon = l.indexOf(':');
                if (firstColon > 0)
 
-               switch(l[0..firstColon])
+               if(l[0..firstColon] == "content-length")
                {
-                  case "content-length":
-                     contentLength = l[firstColon+1..$].to!size_t;
-                     hasContentLength = true;
-                     break;
-
-                  default:
+                  contentLength = l[firstColon+1..$].to!size_t;
+                  hasContentLength = true;
+                  break;
                }
             }
 
