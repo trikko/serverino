@@ -210,8 +210,12 @@ struct ServerinoConfig
 
    void validate()
    {
-      if (daemonConfig.minWorkers == 0 || daemonConfig.minWorkers > 1024)
-         throw new Exception("Configuration error. Must be 1 <= minWorkers <= 1024");
+
+      if (daemonConfig.minWorkers > 1024)
+         throw new Exception("Configuration error. Must be 0 <= minWorkers <= 1024");
+
+      if (daemonConfig.maxWorkers == 0)
+         throw new Exception("Configuration error. At least one worker is required");
 
       if (daemonConfig.minWorkers > daemonConfig.maxWorkers)
          throw new Exception("Configuration error. Must be minWorkers <= maxWorkers");

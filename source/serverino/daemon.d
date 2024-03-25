@@ -71,7 +71,6 @@ package class WorkerInfo
       clear();
 
       import std.process : pipeProcess, Redirect, Config;
-      import std.file : thisExePath;
       import std.uuid : randomUUID;
 
       // Create a new socket and bind it to a random address.
@@ -100,14 +99,17 @@ package class WorkerInfo
       auto env = Daemon.instance.workerEnvironment.dup;
       env["SERVERINO_SOCKET"] = socketAddress;
 
-      auto pipes = pipeProcess(thisExePath(), Redirect.stdin, env, Config.detached);
+      auto pipes = pipeProcess(exePath, Redirect.stdin, env, Config.detached);
 
       Socket accepted = s.accept();
-      s.blocking = false;
-
       this.pi = new ProcessInfo(pipes.pid.processID);
       this.unixSocket = accepted;
 
+      // Wait for the worker to wake up.
+      ubyte[1] data;
+      accepted.receive(data);
+
+      s.blocking = false;
       setStatus(WorkerInfo.State.IDLING);
    }
 
@@ -147,6 +149,8 @@ package class WorkerInfo
       statusChangedAt = Clock.currTime();
    }
 
+   private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
+
 package:
 
    size_t                  id;
@@ -160,6 +164,8 @@ package:
 
    static WorkerInfo[]   instances;
    static SimpleList[3]  lookup;
+   static string         exePath;
+
 }
 
 version(Posix)

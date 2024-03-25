@@ -76,9 +76,11 @@ struct Worker
       channel.connect(new UnixAddress(socketAddress));
       channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, 1.seconds);
 
+      ubyte[1] ack = ['\0'];
+      channel.send(ack);
+
       request._internal = new Request.RequestImpl();
       output._internal = new Output.OutputImpl();
-
 
       version(Windows)
       {
