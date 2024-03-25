@@ -1,7 +1,7 @@
 serverino
 <img align="left" alt="Logo" width="100" src="https://github.com/trikko/serverino/assets/647157/a6f462fa-8b76-43c3-9855-0671e704aa6c" height="96">
 =======
-[![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml) [![Donate](https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&logoColor=white)](https://paypal.me/andreafontana/5)
+[![BUILD & TEST](https://github.com/trikko/serverino/actions/workflows/d.yml/badge.svg)](https://github.com/trikko/serverino/actions/workflows/d.yml) [![LICENSE](https://img.shields.io/badge/LICENSE-MIT-blue)](https://github.com/trikko/serverino/tree/master/LICENSE) [![Donate](https://img.shields.io/badge/paypal-buy_me_a_beer-FFEF00?logo=paypal&logoColor=white)](https://paypal.me/andreafontana/5)
 ###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [more examples](https://github.com/trikko/serverino/tree/master/examples/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
 ---
 * 🚀 **Quick build & start**: *build & run your server in seconds.*
@@ -29,9 +29,8 @@ void simple(Request request, Output output) { output ~= request.dump(); }
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
 
 ## Defining more than one endpoint
-**Every function marked with ```@endpoint``` is called until one writes something to output**
-
-The calling order is defined by ```@priority```
+> [!IMPORTANT]
+> All the functions marked with ```@endpoint``` will be called one by one, in order of ```@priority``` (higher to lower), until one of them modifies the output.
 
 ```d
 module app;
@@ -96,7 +95,8 @@ void requestLog(Request request)
 ```
 
 ## Shielding the whole thing
-I would not put serverino into the wild. For using in production I suggest shielding serverino under a full webserver.
+> [!CAUTION]
+>  I recommend securing *serverino* behind a full web server. Below, I provide two examples of how to run *serverino* with *nginx* and *apache*.
 
 ### Using nginx
 It's pretty easy. Just add these lines inside your nginx configuration:
