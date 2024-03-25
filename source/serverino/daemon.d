@@ -63,7 +63,7 @@ package class WorkerInfo
    }
 
    // Initialize the worker.
-   void reinit()
+   void reinit(bool isDynamicWorker)
    {
       assert(status == State.STOPPED);
 
@@ -98,6 +98,7 @@ package class WorkerInfo
       // We start a new process and pass the socket address to it.
       auto env = Daemon.instance.workerEnvironment.dup;
       env["SERVERINO_SOCKET"] = socketAddress;
+      env["SERVERINO_DYNAMIC_WORKER"] = isDynamicWorker?"1":"0";
 
       auto pipes = pipeProcess(exePath, Redirect.stdin, env, Config.detached);
 
@@ -492,7 +493,7 @@ package:
 
                if (!dead.empty)
                {
-                  WorkerInfo.instances[dead.front].reinit();
+                  WorkerInfo.instances[dead.front].reinit(true);
                   communicator.setWorker(WorkerInfo.instances[dead.front]);
                }
                else break; // All workers are busy. Will try again later.
@@ -590,7 +591,7 @@ private:
             break;
 
          auto idx = dead.front();
-         WorkerInfo.instances[idx].reinit();
+         WorkerInfo.instances[idx].reinit(false);
       }
 
       if (!ready) ready = true;

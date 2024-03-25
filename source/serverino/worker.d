@@ -60,6 +60,7 @@ struct Worker
       import std.stdio;
       import std.format : format;
 
+      isDynamic = environment.get("SERVERINO_DYNAMIC_WORKER") == "1";
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
 
       version(linux) char[] socketAddress = char(0) ~ cast(char[])environment.get("SERVERINO_SOCKET");
@@ -213,6 +214,13 @@ struct Worker
                   else if (tm - startedAt > config.maxWorkerLifetime)
                   {
                      log("Killing worker. [REASON: maxWorkerLifetime]");
+                     tryUninit!Modules();
+                     channel.close();
+                     exit(0);
+                  }
+                  else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling)
+                  {
+                     log("Killing worker. [REASON: cooling down]");
                      tryUninit!Modules();
                      channel.close();
                      exit(0);
@@ -745,6 +753,7 @@ struct Worker
 
    static size_t        requestId = 0;
    shared CoarseTime    processedStartedAt = CoarseTime.zero;
+   __gshared bool       isDynamic = false;
 
 }
 

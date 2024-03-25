@@ -110,6 +110,7 @@ struct ServerinoConfig
       sc.setMinWorkers();
       sc.setMaxWorkerLifetime();
       sc.setMaxWorkerIdling();
+      sc.setMaxDynamicWorkerIdling();
       sc.setListenerBacklog();
 
       sc.setMaxRequestTime();
@@ -149,6 +150,9 @@ struct ServerinoConfig
 
    /// Max time a worker can be idle. After this time, worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.hours) return  { workerConfig.maxWorkerIdling = dur; return this; }
+
+   /// Max time a dynamic worker can be idle. After this time, worker is terminated.
+   @safe ref ServerinoConfig setMaxDynamicWorkerIdling(Duration dur = 10.seconds) return  { workerConfig.maxDynamicWorkerIdling = dur; return this; }
 
    /// Max number of pending connections
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
@@ -259,10 +263,11 @@ package struct Listener
 package struct WorkerConfig
 {
 
-   Duration   maxRequestTime;
+   Duration    maxRequestTime;
    Duration    maxHttpWaiting;
    Duration    maxWorkerLifetime;
    Duration    maxWorkerIdling;
+   Duration    maxDynamicWorkerIdling;
 
    bool        keepAlive;
    string      user;
