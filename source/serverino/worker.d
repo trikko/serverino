@@ -151,7 +151,7 @@ struct Worker
             Thread.sleep(1.seconds);
          }
 
-         log("Request timeout.");
+         log("Killing worker. [REASON: request timeout]");
 
          if (cas(&justSent, false, true))
          {

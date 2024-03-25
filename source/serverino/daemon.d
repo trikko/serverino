@@ -51,6 +51,17 @@ package class WorkerInfo
       STOPPED     // Worker is stopped.
    }
 
+   override string toString()
+   {
+      string s;
+      s ~= "PID: " ~ pi.id.to!string ~ "\n";
+      s ~= "ID: " ~ id.to!string ~ "\n";
+      s ~= "STATE: " ~ status.to!string ~ "\n";
+      s ~= "STATUS CHANGED AT: " ~ statusChangedAt.to!string ~ "\n";
+      s ~= "RELOAD REQUESTED: " ~ reloadRequested.to!string ~ "\n";
+      return s;
+   }
+
    // New worker instances are set to STOPPED and added to the lookup table.
    this()
    {
@@ -58,7 +69,7 @@ package class WorkerInfo
       instances ~= this;
 
       status = State.STOPPED;
-      statusChangedAt = Clock.currTime();
+      statusChangedAt = CoarseTime.currTime();
       lookup[State.STOPPED].insertBack(id);
    }
 
@@ -100,6 +111,7 @@ package class WorkerInfo
       env["SERVERINO_SOCKET"] = socketAddress;
       env["SERVERINO_DYNAMIC_WORKER"] = isDynamicWorker?"1":"0";
 
+      reloadRequested = false;
       auto pipes = pipeProcess(exePath, Redirect.stdin, env, Config.detached);
 
       Socket accepted = s.accept();
@@ -147,7 +159,7 @@ package class WorkerInfo
       }
 
       status = s;
-      statusChangedAt = Clock.currTime();
+      statusChangedAt = CoarseTime.currTime();
    }
 
    private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
@@ -157,11 +169,12 @@ package:
    size_t                  id;
    ProcessInfo             pi;
 
-   SysTime                 statusChangedAt;
+   CoarseTime              statusChangedAt;
 
-   State                   status      = State.STOPPED;
-   Socket                  unixSocket     = null;
-   Communicator            communicator = null;
+   State                   status            = State.STOPPED;
+   Socket                  unixSocket        = null;
+   Communicator            communicator      = null;
+   bool                    reloadRequested   = false;
 
    static WorkerInfo[]   instances;
    static SimpleList[3]  lookup;
@@ -221,11 +234,20 @@ package:
    {
       import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
-      import std.stdio;
+      import std.file : tempDir, exists, remove;
+      import std.path : buildPath;
+      import std.uuid : randomUUID;
 
       workerEnvironment = environment.toAA();
       workerEnvironment["SERVERINO_DAEMON"] = thisProcessID.to!string;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
+
+      auto canaryFileName = tempDir.buildPath("serverino-" ~ thisProcessID.to!string ~ "-" ~ randomUUID().toString);
+      void removeCanary() { remove(canaryFileName); }
+      void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ thisProcessID.to!string ~ ")\n"); }
+
+      writeCanary();
+      scope(exit) removeCanary();
 
       info("Daemon started.");
 
@@ -331,6 +353,13 @@ package:
 
             if (now-lastCheck >= 1.seconds)
             {
+
+               if (!exists(canaryFileName))
+               {
+                  reloadRequested = true;
+                  writeCanary();
+               }
+
                lastCheck = now;
 
                // A list of communicators that hit the timeout.
@@ -341,7 +370,7 @@ package:
                   auto communicator = Communicator.instances[idx];
 
                   // Keep-alive timeout hit.
-                  if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.seconds)
+                  if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.worker is null && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.seconds)
                      toReset ~= communicator;
 
                   // Http timeout hit.
@@ -378,11 +407,12 @@ package:
             }
          }
 
-         if (updates < 0) break;
-         else if (updates == 0) continue;
-
-         if (exitRequested)
+         if (updates < 0 || exitRequested)
+         {
+            removeCanary();
             break;
+         }
+         else if (updates == 0) continue;
 
          auto wa = workersAlive;
          size_t nextIdx;
@@ -567,13 +597,35 @@ private:
 
    void checkWorkers(DaemonConfigPtr config)
    {
-      foreach(k; workersAlive)
+      if (reloadRequested)
+      {
+         foreach(ref worker; WorkerInfo.instances)
+         {
+            if (worker.status != WorkerInfo.State.PROCESSING)
+            {
+               log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
+               worker.pi.kill();
+               worker.setStatus(WorkerInfo.State.STOPPED);
+            }
+            else worker.reloadRequested = true;
+         }
+
+         reloadRequested = false;
+      }
+
+      foreach(k; workersAlive.array)
       {
          auto worker = WorkerInfo.instances[k];
 
          if (!worker.unixSocket.isAlive)
          {
-            log("Killing ", worker.pi.id, ". Invalid state.");
+            log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
+            worker.pi.kill();
+            worker.setStatus(WorkerInfo.State.STOPPED);
+         }
+         else if (worker.reloadRequested && worker.status == WorkerInfo.State.IDLING)
+         {
+            log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
             worker.pi.kill();
             worker.setStatus(WorkerInfo.State.STOPPED);
          }
@@ -601,6 +653,7 @@ private:
    ulong          requestId = 0;
    string[string] workerEnvironment;
 
+   __gshared bool reloadRequested = false;
    __gshared bool exitRequested = false;
    __gshared bool ready = false;
 }

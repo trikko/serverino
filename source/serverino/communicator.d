@@ -126,7 +126,7 @@ package class Communicator
    }
 
    void setResponseLength(size_t s) { responseLength = s; responseSent = 0; }
-   bool completed() { return responseLength == responseSent; }
+   pragma(inline, true) bool completed() { return responseLength == responseSent; }
 
    // Unset the client socket and move the communicator to the ready state
    pragma(inline, true)
@@ -170,6 +170,8 @@ package class Communicator
          unsetClientSocket();
       }
 
+      unsetWorker();
+
       status = State.READY;
       responseLength = 0;
       responseSent = 0;
@@ -202,6 +204,8 @@ package class Communicator
          this.worker.communicator = null;
          this.worker.setStatus(WorkerInfo.State.IDLING);
          this.worker = null;
+
+         lastRequest = CoarseTime.currTime;
       }
 
       responseLength = 0;
