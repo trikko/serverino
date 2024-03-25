@@ -236,15 +236,19 @@ package:
       import std.process : environment, thisProcessID;
       import std.file : tempDir, exists, remove;
       import std.path : buildPath;
-      import std.uuid : randomUUID;
+      import std.digest.sha : sha256Of;
+      import std.digest : toHexString;
+      import std.ascii : LetterCase;
+
+      immutable daemonPid = thisProcessID.to!string;
+      immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
 
       workerEnvironment = environment.toAA();
-      workerEnvironment["SERVERINO_DAEMON"] = thisProcessID.to!string;
+      workerEnvironment["SERVERINO_DAEMON"] = daemonPid;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
 
-      auto canaryFileName = tempDir.buildPath("serverino-" ~ thisProcessID.to!string ~ "-" ~ randomUUID().toString);
       void removeCanary() { remove(canaryFileName); }
-      void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ thisProcessID.to!string ~ ")\n"); }
+      void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }
 
       writeCanary();
       scope(exit) removeCanary();
