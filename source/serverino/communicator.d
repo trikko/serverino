@@ -27,7 +27,7 @@ module serverino.communicator;
 
 import serverino.common;
 import serverino.databuffer;
-import serverino.daemon : WorkerInfo;
+import serverino.daemon : WorkerInfo, now;
 import serverino.config : DaemonConfigPtr;
 import std.socket;
 
@@ -205,7 +205,7 @@ package class Communicator
          this.worker.setStatus(WorkerInfo.State.IDLING);
          this.worker = null;
 
-         lastRequest = CoarseTime.currTime;
+         lastRequest = now;
       }
 
       responseLength = 0;
@@ -228,7 +228,7 @@ package class Communicator
       worker.unixSocket.send(current.data);
 
       requestToProcess = requestToProcess.next;
-      lastRequest = CoarseTime.currTime;
+      lastRequest = now;
    }
 
    // Write the buffered data to the client socket

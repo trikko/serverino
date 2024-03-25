@@ -69,7 +69,7 @@ package class WorkerInfo
       instances ~= this;
 
       status = State.STOPPED;
-      statusChangedAt = CoarseTime.currTime();
+      statusChangedAt = now;
       lookup[State.STOPPED].insertBack(id);
    }
 
@@ -147,6 +147,7 @@ package class WorkerInfo
       communicator = null;
    }
 
+   pragma(inline, true)
    void setStatus(State s)
    {
       import std.conv : to;
@@ -159,7 +160,7 @@ package class WorkerInfo
       }
 
       status = s;
-      statusChangedAt = CoarseTime.currTime();
+      statusChangedAt = now;
    }
 
    private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
@@ -254,6 +255,7 @@ package:
       scope(exit) removeCanary();
 
       info("Daemon started.");
+      now = CoarseTime.currTime;
 
       version(Posix)
       {
@@ -351,7 +353,7 @@ package:
          }
 
          // Check for timeouts.
-         immutable now = CoarseTime.currTime;
+         now = CoarseTime.currTime;
          {
             static CoarseTime lastCheck = CoarseTime.zero;
 
@@ -696,3 +698,6 @@ void tryUninit(Modules...)()
       }}
    }
 }
+
+// Time is cached to avoid calling CoarseTime.currTime too many times.
+package CoarseTime now;
