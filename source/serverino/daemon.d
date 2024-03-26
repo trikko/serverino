@@ -284,9 +284,6 @@ package:
       foreach(i; 0..config.maxWorkers)
          new WorkerInfo();
 
-      Communicator.alive = SimpleList();
-      Communicator.dead = SimpleList();
-
       foreach(idx; 0..128)
          new Communicator(config);
 
@@ -311,12 +308,12 @@ package:
             ssRead.add(worker.unixSocket);
 
          // Fill socketSet with communicators, waiting for updates.
-         foreach(idx; Communicator.alive.asRange)
+         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
          {
-            ssRead.add(Communicator.instances[idx].clientSkt);
+            ssRead.add(communicator.clientSkt);
 
-            if (!Communicator.instances[idx].completed)
-               ssWrite.add(Communicator.instances[idx].clientSkt);
+            if (!communicator.completed)
+               ssWrite.add(communicator.clientSkt);
          }
 
          long updates = -1;
@@ -342,16 +339,11 @@ package:
 
                lastCheck = now;
 
-               // A list of communicators that hit the timeout.
-               Communicator[] toReset;
-
-               foreach(idx; Communicator.alive.asRange)
+               for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
                {
-                  auto communicator = Communicator.instances[idx];
-
                   // Keep-alive timeout hit.
                   if (communicator.status == Communicator.State.KEEP_ALIVE && communicator.worker is null && communicator.lastRequest != CoarseTime.zero && now - communicator.lastRequest > 5.seconds)
-                     toReset ~= communicator;
+                     communicator.reset();
 
                   // Http timeout hit.
                   else if (communicator.status == Communicator.State.PAIRED || communicator.status == Communicator.State.READING_BODY || communicator.status == Communicator.State.READING_HEADERS )
@@ -363,28 +355,14 @@ package:
                            debug warning("Connection closed. [REASON: http timeout]");
                            communicator.clientSkt.send("HTTP/1.0 408 Request Timeout\r\n");
                         }
-                        toReset ~= communicator;
+                        communicator.reset();
                      }
                   }
                }
 
-               // Reset the communicators that hit the timeout.
-               foreach(communicator; toReset)
-                  communicator.reset();
-
             }
 
-            // Free dead communicators.
-            if (Communicator.instances.length > 1024)
-            foreach(communicator; Communicator.dead.asRange)
-            {
-               if (communicator + 1 == Communicator.instances.length && communicator > 128)
-               {
-                  Communicator.dead.remove(communicator);
-                  Communicator.instances.length--;
-                  break;
-               }
-            }
+            // NOTE: Kill communicators that are not alive anymore?
          }
 
          if (updates < 0 || exitRequested)
@@ -449,10 +427,8 @@ package:
          }
 
          // Check the communicators for updates
-         foreach(idx; Communicator.alive.asRange)
+         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
          {
-            auto communicator = Communicator.instances[idx];
-
             if(communicator.clientSkt is null)
                continue;
 
@@ -475,13 +451,26 @@ package:
             }
          }
 
-         // Check for communicators that need a worker.
-         foreach(ref communicator; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.worker is null))
-         {
-            auto idling = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
+         auto available = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
 
-            if (!idling.empty) communicator.setWorker(idling.front);
-            else {
+         // Check for communicators that need a worker.
+         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next)
+         {
+            // If the communicator hasn't a request to process (or it has already a worker assigned) we skip it.
+            if (communicator.requestToProcess is null || !communicator.requestToProcess.isValid || communicator.worker !is null)
+               continue;
+
+            // If there are idling workers we assign one to the communicator.
+            if (!available.empty)
+            {
+               communicator.setWorker(available.front);
+               available.popFront;
+            }
+            else
+            {
+               // If we have a dead worker we can reinit it.
+               // Probably we are over the minWorkers limit but below the maxWorkers limit.
+               // Extra workers over the minWorkers limit are normally dead.
                auto dead = WorkerInfo.dead();
 
                if (!dead.empty)
@@ -496,10 +485,8 @@ package:
          // Check for new incoming connections.
          foreach(ref listener; config.listeners)
          {
-
             if (updates == 0)
                break;
-
 
             if (ssRead.isSet(listener.socket))
             {
@@ -509,9 +496,9 @@ package:
                Communicator communicator;
 
                // First: check if any idling communicator is available
-               auto idling = Communicator.dead.asRange;
+               auto dead = Communicator.deads;
 
-               if (!idling.empty) communicator = Communicator.instances[idling.front];
+               if (dead !is null) communicator = dead;
                else communicator = new Communicator(config);
 
                communicator.lastRecv = now;

@@ -120,7 +120,13 @@ package class Communicator
       // Every new instance is added to the list of instances
       id = instances.length;
       instances ~= this;
-      dead.insertBack(id);
+
+      // Add the new instance to the list of dead communicators
+      prev = null;
+      next = deads;
+      if (next !is null) next.prev = this;
+      deads = this;
+
       this.config = config;
 
    }
@@ -136,8 +142,18 @@ package class Communicator
 
       if (this.clientSkt !is null)
       {
-         alive.remove(id);
-         dead.insertBack(id);
+         // Remove the communicator from the list of alives
+         if (prev !is null) prev.next = next;
+         else alives = next;
+
+         if (next !is null) next.prev = prev;
+
+         // Add the communicator to the list of deads
+         prev = null;
+         next = deads;
+         if (next !is null) next.prev = this;
+         deads = this;
+
          this.clientSkt = null;
       }
    }
@@ -152,8 +168,18 @@ package class Communicator
 
       if (s !is null && this.clientSkt is null)
       {
-         dead.remove(id);
-         alive.insertFront(id);
+         // Remove the communicator from the list of deads
+         if (prev !is null) prev.next = next;
+         else deads = next;
+
+         if (next !is null) next.prev = prev;
+
+         // Add the communicator to the list of alives
+         prev = null;
+         next = alives;
+         if (next !is null) next.prev = this;
+         alives = this;
+
          s.blocking = false;
       }
 
@@ -698,11 +724,15 @@ package class Communicator
    WorkerInfo        worker;
    char[]            leftover;
 
-   CoarseTime          lastRecv    = CoarseTime.zero;
-   CoarseTime          lastRequest = CoarseTime.zero;
+   CoarseTime        lastRecv    = CoarseTime.zero;
+   CoarseTime        lastRequest = CoarseTime.zero;
 
-   static SimpleList          alive;
-   static SimpleList          dead;
+   Communicator      next = null;
+   Communicator      prev = null;
+
+   static Communicator  alives   = null; // Communicators with a client socket assigned
+   static Communicator  deads    = null;  // Communicators without a client socket assigned
+
    Communicator.State    status;
    static Communicator[] instances;
 }
