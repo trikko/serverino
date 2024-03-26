@@ -36,7 +36,6 @@ import std.process : ProcessPipes;
 
 import std.format : format;
 import std.socket;
-import std.array : array;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
@@ -62,7 +61,7 @@ package class WorkerInfo
       return s;
    }
 
-   // New worker instances are set to STOPPED and added to the lookup table.
+   // New worker instances are set to STOPPED
    this()
    {
       this.id = instances.length;
@@ -70,7 +69,6 @@ package class WorkerInfo
 
       status = State.STOPPED;
       statusChangedAt = now;
-      lookup[State.STOPPED].insertBack(id);
    }
 
    // Initialize the worker.
@@ -152,16 +150,17 @@ package class WorkerInfo
    {
       import std.conv : to;
       assert(s!=status || s == State.PROCESSING, id.to!string ~ " > Trying to change WorkerInfo status from " ~ status.to!string ~ " to " ~ s.to!string);
-
-      if (s!=status)
-      {
-         lookup[status].remove(id);
-         lookup[s].insertBack(id);
-      }
-
       status = s;
       statusChangedAt = now;
    }
+
+   // A lazy list of busy workers.
+   pragma(inline, true)
+   static auto ref alive() { return WorkerInfo.instances.filter!(x => x.status != WorkerInfo.State.STOPPED); }
+
+   // A lazy list of workers we can reuse.
+   pragma(inline, true)
+   static auto ref dead() { return WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.STOPPED); }
 
    private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
 
@@ -178,7 +177,6 @@ package:
    bool                    reloadRequested   = false;
 
    static WorkerInfo[]   instances;
-   static SimpleList[3]  lookup;
    static string         exePath;
 
 }
@@ -212,24 +210,6 @@ struct Daemon
    void shutdown() @nogc nothrow { exitRequested = true; }
 
 package:
-   // Create a lazy list of busy workers.
-   pragma(inline, true)
-   auto ref workersAlive()
-   {
-      import std.range : chain;
-      return chain(
-         WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange,
-         WorkerInfo.lookup[WorkerInfo.State.PROCESSING].asRange
-      );
-   }
-
-   // Create a lazy list of workers we can reuse.
-   pragma(inline, true);
-   auto ref workersDead()
-   {
-      return WorkerInfo.lookup[WorkerInfo.State.STOPPED].asRange;
-   }
-
 
    void wake(Modules...)(DaemonConfigPtr config)
    {
@@ -301,12 +281,6 @@ package:
       }
 
       // Workers
-      import std.traits : EnumMembers;
-      static foreach(e; EnumMembers!(WorkerInfo.State))
-      {
-         WorkerInfo.lookup[e] = SimpleList();
-      }
-
       foreach(i; 0..config.maxWorkers)
          new WorkerInfo();
 
@@ -333,8 +307,8 @@ package:
             ssRead.add(listener.socket);
 
          // Fill socketSet with workers, waiting updates.
-         foreach(idx; workersAlive)
-            ssRead.add(WorkerInfo.instances[idx].unixSocket);
+         foreach(ref worker; WorkerInfo.alive)
+            ssRead.add(worker.unixSocket);
 
          // Fill socketSet with communicators, waiting for updates.
          foreach(idx; Communicator.alive.asRange)
@@ -420,32 +394,21 @@ package:
          }
          else if (updates == 0) continue;
 
-         auto wa = workersAlive;
-         size_t nextIdx;
-
          // Check the workers for updates
-         while(!wa.empty)
+         foreach(ref worker; WorkerInfo.alive)
          {
             if (updates == 0)
                break;
 
-            auto idx = wa.front;
-            wa.popFront;
-
-            if (!wa.empty)
-               nextIdx = wa.front;
-
-            scope(exit) idx = nextIdx;
-
-            WorkerInfo worker = WorkerInfo.instances[idx];
             Communicator communicator = worker.communicator;
 
             if (ssRead.isSet(worker.unixSocket))
             {
-               updates--;
+               --updates;
 
                if (communicator is null)
                {
+                  debug warning("Null communicator for worker " ~ worker.pi.id.to!string  ~ ". Was process killed?");
                   worker.pi.kill();
                   worker.setStatus(WorkerInfo.State.STOPPED);
                   continue;
@@ -456,7 +419,7 @@ package:
 
                if (bytes == Socket.ERROR)
                {
-                  debug warning("Error: worker killed?");
+                  debug warning("Socket error for worker " ~ worker.pi.id.to!string  ~ ". Was process killed?");
                   worker.setStatus(WorkerInfo.State.STOPPED);
                   worker.clear();
                   communicator.reset();
@@ -467,15 +430,11 @@ package:
                   worker.clear();
 
                   // User closed socket.
-                  if (communicator !is null && communicator.clientSkt !is null && communicator.clientSkt.isAlive)
+                  if (communicator.clientSkt !is null && communicator.clientSkt.isAlive)
                      communicator.clientSkt.shutdown(SocketShutdown.BOTH);
                }
                else
                {
-                  if (communicator is null)
-                  {
-                     continue;
-                  }
                   if (communicator.responseLength == 0)
                   {
                      WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
@@ -487,7 +446,6 @@ package:
                   else communicator.write(cast(char[])buffer[0..bytes]);
                }
             }
-
          }
 
          // Check the communicators for updates
@@ -520,17 +478,16 @@ package:
          // Check for communicators that need a worker.
          foreach(ref communicator; Communicator.instances.filter!(x=>x.requestToProcess !is null && x.requestToProcess.isValid && x.worker is null))
          {
-            auto workers = WorkerInfo.lookup[WorkerInfo.State.IDLING].asRange;
+            auto idling = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
 
-
-            if (!workers.empty) communicator.setWorker(WorkerInfo.instances[workers.front]);
+            if (!idling.empty) communicator.setWorker(idling.front);
             else {
-               auto dead = workersDead();
+               auto dead = WorkerInfo.dead();
 
                if (!dead.empty)
                {
-                  WorkerInfo.instances[dead.front].reinit(true);
-                  communicator.setWorker(WorkerInfo.instances[dead.front]);
+                  dead.front.reinit(true);
+                  communicator.setWorker(dead.front);
                }
                else break; // All workers are busy. Will try again later.
             }
@@ -576,10 +533,8 @@ package:
       }
 
       // Kill all the workers.
-      foreach(ref idx; workersAlive)
+      foreach(ref worker; WorkerInfo.alive)
       {
-         WorkerInfo worker = WorkerInfo.instances[idx];
-
          try
          {
             if (worker)
@@ -619,10 +574,10 @@ private:
          reloadRequested = false;
       }
 
-      foreach(k; workersAlive.array)
-      {
-         auto worker = WorkerInfo.instances[k];
+      size_t workersAliveCnt = 0;
 
+      foreach(worker; WorkerInfo.alive)
+      {
          if (!worker.unixSocket.isAlive)
          {
             log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
@@ -635,21 +590,15 @@ private:
             worker.pi.kill();
             worker.setStatus(WorkerInfo.State.STOPPED);
          }
-
+         else ++workersAliveCnt;
       }
 
-      while (
-         WorkerInfo.lookup[WorkerInfo.State.IDLING].length +
-         WorkerInfo.lookup[WorkerInfo.State.PROCESSING].length < config.minWorkers
-      )
+      auto dead = WorkerInfo.dead();
+
+      while (workersAliveCnt < config.minWorkers && !dead.empty)
       {
-         auto dead = workersDead();
-
-         if (dead.empty)
-            break;
-
-         auto idx = dead.front();
-         WorkerInfo.instances[idx].reinit(false);
+         dead.front.reinit(false);
+         dead.popFront;
       }
 
       if (!ready) ready = true;
