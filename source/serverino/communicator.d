@@ -115,12 +115,8 @@ package class Communicator
 
    DaemonConfigPtr config;
 
-   this(DaemonConfigPtr config) {
-
-      // Every new instance is added to the list of instances
-      id = instances.length;
-      instances ~= this;
-
+   this(DaemonConfigPtr config)
+   {
       // Add the new instance to the list of dead communicators
       prev = null;
       next = deads;
@@ -734,5 +730,4 @@ package class Communicator
    static Communicator  deads    = null;  // Communicators without a client socket assigned
 
    Communicator.State    status;
-   static Communicator[] instances;
 }
