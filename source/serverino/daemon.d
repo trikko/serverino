@@ -502,9 +502,7 @@ package:
                else communicator = new Communicator(config);
 
                communicator.lastRecv = now;
-
-               auto nextId = requestId++;
-               communicator.setClientSocket(listener.socket.accept(), nextId);
+               communicator.setClientSocket(listener.socket.accept());
             }
          }
 
@@ -592,7 +590,6 @@ private:
 
    }
 
-   ulong          requestId = 0;
    string[string] workerEnvironment;
 
    __gshared bool reloadRequested = false;

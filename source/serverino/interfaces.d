@@ -700,8 +700,6 @@ struct Request
       FormData[string]   _form;
       ParsingStatus      _parsingStatus = ParsingStatus.OK;
 
-      size_t    _requestId;
-
       void clear()
       {
          clearFiles();
@@ -961,7 +959,6 @@ struct Output
       ushort          _status;
       Duration        _timeout;
       bool            _dirty;
-      size_t          _requestId;
       DataBuffer!char _sendBuffer;
       DataBuffer!char _headersBuffer;
       string          _buffer;
@@ -975,7 +972,6 @@ struct Output
          import std.uri : encodeComponent;
          import std.array : appender;
 
-         _headersBuffer.reserve(1024, true);
          _headersBuffer.clear();
 
          immutable string[short] StatusCode =
@@ -999,7 +995,7 @@ struct Output
          else statusDescription = "Unknown";
 
          bool has_content_type = false;
-         _headersBuffer.append(format("%s %s %s\r\n", _httpVersion, _status, statusDescription));
+         _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
 
          if (!_keepAlive) _headersBuffer.append("connection: close\r\n");
          else _headersBuffer.append("connection: keep-alive\r\n");
@@ -1010,22 +1006,18 @@ struct Output
             if (!_sendBody && (header.key == "content-length" || header.key == "transfer-encoding"))
                continue;
 
-            _headersBuffer.append(format("%s: %s\r\n", header.key, header.value));
+            _headersBuffer.append(header.key ~ ": " ~ header.value ~ "\r\n");
             if (header.key == "content-type") has_content_type = true;
          }
 
          if (!_sendBody)
-            _headersBuffer.append(format("content-length: 0\r\n"));
+            _headersBuffer.append("content-length: 0\r\n");
          else
-         {
-            _headersBuffer.append("content-length: ");
-            _headersBuffer.append(_sendBuffer.length.to!string);
-            _headersBuffer.append("\r\n");
-         }
+            _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
 
          // Default content-type is text/html if not defined by user
          if (!has_content_type && _sendBody)
-            _headersBuffer.append(format("content-type: text/html;charset=utf-8\r\n"));
+            _headersBuffer.append("content-type: text/html;charset=utf-8\r\n");
 
          // If required, I add headers to write cookies
          foreach(Cookie c;_cookies)

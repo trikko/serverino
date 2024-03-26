@@ -156,10 +156,8 @@ package class Communicator
 
    // Assign a client socket to the communicator and move it to the paired state
    pragma(inline, true)
-   void setClientSocket(Socket s, ulong requestId)
+   void setClientSocket(Socket s)
    {
-      this.requestId = format("%06s", requestId);
-
       status = State.PAIRED;
 
       if (s !is null && this.clientSkt is null)
@@ -691,7 +689,6 @@ package class Communicator
             status = State.READING_HEADERS;
 
             len = 0;
-            request.data.reserve(1024*10);
             request.data ~= (cast(char*)(&len))[0..uint.sizeof];
 
             bufferRead = leftover;
@@ -706,7 +703,6 @@ package class Communicator
 
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
-   string            requestId;
 
    bool              hasQueuedRequests = false;
    bool              requestDataReceived;
