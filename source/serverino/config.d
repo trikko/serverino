@@ -151,7 +151,10 @@ struct ServerinoConfig
    /// Max time a worker can be idle. After this time, worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.hours) return  { workerConfig.maxWorkerIdling = dur; return this; }
 
-   /// Max time a dynamic worker can be idle. After this time, worker is terminated.
+   /***
+      Max time a dynamic worker can be idle. After this time, worker is terminated.
+      This is used only if the number of workers is greater than minWorkers.
+   ***/
    @safe ref ServerinoConfig setMaxDynamicWorkerIdling(Duration dur = 10.seconds) return  { workerConfig.maxDynamicWorkerIdling = dur; return this; }
 
    /// Max number of pending connections
