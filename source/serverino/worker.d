@@ -529,7 +529,7 @@ struct Worker
             }
             else
             {
-               debug warning("Parsing error:", request._internal._parsingStatus);
+               debug warning("Parsing error: ", request._internal._parsingStatus);
 
                if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
                else output.status = 400;
