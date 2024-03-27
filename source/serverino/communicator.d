@@ -89,8 +89,7 @@ package class ProtoRequest
    char[]   method;              // HTTP method
    char[]   path;                // Request path
 
-   char[]   data;                // Request data
-
+   char[]   data = [0,0,0,0];    // Request data (first 4 bytes will be set to the length of the data)
    ProtoRequest next = null;     // Next request in the queue
 
    Connection  connection = Connection.Unknown;
@@ -131,7 +130,6 @@ package class Communicator
    pragma(inline, true) bool completed() { return responseLength == responseSent; }
 
    // Unset the client socket and move the communicator to the ready state
-   pragma(inline, true)
    void unsetClientSocket()
    {
       status = State.READY;
@@ -155,7 +153,6 @@ package class Communicator
    }
 
    // Assign a client socket to the communicator and move it to the paired state
-   pragma(inline, true)
    void setClientSocket(Socket s)
    {
       status = State.PAIRED;
@@ -215,7 +212,6 @@ package class Communicator
    }
 
    // If this communicator has a worker assigned, unset it
-   pragma(inline, true)
    void unsetWorker()
    {
 
@@ -233,7 +229,6 @@ package class Communicator
    }
 
    // Assign a worker to the communicator
-   pragma(inline, true)
    void setWorker(ref WorkerInfo worker)
    {
       this.worker = worker;
@@ -241,8 +236,10 @@ package class Communicator
 
       worker.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestToProcess;
-      uint len = cast(uint)(current.data.length) - cast(uint)uint.sizeof;
-      current.data[0..uint.sizeof] = (cast(char*)&len)[0..uint.sizeof];
+
+      // We fill the first 4 bytes of the data with the length of the data
+      uint len = cast(uint)(current.data.length - uint.sizeof);
+      *(cast(uint*)(current.data.ptr)) = len;
 
       isKeepAlive = current.connection == ProtoRequest.Connection.KeepAlive;
       worker.unixSocket.send(current.data);
@@ -362,15 +359,6 @@ package class Communicator
       }
 
       ProtoRequest request = requestToProcess;
-
-      // First 2 bytes are the length of the request
-      // They will be overwritten by the actual length of the request
-      // and sent to the worker through the unix socket
-      uint len = 0;
-      if(request.data.length == 0)
-      {
-	      request.data ~= (cast(char*)(&len))[0..uint.sizeof];
-      }
 
       char[32*1024] buffer;
       ptrdiff_t bytesRead = 0;
@@ -687,9 +675,6 @@ package class Communicator
             request.next = new ProtoRequest();
             request = request.next;
             status = State.READING_HEADERS;
-
-            len = 0;
-            request.data ~= (cast(char*)(&len))[0..uint.sizeof];
 
             bufferRead = leftover;
             leftover.length = 0;
