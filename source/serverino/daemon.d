@@ -83,7 +83,7 @@ package class WorkerInfo
       import std.uuid : randomUUID;
 
       // Create a new socket and bind it to a random address.
-      auto uuid = "serverino-worker-" ~ randomUUID().toString() ~ ".sock";
+      auto uuid = "serverino-" ~ randomUUID().toString()[$-12..$] ~ ".sock";
 
       // We use a unix socket on both linux and macos/windows but ...
       version(linux)
