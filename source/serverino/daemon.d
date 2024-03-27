@@ -54,7 +54,6 @@ package class WorkerInfo
    {
       string s;
       s ~= "PID: " ~ pi.id.to!string ~ "\n";
-      s ~= "ID: " ~ id.to!string ~ "\n";
       s ~= "STATE: " ~ status.to!string ~ "\n";
       s ~= "STATUS CHANGED AT: " ~ statusChangedAt.to!string ~ "\n";
       s ~= "RELOAD REQUESTED: " ~ reloadRequested.to!string ~ "\n";
@@ -64,7 +63,6 @@ package class WorkerInfo
    // New worker instances are set to STOPPED
    this()
    {
-      this.id = instances.length;
       instances ~= this;
 
       status = State.STOPPED;
@@ -76,6 +74,8 @@ package class WorkerInfo
    {
       assert(status == State.STOPPED);
 
+      isDynamic = isDynamicWorker;
+
       // Set default status.
       clear();
 
@@ -83,7 +83,7 @@ package class WorkerInfo
       import std.uuid : randomUUID;
 
       // Create a new socket and bind it to a random address.
-      auto uuid = randomUUID().toString();
+      auto uuid = "serverino-worker-" ~ randomUUID().toString() ~ ".sock";
 
       // We use a unix socket on both linux and macos/windows but ...
       version(linux)
@@ -120,7 +120,6 @@ package class WorkerInfo
       ubyte[1] data;
       accepted.receive(data);
 
-      s.blocking = false;
       setStatus(WorkerInfo.State.IDLING);
    }
 
@@ -149,9 +148,21 @@ package class WorkerInfo
    void setStatus(State s)
    {
       import std.conv : to;
-      assert(s!=status || s == State.PROCESSING, id.to!string ~ " > Trying to change WorkerInfo status from " ~ status.to!string ~ " to " ~ s.to!string);
+      assert(s!=status || s == State.PROCESSING, " > Trying to change WorkerInfo status from " ~ status.to!string ~ " to " ~ s.to!string ~ "\n" ~ this.toString());
       status = s;
       statusChangedAt = now;
+
+      // Automatically reinit the worker if it's stopped and it's not dynamic.
+      if (s == State.STOPPED && !isDynamic && !Daemon.exitRequested)
+         reinit(false);
+
+      // If a reload is requested we kill the worker when it's idling.
+      else if (s == State.IDLING && reloadRequested)
+      {
+         log("Killing worker " ~ pi.id.to!string  ~ ". [REASON: reloading]");
+         pi.kill();
+         setStatus(WorkerInfo.State.STOPPED);
+      }
    }
 
    // A lazy list of busy workers.
@@ -166,7 +177,7 @@ package class WorkerInfo
 
 package:
 
-   size_t                  id;
+   Socket                  listener;
    ProcessInfo             pi;
 
    CoarseTime              statusChangedAt;
@@ -175,6 +186,7 @@ package:
    Socket                  unixSocket        = null;
    Communicator            communicator      = null;
    bool                    reloadRequested   = false;
+   bool                    isDynamic         = false;
 
    static WorkerInfo[]   instances;
    static string         exePath;
@@ -280,9 +292,14 @@ package:
          }
       }
 
-      // Workers
+      // Create all workers and start the ones that are required.
       foreach(i; 0..config.maxWorkers)
-         new WorkerInfo();
+      {
+         auto worker = new WorkerInfo();
+
+         if (i < config.minWorkers)
+            worker.reinit(false);
+      }
 
       foreach(idx; 0..128)
          new Communicator(config);
@@ -291,11 +308,10 @@ package:
       SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
       SocketSet ssWrite = new SocketSet(128);
 
+      ready = true;
+
       while(!exitRequested)
       {
-         // Create workers if needed. Kills old workers, freezed ones, etc.
-         checkWorkers(config);
-
          ssRead.reset();
          ssWrite.reset();
 
@@ -323,22 +339,45 @@ package:
             warning("Exception: ", se.msg);
          }
 
-         // Check for timeouts.
          now = CoarseTime.currTime;
+
+         // Some sanity checks. We don't want to check too often.
          {
             static CoarseTime lastCheck = CoarseTime.zero;
 
             if (now-lastCheck >= 1.seconds)
             {
+               lastCheck = now;
 
+               // If a reload is requested we restart all the workers (not the running ones)
                if (!exists(canaryFileName))
                {
-                  reloadRequested = true;
+                  foreach(ref worker; WorkerInfo.instances)
+                  {
+                     if (worker.status != WorkerInfo.State.PROCESSING)
+                     {
+                        log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
+                        worker.pi.kill();
+                        worker.setStatus(WorkerInfo.State.STOPPED);
+                     }
+                     else worker.reloadRequested = true;
+                  }
+
                   writeCanary();
                }
 
-               lastCheck = now;
+               // Kill workers that are in an invalid state (unlikely to happen but better to check)
+               foreach(worker; WorkerInfo.alive)
+               {
+                  if (!worker.unixSocket.isAlive)
+                  {
+                     log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
+                     worker.pi.kill();
+                     worker.setStatus(WorkerInfo.State.STOPPED);
+                  }
+               }
 
+               // Check various timeouts.
                for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
                {
                   // Keep-alive timeout hit.
@@ -541,58 +580,8 @@ package:
 
 private:
 
-   void checkWorkers(DaemonConfigPtr config)
-   {
-      if (reloadRequested)
-      {
-         foreach(ref worker; WorkerInfo.instances)
-         {
-            if (worker.status != WorkerInfo.State.PROCESSING)
-            {
-               log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
-               worker.pi.kill();
-               worker.setStatus(WorkerInfo.State.STOPPED);
-            }
-            else worker.reloadRequested = true;
-         }
-
-         reloadRequested = false;
-      }
-
-      size_t workersAliveCnt = 0;
-
-      foreach(worker; WorkerInfo.alive)
-      {
-         if (!worker.unixSocket.isAlive)
-         {
-            log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
-            worker.pi.kill();
-            worker.setStatus(WorkerInfo.State.STOPPED);
-         }
-         else if (worker.reloadRequested && worker.status == WorkerInfo.State.IDLING)
-         {
-            log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
-            worker.pi.kill();
-            worker.setStatus(WorkerInfo.State.STOPPED);
-         }
-         else ++workersAliveCnt;
-      }
-
-      auto dead = WorkerInfo.dead();
-
-      while (workersAliveCnt < config.minWorkers && !dead.empty)
-      {
-         dead.front.reinit(false);
-         dead.popFront;
-      }
-
-      if (!ready) ready = true;
-
-   }
-
    string[string] workerEnvironment;
 
-   __gshared bool reloadRequested = false;
    __gshared bool exitRequested = false;
    __gshared bool ready = false;
 }
