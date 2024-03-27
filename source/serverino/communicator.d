@@ -364,7 +364,7 @@ package class Communicator
       ptrdiff_t bytesRead = 0;
 
       // Read the data from the client socket if it's not buffered
-      // Set the started flag to true if the first data is read to check for timeouts
+      // Set the requestDatareceived flag to true if the first data is read to check for timeouts
       if (!fromBuffer)
       {
          bytesRead = clientSkt.receive(buffer);
