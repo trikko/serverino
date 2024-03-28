@@ -215,17 +215,16 @@ package class Communicator
    void unsetWorker()
    {
 
-      if (this.worker !is null)
+      if (this.worker !is null && this.worker.communicator is this)
       {
          this.worker.communicator = null;
          this.worker.setStatus(WorkerInfo.State.IDLING);
-         this.worker = null;
-
-         lastRequest = now;
       }
 
+      this.worker    = null;
+      lastRequest    = now;
       responseLength = 0;
-      responseSent = 0;
+      responseSent   = 0;
    }
 
    // Assign a worker to the communicator

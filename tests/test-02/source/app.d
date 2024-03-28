@@ -64,7 +64,7 @@ mixin ServerinoMain;
 @endpoint void sleep(Request r, Output o)
 {
    import core.thread;
-   Thread.sleep(1.seconds);
+   Thread.sleep(600.msecs);
    o.addHeader("Content-type", "text/plain");
    o ~= "slept";
 }
@@ -75,6 +75,13 @@ mixin ServerinoMain;
    import core.thread;
    o.addHeader("Content-type", "text/plain");
    o ~= "simple";
+}
+
+@route!"/crash"
+@endpoint void crash(Request r, Output o)
+{
+   import core.stdc.stdlib :exit;
+   exit(1);
 }
 
 @onServerInit
@@ -90,6 +97,7 @@ ServerinoConfig conf()
 
 void test()
 {
+
    // Testing minimal http/1.0 request
    {
       auto req = "GET /simple HTTP/1.0\r\n\r\n";
@@ -111,6 +119,28 @@ void test()
          data ~= buffer[0..ln];
       }
       assert(data == "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
+   }
+
+   // Testing crash endpoint. The server should not crash
+   {
+      auto req = "GET /crash HTTP/1.1\r\nhost:localhost\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(req);
+
+      char[] buffer;
+      char[] data;
+
+      buffer.length = 4096;
+      while(true)
+      {
+         auto read = sck.receive(buffer);
+         if (read <= 0) break;
+         data ~= buffer[0..read];
+      }
+
+      assert(data.empty);
    }
 
    // Testing pipeline
@@ -167,12 +197,34 @@ void test()
          }
          done = true;
 
-         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
+         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple", "DATA: " ~ data);
       }
 
 
 
 
+   }
+
+   // Testing crash endpoint. The server should not crash
+   {
+      auto req = "GET /crash HTTP/1.1\r\nhost:localhost\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(req);
+
+      char[] buffer;
+      char[] data;
+
+      buffer.length = 4096;
+      while(true)
+      {
+         auto read = sck.receive(buffer);
+         if (read <= 0) break;
+         data ~= buffer[0..read];
+      }
+
+      assert(data.empty);
    }
 
    // Testing partial sending
@@ -210,4 +262,5 @@ void test()
       }
 
    }
+
 }

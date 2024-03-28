@@ -188,8 +188,8 @@ package:
    bool                    reloadRequested   = false;
    bool                    isDynamic         = false;
 
-   static WorkerInfo[]   instances;
-   static string         exePath;
+   static WorkerInfo[]     instances;
+   static string           exePath;
 
 }
 
@@ -438,13 +438,11 @@ package:
                {
                   debug warning("Socket error for worker " ~ worker.pi.id.to!string  ~ ". Was process killed?");
                   worker.setStatus(WorkerInfo.State.STOPPED);
-                  worker.clear();
                   communicator.reset();
                }
                else if (bytes == 0)
                {
                   worker.setStatus(WorkerInfo.State.STOPPED);
-                  worker.clear();
 
                   // User closed socket.
                   if (communicator.clientSkt !is null && communicator.clientSkt.isAlive)
