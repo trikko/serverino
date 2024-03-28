@@ -42,7 +42,7 @@ mixin ServerinoMain!tagged;
       Thread.getThis().isDaemon = true;
 
       // Is serverino ready?
-      while(!Daemon.instance.bootCompleted)
+      while(!Daemon.bootCompleted)
          Thread.sleep(10.msecs);
 
       // Run the tests
@@ -56,7 +56,7 @@ mixin ServerinoMain!tagged;
          writeln(t);
       }
 
-      Daemon.instance.shutdown();
+      Daemon.shutdown();
 
    }).start();
 }

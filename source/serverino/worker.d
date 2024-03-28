@@ -47,12 +47,7 @@ extern(C) int fileno(FILE *stream);
 
 struct Worker
 {
-   static auto instance()
-   {
-      static Worker* _instance;
-      if (_instance is null) _instance = new Worker();
-      return _instance;
-   }
+   static:
 
    void wake(Modules...)(WorkerConfigPtr config)
    {
@@ -741,6 +736,8 @@ struct Worker
       else static assert(0, "Please add at least one endpoint. Try this: `void hello(Request req, Output output) { output ~= req.dump(); }`");
    }
 
+   __gshared:
+
    ProcessInfo    daemonProcess;
 
    Request        request;
@@ -751,9 +748,10 @@ struct Worker
 
    Socket         channel;
 
-   static size_t        requestId = 0;
+   size_t        requestId = 0;
+   bool          isDynamic = false;
+
    shared CoarseTime    processedStartedAt = CoarseTime.zero;
-   __gshared bool       isDynamic = false;
 
 }
 

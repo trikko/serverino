@@ -170,8 +170,8 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import serverino.worker;
    import std.process : environment;
 
-   if (environment.get("SERVERINO_DAEMON") == null) Daemon.instance.wake!Modules(daemonConfig);
-	else Worker.instance.wake!Modules(workerConfig);
+   if (environment.get("SERVERINO_DAEMON") == null) Daemon.wake!Modules(daemonConfig);
+	else Worker.wake!Modules(workerConfig);
 
    return 0;
 }

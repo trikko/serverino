@@ -105,7 +105,7 @@ package class WorkerInfo
       s.listen(1);
 
       // We start a new process and pass the socket address to it.
-      auto env = Daemon.instance.workerEnvironment.dup;
+      auto env = Daemon.workerEnvironment.dup;
       env["SERVERINO_SOCKET"] = socketAddress;
       env["SERVERINO_DYNAMIC_WORKER"] = isDynamicWorker?"1":"0";
 
@@ -207,16 +207,10 @@ version(Posix)
 struct Daemon
 {
 
+static:
+
    /// Is serverino ready to accept requests?
    bool bootCompleted() { return ready; }
-
-   /// The instance method returns the singleton instance of the Daemon class.
-   static auto instance()
-   {
-      static Daemon* _instance;
-      if (_instance is null) _instance = new Daemon();
-      return _instance;
-   }
 
    /// Shutdown the serverino daemon.
    void shutdown() @nogc nothrow { exitRequested = true; }
@@ -576,12 +570,12 @@ package:
       exit(0);
    }
 
-private:
+__gshared:
 
    string[string] workerEnvironment;
 
-   __gshared bool exitRequested = false;
-   __gshared bool ready = false;
+   bool exitRequested = false;
+   bool ready = false;
 }
 
 
@@ -620,4 +614,4 @@ void tryUninit(Modules...)()
 }
 
 // Time is cached to avoid calling CoarseTime.currTime too many times.
-package CoarseTime now;
+package __gshared CoarseTime now;
