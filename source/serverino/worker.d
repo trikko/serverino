@@ -155,7 +155,7 @@ struct Worker
             output._internal.clear();
             output.status = 504;
             output._internal.buildHeaders();
-            wp.isKeepAlive = false;
+            wp.flags = WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             atomicStore(processedStartedAt, CoarseTime.zero);
             wp.contentLength = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
 
@@ -257,7 +257,7 @@ struct Worker
          ++requestId;
 
          WorkerPayload wp;
-         wp.isKeepAlive = parseHttpRequest!Modules(config, data.array);
+         wp.flags = parseHttpRequest!Modules(config, data.array);
          wp.contentLength = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
 
          if (cas(&justSent, false, true))
@@ -267,7 +267,7 @@ struct Worker
 
    }
 
-   bool parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
+   typeof(WorkerPayload.flags) parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
    {
 
       scope(exit) {
@@ -331,7 +331,7 @@ struct Worker
                output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
                output._internal._sendBody = false;
                output.status = 400;
-               return false;
+               return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
             headersLines.popFront;
@@ -362,7 +362,7 @@ struct Worker
                data.length = contentLength;
             }
          }
-         else return false;
+         else return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
 
          version(debugRequest) log("-- PARSING DATA");
 
@@ -464,7 +464,7 @@ struct Worker
             {
                output.status = 400;
                output._internal._sendBody = false;
-               return false;
+               return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
             output._internal._keepAlive =
@@ -498,7 +498,7 @@ struct Worker
                      output._internal._sendBody = false;
                   }
 
-                  return (output._internal._keepAlive);
+                  return WorkerPayload.Flags.HTTP_RESPONSE_INLINE | (output._internal._keepAlive?WorkerPayload.Flags.HTTP_KEEP_ALIVE:0);
 
                }
 
@@ -509,7 +509,7 @@ struct Worker
                   critical(format("-------\n%s",e.info));
 
                   output.status = 500;
-                  return (output._internal._keepAlive);
+                  return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                }
 
                // Even worse.
@@ -530,7 +530,7 @@ struct Worker
                else output.status = 400;
 
                output._internal._sendBody = false;
-               return (output._internal._keepAlive);
+               return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
          }
@@ -550,7 +550,7 @@ struct Worker
          debug critical("Unhandled exception: ", e.toString);
       }
 
-      return false;
+      return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
    }
 
    void callHandlers(modules...)(Request request, Output output)

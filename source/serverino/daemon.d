@@ -448,7 +448,7 @@ package:
                   {
                      WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
 
-                     communicator.isKeepAlive = wp.isKeepAlive;
+                     communicator.isKeepAlive = (wp.flags & WorkerPayload.Flags.HTTP_KEEP_ALIVE) != 0;
                      communicator.setResponseLength(wp.contentLength);
                      communicator.write(cast(char[])buffer[WorkerPayload.sizeof..bytes]);
                   }

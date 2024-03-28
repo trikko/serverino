@@ -39,8 +39,17 @@ public static int SERVERINO_REVISION = 5;
 // It is prepended to the actual response payload
 package struct WorkerPayload
 {
-	bool isKeepAlive = false;
-	size_t contentLength = 0;
+	enum Flags : typeof(WorkerPayload.flags)
+	{
+		HTTP_RESPONSE_INLINE = 1 << 0,
+		HTTP_RESPONSE_FILE = 1 << 1,
+		HTTP_DELETE_FILE = 1 << 2,
+		HTTP_KEEP_ALIVE = 1 << 3,
+		WEBSOCKET_ACCEPT = 1 << 4
+	}
+
+	ubyte 	flags = 0;
+	size_t 	contentLength = 0;
 }
 
 // An implementation of unix domain sockets for Windows
