@@ -84,6 +84,12 @@ mixin ServerinoMain;
    exit(1);
 }
 
+@route!(x => x.uri.startsWith("/echo/"))
+@endpoint void echo(Request r, Output o)
+{
+   o ~= r.uri[6..$];
+}
+
 @onServerInit
 ServerinoConfig conf()
 {
@@ -260,6 +266,57 @@ void test()
 
          assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
       }
+
+   }
+
+   // Multiple parallels pipelines (100 request * 10 pipelines)
+   {
+      import core.thread;
+
+      __gshared bool done = false;
+
+
+      void pipeline(int k){
+
+         string req;
+         string response;
+
+         foreach(i; 0..100)
+         {
+            req ~= "GET /echo/" ~ std.conv.to!string(1000+k*100+i) ~ " HTTP/1.1\r\nhost:localhost\r\n\r\n";
+            response ~= "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 4\r\ncontent-type: text/html;charset=utf-8\r\n\r\n" ~ std.conv.to!string(1000+k*100+i);
+         }
+
+         auto sck = new TcpSocket();
+         sck.connect(new InternetAddress("localhost", 8080));
+         sck.send(req);
+
+         char[] buffer;
+         char[] data;
+
+         buffer.length = 32768;
+         while(true)
+         {
+            auto ln = sck.receive(buffer);
+
+            if (ln <= 0) break;
+
+            data ~= buffer[0..ln];
+
+            if (data.length >= response.length)
+               break;
+         }
+
+         assert(data == response);
+      }
+
+      ThreadGroup tg = new ThreadGroup();
+
+      foreach(k; 0..10)
+         tg.add(new Thread({pipeline(k+1);}).start());
+
+      tg.joinAll();
+
 
    }
 
