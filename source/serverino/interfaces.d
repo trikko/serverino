@@ -792,7 +792,11 @@ struct Output
 
       if (!exists(path) || !isFile(path))
       {
-         warning("Trying to serve file `", baseName(path),"` (path: `" ~ path ~ "`), but it doesn't exists.");
+         warning("Trying to serve file `", baseName(path),"` (absolute path: `" ~ path ~ "`), but it doesn't exists on disk.");
+
+         if (path.startsWith("/") && exists("." ~ path) && isFile("." ~ path))
+            warning("Do you mean `." ~ path ~ "`, maybe?");
+
          return false;
       }
 
