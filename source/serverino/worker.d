@@ -906,6 +906,14 @@ bool acceptWebsocket(Modules...)(Request request)
       }
    }
 
+   static warningShown = false;
+
+   if (!warningShown)
+   {
+      warningShown = true;
+      warning("A websocket request has been received but you have not defined any @onWebSocketUpgrade handler. The request will be rejected. Try to define a function like `@onWebSocketUpgrade(Request request) { return true; }` to accept the upgrade.");
+   }
+
    return result;
 }
 
