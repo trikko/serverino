@@ -124,7 +124,7 @@ void test()
 
          data ~= buffer[0..ln];
       }
-      assert(data == "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
+      assert(data == "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple");
    }
 
    // Testing crash endpoint. The server should not crash
@@ -203,7 +203,8 @@ void test()
          }
          done = true;
 
-         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple", "DATA: " ~ data);
+
+         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 5\r\ncontent-type: text/plain\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple", "DATA: " ~ data);
       }
 
 
@@ -264,7 +265,7 @@ void test()
             data ~= buffer[0..ln];
          }
 
-         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-type: text/plain\r\ncontent-length: 5\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-type: text/plain\r\ncontent-length: 6\r\n\r\nsimple");
+         assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 5\r\ncontent-type: text/plain\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple");
       }
 
    }

@@ -38,6 +38,8 @@ import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel
 import serverino.databuffer;
 import serverino.common;
 import core.stdc.ctype;
+import std.math.operations;
+import std.uuid;
 
 /++ A cookie. Use `Cookie("key", "value")` to create a cookie. You can chain methods.
 + ---
@@ -674,6 +676,89 @@ struct Request
       ~this() { clearFiles(); }
 
 
+      string serialize()
+      {
+         DataBuffer!char buffer;
+         buffer.append(_method ~ "\n");
+         buffer.append(_uri ~ "\n");
+         buffer.append(_httpVersion ~ "\n");
+         buffer.append(_host ~ "\n");
+         buffer.append(_user ~ "\n");
+         buffer.append(_password ~ "\n");
+         buffer.append(_worker ~ "\n");
+
+         buffer.append(_header.length.to!string ~ "\n");
+         foreach(k,v; _header)
+            buffer.append(k ~ "\n" ~ v ~ "\n");
+
+         buffer.append(_cookie.length.to!string ~ "\n");
+         foreach(k,v; _cookie)
+            buffer.append(k ~ "\n" ~ v ~ "\n");
+
+         buffer.append(_get.length.to!string ~ "\n");
+         foreach(k,v; _get)
+            buffer.append(k ~ "\n" ~ v ~ "\n");
+
+         buffer.append(_post.length.to!string ~ "\n");
+         foreach(k,v; _post)
+            buffer.append(k ~ "\n" ~ v ~ "\n");
+
+         return cast(string)buffer.array;
+      }
+
+      void deserialize(string s)
+      {
+         import std.conv: to;
+         import std.string: split;
+
+         auto lines = s.split("\n");
+
+         _method = lines[0];
+         _uri = lines[1];
+         _httpVersion = cast(HttpVersion)lines[2];
+         _host = lines[3];
+         _user = lines[4];
+         _password = lines[5];
+         _worker = lines[6];
+
+         size_t index = 7;
+         size_t headerLength = lines[index].to!size_t;
+         index++;
+
+         for(size_t i = 0; i < headerLength; i++)
+         {
+            _header[lines[index]] = lines[index + 1];
+            index += 2;
+         }
+
+         size_t cookieLength = lines[index].to!size_t;
+         index++;
+
+         for(size_t i = 0; i < cookieLength; i++)
+         {
+            _cookie[lines[index]] = lines[index + 1];
+            index += 2;
+         }
+
+         size_t getLength = lines[index].to!size_t;
+         index++;
+
+         for(size_t i = 0; i < getLength; i++)
+         {
+            _get[lines[index]] = lines[index + 1];
+            index += 2;
+         }
+
+         size_t postLength = lines[index].to!size_t;
+         index++;
+
+         for(size_t i = 0; i < postLength; i++)
+         {
+            _post[lines[index]] = lines[index + 1];
+            index += 2;
+         }
+      }
+
       char[] _data;
       string[string]  _get;
       string[string]  _post;
@@ -969,6 +1054,7 @@ struct Output
       Socket          _channel;
       bool            _flushed;
       bool            _sendBody;
+      bool            _websocket;
 
 
       @safe void buildHeaders()
@@ -980,6 +1066,8 @@ struct Output
 
          immutable string[short] StatusCode =
          [
+            101: "Switching Protocols",
+
             200: "OK", 201 : "Created", 202 : "Accepted", 203 : "Non-Authoritative Information", 204 : "No Content", 205 : "Reset Content", 206 : "Partial Content",
 
             300 : "Multiple Choices", 301 : "Moved Permanently", 302 : "Found", 303 : "See Other", 304 : "Not Modified", 305 : "Use Proxy", 307 : "Temporary Redirect",
@@ -987,7 +1075,7 @@ struct Output
             400 : "Bad Request", 401 : "Unauthorized", 402 : "Payment Required", 403 : "Forbidden", 404 : "Not Found", 405 : "Method Not Allowed",
             406 : "Not Acceptable", 407 : "Proxy Authentication Required", 408 : "Request Timeout", 409 : "Conflict", 410 : "Gone",
             411 : "Lenght Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
-            416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content",
+            416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content", 426 : "Upgrade Required",
 
             500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
          ];
@@ -1001,8 +1089,15 @@ struct Output
          bool has_content_type = false;
          _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
 
-         if (!_keepAlive) _headersBuffer.append("connection: close\r\n");
-         else _headersBuffer.append("connection: keep-alive\r\n");
+         // These headers are ignored if we are sending a websocket response
+         if (!_websocket)
+         {
+            if (!_keepAlive) _headersBuffer.append("connection: close\r\n");
+            else _headersBuffer.append("connection: keep-alive\r\n");
+
+            if (!_sendBody) _headersBuffer.append("content-length: 0\r\n");
+            else _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
+         }
 
          // send user-defined headers
          foreach(const ref header;_headers)
@@ -1013,11 +1108,6 @@ struct Output
             _headersBuffer.append(header.key ~ ": " ~ header.value ~ "\r\n");
             if (header.key == "content-type") has_content_type = true;
          }
-
-         if (!_sendBody)
-            _headersBuffer.append("content-length: 0\r\n");
-         else
-            _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
 
          // Default content-type is text/html if not defined by user
          if (!has_content_type && _sendBody)
@@ -1070,9 +1160,265 @@ struct Output
          _headersBuffer.clear();
          _sendBuffer.clear();
          _sendBody = true;
+         _websocket = false;
       }
    }
 
    OutputImpl* _internal;
 }
 
+struct WebSocketMessage
+{
+   enum OpCode : ushort
+   {
+      OPCODE_MASK = 0xF << 8,
+      OPCODE_CONTINUE = 0x0 << 8,
+      OPCODE_TEXT = 0x1 << 8,
+      OPCODE_BINARY = 0x2 << 8,
+      OPCODE_CLOSE = 0x8 << 8,
+      OPCODE_PING = 0x9 << 8,
+      OPCODE_PONG = 0xA << 8,
+   }
+
+   this(OpCode opcode, string payload)
+   {
+      this.opcode = opcode;
+      this.payload = payload.representation.dup;
+   }
+
+   this(OpCode opcode, ubyte[] payload)
+   {
+      this.opcode = opcode;
+      this.payload = payload.dup;
+   }
+
+   this(T)(OpCode opcode, T payload)
+   {
+      this.opcode = opcode;
+      this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
+   }
+
+   this(T)(T payload)
+   {
+      this.opcode = OpCode.OPCODE_BINARY;
+      this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
+   }
+
+   this(string payload)
+   {
+      this.opcode = OpCode.OPCODE_TEXT;
+      this.payload = payload.representation.dup;
+   }
+
+   string asString() { return cast(string)cast(char[])payload; }
+
+   T as(T)()
+   {
+      static if (is(T == string)) return asString();
+      else return *cast(T*)payload.ptr;
+   }
+
+   OpCode   opcode;
+   ubyte[]  payload;
+
+   bool     isValid = false;
+
+   alias isValid this;
+}
+
+class WebSocketProxy
+{
+   this(Socket socket) { _socket = socket; }
+
+   Socket socket() { _isDirty = true; return this._socket; }
+
+   auto sendData(T)(T data)
+   {
+      return sendMessage(WebSocketMessage(data));
+   }
+
+   auto sendClose()
+   {
+      return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_CLOSE));
+   }
+
+   auto sendPing()
+   {
+      import std.uuid : randomUUID;
+      return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, randomUUID.data));
+   }
+
+   auto sendText(string text)
+   {
+      return sendMessage(WebSocketMessage(text));
+   }
+
+   auto sendMessage(WebSocketMessage message, bool isFIN = true)
+   {
+      _isDirty = true;
+
+      ubyte[] buffer;
+      buffer.length = 2 + 8 + 4 + message.payload.length;
+
+      ushort header = 0;
+
+      if (isFIN) header |= Flags.FIN;
+      header |= message.opcode;
+
+      buffer[0] = cast(ubyte)(header >> 8);
+      buffer[1] = cast(ubyte)header;
+
+      size_t curIdx = 2;
+
+      if (message.payload.length < 126) buffer[1] = cast(ubyte)message.payload.length & ~Flags.MASK;
+      else if (message.payload.length < 65536)
+      {
+         curIdx = 4;
+         buffer[1] = 126 & ~Flags.MASK;
+         *cast(ushort*)(buffer[2..4]) = cast(ushort)message.payload.length;
+      }
+      else
+      {
+         curIdx = 10;
+         buffer[1] = 127 & ~Flags.MASK;
+         *cast(size_t*)(buffer[2..10]) = cast(size_t)message.payload.length;
+      }
+
+      buffer[curIdx..curIdx+message.payload.length] = message.payload[0..$];
+      curIdx += message.payload.length;
+
+      return _socket.send(buffer[0..curIdx]);
+   }
+
+   WebSocketMessage receiveMessage()
+   {
+      import std.socket : wouldHaveBlocked;
+
+      _isDirty = true;
+
+      ubyte[4096] buffer;
+      auto received = _socket.receive(buffer);
+
+      if (received == 0)
+      {
+         kill();
+         return WebSocketMessage.init;
+      }
+
+      if (received < 0)
+      {
+         if (!wouldHaveBlocked) kill();
+         return WebSocketMessage.init;
+      }
+
+      _data ~= buffer[0..received];
+
+      ubyte[] cursor = _data;
+
+      if (cursor.length < 2)
+      {
+         return WebSocketMessage.init;
+      }
+
+      const ushort header = cursor[0] << 8 | cursor[1];
+      cursor = cursor[2..$];
+
+      bool isFIN        = (header & Flags.FIN) > 0;
+      bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
+      bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
+      bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
+      bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
+      bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
+      bool isMASK       = (header & Flags.MASK) == Flags.MASK;
+
+      auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
+
+      auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
+      ubyte[] payload;
+      ubyte[] mask;
+
+      if (payloadLength == 126)
+      {
+         payloadLength = *cast(ushort*)(cursor[0..ushort.sizeof]);
+         cursor = cursor[ushort.sizeof..$];
+      }
+      else if (payloadLength == 127)
+      {
+         payloadLength = *cast(size_t*)(cursor[0..size_t.sizeof]);
+         cursor = cursor[size_t.sizeof..$];
+      }
+
+      if (isMASK)
+      {
+         if (cursor.length < 4)
+            return WebSocketMessage.init;
+
+         mask = cursor[0..4];
+         cursor = cursor[4..$];
+      }
+
+
+      if (cursor.length < payloadLength)
+         return WebSocketMessage.init;
+
+      payload = cursor[0..payloadLength];
+
+      foreach(i, ref b; payload)
+         b ^= mask[i % 4];
+
+      _parsedData ~= payload;
+      _data = cursor[payloadLength..$];
+
+      if (isFIN)
+      {
+         scope(exit) _parsedData = null;
+
+         if (opcode == Flags.OPCODE_PING)
+         {
+            debug log("PING received, sending PONG");
+            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
+            return WebSocketMessage.init;
+         }
+
+         auto msg = WebSocketMessage
+         (
+            cast(WebSocketMessage.OpCode)opcode,
+            _parsedData
+         );
+
+         msg.isValid = true;
+
+         return msg;
+      }
+      else return WebSocketMessage.init;
+   }
+
+   static void kill() { _kill = true; }
+   static bool killRequested() { return _kill; }
+
+   bool isDirty() { return _isDirty; }
+
+   private:
+
+      enum Flags : ushort
+      {
+         FIN = 0x1 << 15,
+         OPCODE_MASK = 0xF << 8,
+         OPCODE_CONTINUE = 0x0 << 8,
+         OPCODE_TEXT = 0x1 << 8,
+         OPCODE_BINARY = 0x2 << 8,
+         OPCODE_CLOSE = 0x8 << 8,
+         OPCODE_PING = 0x9 << 8,
+         OPCODE_PONG = 0xA << 8,
+         MASK = 0x1 << 7,
+         PAYLOAD_MASK = 0x7F
+      }
+
+      ubyte[]   _data;
+      ubyte[]   _parsedData;
+      Socket    _socket;
+
+      bool      _isDirty = false;
+
+      __gshared  bool _kill = false;
+}

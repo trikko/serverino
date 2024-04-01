@@ -58,18 +58,16 @@ struct Worker
       isDynamic = environment.get("SERVERINO_DYNAMIC_WORKER") == "1";
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
 
-      version(linux) char[] socketAddress = char(0) ~ cast(char[])environment.get("SERVERINO_SOCKET");
+      version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
       else
       {
          import std.path : buildPath;
          import std.file : tempDir;
-         char[] socketAddress = cast(char[]) environment.get("SERVERINO_SOCKET");
+         auto socketAddress = new UnixAddress(buildPath(tempDir, environment.get("SERVERINO_SOCKET")));
       }
 
-      assert(socketAddress.length > 0);
-
       channel = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-      channel.connect(new UnixAddress(socketAddress));
+      channel.connect(socketAddress);
       channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, 1.seconds);
 
       ubyte[1] ack = ['\0'];
@@ -467,6 +465,123 @@ struct Worker
                return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
+            // Websocket handling
+            // ------------------
+
+            if (
+               sicmp(request.header.read("connection"), "upgrade") == 0 &&
+               sicmp(request.header.read("upgrade"), "websocket") == 0)
+            {
+               immutable accepted = acceptWebsocket!Modules(request);
+
+               // Check if user accepted the upgrade in the @onWebSocketUpgrade handler
+               if (!accepted)
+               {
+                  output.status = 426;
+                  output._internal._sendBody = false;
+                  return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
+               }
+
+               else
+               {
+                  import std.string : indexOf;
+                  import std.base64 : Base64;
+                  import std.digest.sha : sha1Of;
+
+                  // Serverino supports only WebSocket version 13
+                  if (request.header.read("sec-websocket-version").indexOf("13") < 0)
+                  {
+                     output.status = 400;
+                     output._internal._sendBody = false;
+                     output.addHeader("Sec-WebSocket-Version", "13");
+                     return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
+                  }
+
+                  import std.process : pipeProcess, Redirect, Config;
+                  import std.uuid : randomUUID;
+
+                  // Create a random address.
+                  auto uuid = "serverino-" ~ randomUUID().toString()[$-12..$] ~ ".ws";
+
+                  // We use a unix socket on both linux and macos/windows but ...
+                  version(linux) auto socketAddress = new UnixAddress("\0%s".format(uuid));
+                  else
+                  {
+                     import std.path : buildPath;
+                     import std.file : tempDir;
+                     auto socketAddress = new UnixAddress(buildPath(tempDir, uuid));
+                  }
+
+                  // We start a new process and pass the socket address to it.
+                  import serverino.daemon : Daemon;
+                  string[string] env; // TODO: dovrebbe essere env = Daemon.workerInfo.dup;
+                  env["SERVERINO_SOCKET"]    = uuid;
+                  env["SERVERINO_WEBSOCKET"] = "1";
+                  env["SERVERINO_REQUEST"] = request._internal.serialize();
+
+                  import std.process : pipeProcess, Redirect, Config;
+                  import std.file : thisExePath;
+                  import core.thread;
+
+                  // Start the process
+                  auto pipes     = pipeProcess(thisExePath, Redirect.stdin, env, Config.detached);
+                  bool done      = false;
+                  size_t tries   = 0;
+
+                  Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
+                  // Wait for the process to start (max 50ms)
+                  while(true)
+                  {
+                     try
+                     {
+                        // Check connection with websocket.
+                        s.connect(socketAddress);
+                        s.close();
+                     }
+                     catch(Exception e)
+                     {
+                        Thread.sleep(100.usecs);
+                        ++tries;
+
+                        if(tries > 100) break;
+                        else continue;
+                     }
+
+                     done = true;
+                     break;
+                  }
+
+                  // No response from the process
+                  if (!done)
+                  {
+                     output.status = 500;
+                     output._internal._sendBody = false;
+                     return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
+                  }
+
+
+                  // Ok, let's upgrade the connection
+                  immutable reply = Base64.encode(sha1Of(request.header.read("sec-websocket-key") ~ "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
+
+                  output.status = 101;
+                  output.addHeader("Upgrade", "websocket");
+                  output.addHeader("Connection", "Upgrade");
+                  output.addHeader("Sec-WebSocket-Accept", reply);
+                  output.addHeader("X-Serverino-WebSocket", uuid);   // Send the address to the communicator
+                  output.addHeader("X-Serverino-WebSocket-Pid", pipes.pid.processID.to!string);
+
+                  output._internal._sendBody = false;
+                  output._internal._websocket = true;
+
+                  return WorkerPayload.Flags.WEBSOCKET_UPGRADE;
+               }
+
+            }
+
+            // Http request handling
+            // ---------------------
+
             output._internal._keepAlive =
                config.keepAlive &&
                output._internal._httpVersion == HttpVersion.HTTP11 &&
@@ -585,7 +700,7 @@ struct Worker
                   )
                )
                {
-
+                  if (getUDAs!(s, onWebSocketUpgrade).length > 0) continue;
 
                   static foreach(p; ParameterStorageClassTuple!s)
                   {
@@ -633,7 +748,13 @@ struct Worker
                   !__traits(compiles, s(output))
                )
                {
-                  static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, Output output)`.");
+                  import serverino.interfaces : WebSocketProxy;
+                  WebSocketProxy o;
+
+                  static if (!__traits(compiles, s(request, o)) && !__traits(compiles, s(o)))
+                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, Output output)`.");
+
+                  continue;
                }
 
                static foreach(p; ParameterStorageClassTuple!s)
@@ -710,7 +831,6 @@ struct Worker
       }
       else static if (untaggedHandlers !is null)
       {
-
          static if (untaggedHandlers.length != 1)
          {
             static assert(0, "Please tag each valid endpoint with @endpoint UDA.");
@@ -733,7 +853,16 @@ struct Worker
             }
          }
       }
-      else static assert(0, "Please add at least one endpoint. Try this: `void hello(Request req, Output output) { output ~= req.dump(); }`");
+      else
+      {
+         static bool warningShown = false;
+
+         if (!warningShown)
+         {
+            warningShown = true;
+            warning("No handlers found. Try `@endpoint your_function(Request r, Output output) { output ~= \"Hello World!\"; }` to handle requests.");
+         }
+      }
    }
 
    __gshared:
@@ -755,6 +884,27 @@ struct Worker
 
 }
 
+
+bool acceptWebsocket(Modules...)(Request request)
+{
+   import std.traits : getSymbolsByUDA, isFunction, ReturnType;
+   bool result = false;
+
+   static foreach(m; Modules)
+   {
+      static foreach(f; getSymbolsByUDA!(m, onWebSocketUpgrade))
+      {
+         static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWebSocketUpgrade but it is not a function");
+         static assert(is(ReturnType!f == bool), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `bool`");
+         static if(__traits(compiles, f(request))) result = f(request);
+
+         static if (!__traits(compiles, hasSocketUpgrade)) { enum hasSocketUpgrade; }
+         else static assert(0, "You can't mark more than one function with @onWebSocketUpgrade");
+      }
+   }
+
+   return result;
+}
 
 void tryInit(Modules...)()
 {

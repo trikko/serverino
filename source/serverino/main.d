@@ -79,12 +79,12 @@ class ServerinoLogger : Logger
 
       if (environment.get("SERVERINO_DAEMON") == null)
       {
-         version(Windows){ prefix = "\x1b[1m-\x1b[0m "; }
-         else { prefix = "\x1b[1m★\x1b[0m "; }
+         version(Windows){ prefix = "\x1b[1m*\x1b[0m "; }
+         else { prefix = "\x1b[1m*\x1b[0m "; }
       }
       else {
-         version(Windows){ prefix = text("\x1b[38;2;", logColor[0], ";", logColor[1], ";", logColor[2],"mD\x1b[0m "); }
-         else { prefix = text("\x1b[38;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m■\x1b[0m "); }
+         version(Windows){ prefix = text("\x1b[48;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m \x1b[0m "); }
+         else { prefix = text("\x1b[48;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m \x1b[0m "); }
       }
 
       prefix ~= format("[%06d]", processId);
@@ -122,6 +122,19 @@ template ServerinoLoop(Modules...)
 
    int mainServerinoLoop(string[] args)
    {
+      // Enable terminal colors on older windows
+      version(Windows)
+      {
+         import core.sys.windows.windows;
+
+         DWORD dwMode;
+         HANDLE hOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+         GetConsoleMode(hOutput, &dwMode);
+         dwMode |= ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+         SetConsoleMode(hOutput, dwMode);
+      }
+
       import std.traits : getSymbolsByUDA, isFunction, ReturnType, Parameters;
       ServerinoConfig config = ServerinoConfig.create();
 
@@ -168,9 +181,11 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    // Let's wake up the daemon or the worker
    import serverino.daemon;
    import serverino.worker;
+   import serverino.websocket;
    import std.process : environment;
 
    if (environment.get("SERVERINO_DAEMON") == null) Daemon.wake!Modules(daemonConfig);
+   if (environment.get("SERVERINO_WEBSOCKET") == "1") WebSocket.wake!Modules();
 	else Worker.wake!Modules(workerConfig);
 
    return 0;

@@ -45,7 +45,7 @@ package struct WorkerPayload
 		HTTP_RESPONSE_FILE = 1 << 1,
 		HTTP_DELETE_FILE = 1 << 2,
 		HTTP_KEEP_ALIVE = 1 << 3,
-		WEBSOCKET_ACCEPT = 1 << 4
+		WEBSOCKET_UPGRADE = 1 << 4
 	}
 
 	ubyte 	flags = 0;
@@ -237,4 +237,195 @@ class ProcessInfo
 
 	private:
 		int pid = -1;
+}
+
+
+version(darwin)
+{
+   import std.socket : Socket, socket_t,
+   iovec, SOL_SOCKET, SCM_RIGHTS;
+
+   alias socklen_t = uint;
+   alias ssize_t = uint;
+
+   struct msghdr
+   {
+      void*     msg_name;
+      socklen_t msg_namelen;
+      iovec*    msg_iov;
+      int       msg_iovlen;
+      void*     msg_control;
+      socklen_t msg_controllen;
+      int       msg_flags;
+   }
+
+   struct cmsghdr
+   {
+      socklen_t  cmsg_len;
+      int        cmsg_level;
+      int        cmsg_type;
+   }
+
+   extern (D)
+   {
+      socklen_t CMSG_ALIGN(socklen_t len) pure nothrow @nogc { return (len + socklen_t.sizeof - 1) & cast(socklen_t) (~(socklen_t.sizeof - 1)); }
+      socklen_t CMSG_SPACE(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(len) + CMSG_ALIGN(cmsghdr.sizeof); }
+      socklen_t CMSG_LEN(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(cmsghdr.sizeof) + len; }
+
+      inout(ubyte)*   CMSG_DATA( return scope inout(cmsghdr)* cmsg ) pure nothrow @nogc { return cast(ubyte*)( cmsg + 1 ); }
+
+      inout(cmsghdr)* CMSG_FIRSTHDR( inout(msghdr)* mhdr ) pure nothrow @nogc
+      {
+         return ( cast(socklen_t)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
+      }
+   }
+
+   extern(C) {
+      ssize_t recvmsg(int, scope msghdr*, int);
+      ssize_t sendmsg(int, const scope msghdr*, int);
+   }
+
+}
+else version(Posix)
+{
+   import std.socket : Socket, socket_t, cmsghdr, msghdr,
+   sendmsg, recvmsg, iovec,
+   CMSG_FIRSTHDR, CMSG_SPACE, CMSG_DATA, CMSG_LEN,
+   SOL_SOCKET, SCM_RIGHTS;
+
+}
+else version(Windows)
+{
+	import core.sys.windows.windef;
+	import core.sys.windows.basetyps: GUID;
+
+	alias GROUP = uint;
+
+	enum INVALID_SOCKET = 0;
+	enum MAX_PROTOCOL_CHAIN = 7;
+	enum WSAPROTOCOL_LEN = 255;
+	enum WSA_FLAG_OVERLAPPED = 0x01;
+
+	struct WSAPROTOCOLCHAIN
+	{
+		int ChainLen;
+		DWORD[MAX_PROTOCOL_CHAIN] ChainEntries;
+	}
+
+	struct WSAPROTOCOL_INFOW
+	{
+		DWORD dwServiceFlags1;
+		DWORD dwServiceFlags2;
+		DWORD dwServiceFlags3;
+		DWORD dwServiceFlags4;
+		DWORD dwProviderFlags;
+		GUID ProviderId;
+		DWORD dwCatalogEntryId;
+		WSAPROTOCOLCHAIN ProtocolChain;
+		int iVersion;
+		int iAddressFamily;
+		int iMaxSockAddr;
+		int iMinSockAddr;
+		int iSocketType;
+		int iProtocol;
+		int iProtocolMaxOffset;
+		int iNetworkByteOrder;
+		int iSecurityScheme;
+		DWORD dwMessageSize;
+		DWORD dwProviderReserved;
+		WCHAR[WSAPROTOCOL_LEN+1] szProtocol;
+	}
+
+	extern(Windows) nothrow @nogc
+	{
+		import core.sys.windows.winsock2: WSAGetLastError;
+		int WSADuplicateSocketW(SOCKET s, DWORD dwProcessId, WSAPROTOCOL_INFOW* lpProtocolInfo);
+		SOCKET WSASocketW(int af, int type, int protocol, WSAPROTOCOL_INFOW*, GROUP, DWORD dwFlags);
+	}
+}
+
+version(Posix)
+{
+	import std.experimental.logger;
+
+	int socketTransferReceive(Socket socket)
+	{
+
+		try
+		{
+			union ControlMsg {
+				char[CMSG_SPACE(int.sizeof)] buf;
+				cmsghdr tmp;
+			}
+			ControlMsg controlMsg;
+
+			char data;
+
+			msghdr msgh;
+			msgh.msg_name = null;
+			msgh.msg_namelen = 0;
+
+			iovec iov;
+
+			msgh.msg_iov = &iov;
+			msgh.msg_iovlen = 1;
+			iov.iov_base = &data;
+			iov.iov_len = 1;
+
+			msgh.msg_control = controlMsg.buf.ptr;
+			msgh.msg_controllen = controlMsg.buf.length;
+
+			auto nr = recvmsg(socket.handle, &msgh, 0);
+
+			if (nr < 0)
+			{
+				return -1;
+			}
+
+			cmsghdr *cmsgp = CMSG_FIRSTHDR(&msgh);
+
+			return *(cast(int*)CMSG_DATA(cmsgp));
+		}
+		catch (Exception e) { return -1; }
+
+	}
+
+	bool socketTransferSend(socket_t s, Socket thru, int pid)
+	{
+
+		union ControlMsg {
+			char[CMSG_SPACE(int.sizeof)] buf;
+			cmsghdr tmp;
+		}
+
+		ControlMsg controlMsg;
+
+		int fd = cast(int)s;
+
+		msghdr   msgh;
+		msgh.msg_name = null;
+		msgh.msg_namelen = 0;
+
+		char data = '\1';
+
+		iovec iov;
+		iov.iov_base = &data;
+		iov.iov_len = 1;
+
+		msgh.msg_iov = &iov;
+		msgh.msg_iovlen = 1;
+		msgh.msg_control = controlMsg.buf.ptr;
+		msgh.msg_controllen = controlMsg.buf.length;
+
+		auto cmsgp = CMSG_FIRSTHDR(&msgh);
+		cmsgp.cmsg_level = SOL_SOCKET;
+		cmsgp.cmsg_type = SCM_RIGHTS;
+		cmsgp.cmsg_len = CMSG_LEN(int.sizeof);
+		*(cast(int *) CMSG_DATA(cmsgp)) = fd;
+
+		sendmsg(thru.handle, &msgh, 0);
+
+
+		return true;
+	}
 }

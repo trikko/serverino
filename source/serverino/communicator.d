@@ -38,6 +38,7 @@ import std.algorithm : strip;
 import std.conv : text, to;
 import std.format : format;
 import std.experimental.logger : log, info, warning;
+import std.path;
 
 extern(C) long syscall(long number, ...);
 
@@ -52,7 +53,8 @@ package class ProtoRequest
    {
       Unknown = "unknown",
       KeepAlive = "keep-alive",
-      Close = "close"
+      Close = "close",
+      Upgrade = "upgrade"
    }
 
    enum HttpVersion
@@ -109,7 +111,8 @@ package class Communicator
       PAIRED,           // Paired with a client
       READING_HEADERS,  // Reading headers from client
       READING_BODY,     // Reading body from client
-      KEEP_ALIVE        // Keep alive if the client wants to
+      KEEP_ALIVE,        // Keep alive if the client wants to
+      WEBSOCKET
    }
 
    DaemonConfigPtr config;
@@ -565,6 +568,7 @@ package class Communicator
 
                         if (sicmp(value, "keep-alive") == 0) request.connection = ProtoRequest.Connection.KeepAlive;
                         else if (sicmp(value, "close") == 0) request.connection = ProtoRequest.Connection.Close;
+                        else if (value.indexOf("upgrade", CaseSensitive.no) >= 0) request.connection = ProtoRequest.Connection.Upgrade;
                         else request.connection = ProtoRequest.connection.Unknown;
                      }
                      else
