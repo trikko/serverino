@@ -101,6 +101,13 @@ ServerinoConfig conf()
       .setWorkers(4);
 }
 
+@endpoint void ws(Request r, WebSocketProxy s)
+{
+   s.sendText("Hello world!");
+}
+
+@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat"; }
+
 void test()
 {
 
@@ -319,6 +326,49 @@ void test()
       tg.joinAll();
 
 
+   }
+
+   {
+      auto handshake = "GET /chat HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      char[] buffer;
+      buffer.length = 32000;
+
+      {
+         auto ln = sck.receive(buffer);
+
+         auto reply = buffer[0..ln];
+
+         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
+         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+      }
+
+      {
+         auto ln = sck.receive(buffer);
+
+         // WebSocket Frame:              'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '!'
+         assert(buffer[0..ln] == [129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100,  33], buffer[0..ln]);
+      }
+
+   }
+
+   {
+      auto handshake = "GET /notaccepted HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      char[] buffer;
+      buffer.length = 32000;
+
+      auto ln = sck.receive(buffer);
+      auto reply = buffer[0..ln];
+      assert(reply.startsWith("HTTP/1.1 426 Upgrade Required"), reply);
    }
 
 }
