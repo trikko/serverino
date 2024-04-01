@@ -465,12 +465,15 @@ struct Worker
                return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
+
+            import std.algorithm : canFind;
+
             // Websocket handling
             // ------------------
-
             if (
-               sicmp(request.header.read("connection"), "upgrade") == 0 &&
-               sicmp(request.header.read("upgrade"), "websocket") == 0)
+               sicmp(request.header.read("upgrade"), "websocket") == 0 &&
+               request.header.read("connection").splitter(",").map!(x => x.strip.toLower).canFind("upgrade")
+            )
             {
                immutable accepted = acceptWebsocket!Modules(request);
 
