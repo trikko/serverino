@@ -1290,30 +1290,14 @@ class WebSocketProxy
       return _socket.send(buffer[0..curIdx]);
    }
 
-   WebSocketMessage receiveMessage()
+   private WebSocketMessage tryParse()
    {
-      import std.socket : wouldHaveBlocked;
-
       _isDirty = true;
 
-      ubyte[4096] buffer;
-      auto received = _socket.receive(buffer);
+      if (_toParse.length == 0) return WebSocketMessage.init;
 
-      if (received == 0)
-      {
-         kill();
-         return WebSocketMessage.init;
-      }
 
-      if (received < 0)
-      {
-         if (!wouldHaveBlocked) kill();
-         return WebSocketMessage.init;
-      }
-
-      _data ~= buffer[0..received];
-
-      ubyte[] cursor = _data;
+      ubyte[] cursor = _toParse;
 
       if (cursor.length < 2)
       {
@@ -1367,7 +1351,7 @@ class WebSocketProxy
          b ^= mask[i % 4];
 
       _parsedData ~= payload;
-      _data = cursor[payloadLength..$];
+      _toParse = cursor[payloadLength..$];
 
       if (isFIN)
       {
@@ -1393,6 +1377,33 @@ class WebSocketProxy
       else return WebSocketMessage.init;
    }
 
+   WebSocketMessage receiveMessage()
+   {
+      import std.socket : wouldHaveBlocked;
+      WebSocketMessage msg = tryParse();
+
+      if (msg.isValid)
+         return msg;
+
+      ubyte[4096] buffer;
+      auto received = _socket.receive(buffer);
+
+      if (received == 0)
+      {
+         kill();
+         return WebSocketMessage.init;
+      }
+
+      if (received < 0)
+      {
+         if (!_socket.isAlive || !wouldHaveBlocked) kill();
+         return WebSocketMessage.init;
+      }
+
+      _toParse ~= buffer[0..received];
+      return tryParse();
+   }
+
    static void kill() { _kill = true; }
    static bool killRequested() { return _kill; }
 
@@ -1414,7 +1425,7 @@ class WebSocketProxy
          PAYLOAD_MASK = 0x7F
       }
 
-      ubyte[]   _data;
+      ubyte[]   _toParse;
       ubyte[]   _parsedData;
       Socket    _socket;
 
