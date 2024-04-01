@@ -71,7 +71,7 @@ struct WebSocket
       // Sending connection upgrade response to the client
       Socket client = new Socket(cast(socket_t)handle, af);
       client.send(headers);
-      client.blocking = false;
+      client.blocking = true;
 
       auto proxy = new WebSocketProxy(client);
 
