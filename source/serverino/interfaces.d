@@ -1167,92 +1167,126 @@ struct Output
    OutputImpl* _internal;
 }
 
+/** A low-level representation of a WebSocket message. Probably you don't need to use this directly.
+* ---
+* auto msg = WebSocketMessage("Hello world");
+* auto msg2 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_TEXT, "Hello world");
+* auto msg3 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, "Ping me back!");
+* auto msg4 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_BINARY, [1, 2, 3, 4]);
+* ---
+**/
 struct WebSocketMessage
 {
+
    enum OpCode : ushort
    {
       OPCODE_MASK = 0xF << 8,
-      OPCODE_CONTINUE = 0x0 << 8,
-      OPCODE_TEXT = 0x1 << 8,
-      OPCODE_BINARY = 0x2 << 8,
-      OPCODE_CLOSE = 0x8 << 8,
-      OPCODE_PING = 0x9 << 8,
-      OPCODE_PONG = 0xA << 8,
+      OPCODE_CONTINUE = 0x0 << 8,   /// If you send a message in parts, you must use this opcode for all parts except the first one.
+      OPCODE_TEXT = 0x1 << 8,       /// Text message
+      OPCODE_BINARY = 0x2 << 8,     /// Binary message
+      OPCODE_CLOSE = 0x8 << 8,      /// Close connection
+      OPCODE_PING = 0x9 << 8,       /// Ping message
+      OPCODE_PONG = 0xA << 8,       /// Pong (response to ping)
    }
 
+   /// Build a WebSocket message.
    this(OpCode opcode, string payload)
    {
       this.opcode = opcode;
       this.payload = payload.representation.dup;
    }
 
+   /// Ditto
    this(OpCode opcode, ubyte[] payload)
    {
       this.opcode = opcode;
       this.payload = payload.dup;
    }
 
+   /// Ditto
    this(T)(OpCode opcode, T payload)
    {
       this.opcode = opcode;
       this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
    }
 
+   /// Ditto
    this(T)(T payload)
    {
       this.opcode = OpCode.OPCODE_BINARY;
       this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
    }
 
+   /// Ditto
    this(string payload)
    {
       this.opcode = OpCode.OPCODE_TEXT;
       this.payload = payload.representation.dup;
    }
 
+   /// Return a string representation of the payload.
    string asString() { return cast(string)cast(char[])payload; }
 
+   /** Return the payload as a specific type.
+   * ---
+   * auto msg = WebSocketMessage("Hello world");
+   * auto str = msg.as!string;
+   * ---
+   **/
    T as(T)()
    {
       static if (is(T == string)) return asString();
       else return *cast(T*)payload.ptr;
    }
 
+   /// Is this message valid?
+   bool     isValid = false;
+
+   private:
    OpCode   opcode;
    ubyte[]  payload;
-
-   bool     isValid = false;
 
    alias isValid this;
 }
 
+/** A WebSocket proxy. You can use this to send and receive WebSocket messages.
+* ---
+* auto ws = WebSocketProxy(socket);
+* ws.sendData("Hello world");
+* auto msg = ws.receiveMessage();
+* ---
+**/
 class WebSocketProxy
 {
+   /// Create a WebSocket proxy.
    this(Socket socket) { _socket = socket; }
 
+   /// Return the socket.
    Socket socket() { _isDirty = true; return this._socket; }
 
-   auto sendData(T)(T data)
-   {
-      return sendMessage(WebSocketMessage(data));
-   }
+   /// Send a binary message.
+   auto sendData(T)(T data) { return sendMessage(WebSocketMessage(data)); }
 
-   auto sendClose()
-   {
-      return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_CLOSE));
-   }
+   /// Send a close message.
+   auto sendClose() { return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_CLOSE)); }
 
-   auto sendPing()
-   {
+   /// Send a ping message. The peer should reply with a pong.
+   auto sendPing() {
       import std.uuid : randomUUID;
       return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, randomUUID.data));
    }
 
-   auto sendText(string text)
-   {
-      return sendMessage(WebSocketMessage(text));
-   }
+   /// Send a text message.
+   auto sendText(string text) { return sendMessage(WebSocketMessage(text)); }
 
+   /** Send a custom message. isFIN is true by default and should be true for most cases.
+   *   You want to set it to false if you are sending a message in parts. The last part should have isFIN set to true.
+   *   The masked parameter is false by default and should be false for most cases. It is used if a message is sent from a client to a server.
+   * ---
+   * auto msg = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_TEXT, "Hello world");
+   * ws.sendMessage(msg);
+   * ---
+   **/
    auto sendMessage(WebSocketMessage message, bool isFIN = true, bool masked = false)
    {
       _isDirty = true;
@@ -1305,94 +1339,13 @@ class WebSocketProxy
       return _socket.send(buffer[0..curIdx]);
    }
 
-   private WebSocketMessage tryParse()
-   {
-      _isDirty = true;
-
-      if (_toParse.length == 0) return WebSocketMessage.init;
-
-
-      ubyte[] cursor = _toParse;
-
-      if (cursor.length < 2)
-      {
-         return WebSocketMessage.init;
-      }
-
-      const ushort header = cursor[0] << 8 | cursor[1];
-      cursor = cursor[2..$];
-
-      bool isFIN        = (header & Flags.FIN) > 0;
-      bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
-      bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
-      bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
-      bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
-      bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
-      bool isMASK       = (header & Flags.MASK) == Flags.MASK;
-
-      auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
-
-      auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
-      ubyte[] payload;
-      ubyte[] mask = [0, 0, 0, 0];
-
-      if (payloadLength == 126)
-      {
-         payloadLength = *cast(ushort*)(cursor[0..ushort.sizeof]);
-         cursor = cursor[ushort.sizeof..$];
-      }
-      else if (payloadLength == 127)
-      {
-         payloadLength = *cast(size_t*)(cursor[0..size_t.sizeof]);
-         cursor = cursor[size_t.sizeof..$];
-      }
-
-      if (isMASK)
-      {
-         if (cursor.length < 4)
-            return WebSocketMessage.init;
-
-         mask = cursor[0..4];
-         cursor = cursor[4..$];
-      }
-
-
-      if (cursor.length < payloadLength)
-         return WebSocketMessage.init;
-
-      payload = cursor[0..payloadLength];
-
-      if (isMASK)
-         foreach(i, ref ubyte b; payload)
-            b ^= mask[i % 4];
-
-      _parsedData ~= payload;
-      _toParse = cursor[payloadLength..$];
-
-      if (isFIN)
-      {
-         scope(exit) _parsedData = null;
-
-         if (opcode == Flags.OPCODE_PING)
-         {
-            debug log("PING received, sending PONG");
-            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
-            return WebSocketMessage.init;
-         }
-
-         auto msg = WebSocketMessage
-         (
-            cast(WebSocketMessage.OpCode)opcode,
-            _parsedData
-         );
-
-         msg.isValid = true;
-
-         return msg;
-      }
-      else return WebSocketMessage.init;
-   }
-
+   /** Receive a message from the WebSocket. There could be more than one message in the buffer
+   *   so you should call this function in a loop until it returns an invalid message.
+   * ---
+   * auto msg = ws.receiveMessage();
+   * if (msg.isValid) writeln("Received: ", msg.as!string);
+   * ---
+   **/
    WebSocketMessage receiveMessage()
    {
       import std.socket : wouldHaveBlocked;
@@ -1420,12 +1373,107 @@ class WebSocketProxy
       return tryParse();
    }
 
+   /// Close the WebSocket connection.
    static void kill() { _kill = true; }
+
+   /// Is the WebSocket connection closed?
    static bool killRequested() { return _kill; }
 
+   /// Returns true if the WebSocket is dirty.
    bool isDirty() { return _isDirty; }
 
    private:
+
+      WebSocketMessage tryParse()
+      {
+         _isDirty = true;
+
+         if (_toParse.length == 0) return WebSocketMessage.init;
+
+
+         ubyte[] cursor = _toParse;
+
+         if (cursor.length < 2)
+         {
+            return WebSocketMessage.init;
+         }
+
+         const ushort header = cursor[0] << 8 | cursor[1];
+         cursor = cursor[2..$];
+
+         bool isFIN        = (header & Flags.FIN) > 0;
+
+         /*
+         bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
+         bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
+         bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
+         bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
+         bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
+         */
+         bool isMASK       = (header & Flags.MASK) == Flags.MASK;
+
+         auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
+
+         auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
+         ubyte[] payload;
+         ubyte[] mask = [0, 0, 0, 0];
+
+         if (payloadLength == 126)
+         {
+            payloadLength = *cast(ushort*)(cursor[0..ushort.sizeof]);
+            cursor = cursor[ushort.sizeof..$];
+         }
+         else if (payloadLength == 127)
+         {
+            payloadLength = *cast(size_t*)(cursor[0..size_t.sizeof]);
+            cursor = cursor[size_t.sizeof..$];
+         }
+
+         if (isMASK)
+         {
+            if (cursor.length < 4)
+               return WebSocketMessage.init;
+
+            mask = cursor[0..4];
+            cursor = cursor[4..$];
+         }
+
+
+         if (cursor.length < payloadLength)
+            return WebSocketMessage.init;
+
+         payload = cursor[0..payloadLength];
+
+         if (isMASK)
+            foreach(i, ref ubyte b; payload)
+               b ^= mask[i % 4];
+
+         _parsedData ~= payload;
+         _toParse = cursor[payloadLength..$];
+
+         if (isFIN)
+         {
+            scope(exit) _parsedData = null;
+
+            if (opcode == Flags.OPCODE_PING)
+            {
+               debug log("PING received, sending PONG");
+               sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
+               return WebSocketMessage.init;
+            }
+
+            auto msg = WebSocketMessage
+            (
+               cast(WebSocketMessage.OpCode)opcode,
+               _parsedData
+            );
+
+            msg.isValid = true;
+
+            return msg;
+         }
+         else return WebSocketMessage.init;
+      }
 
       enum Flags : ushort
       {
