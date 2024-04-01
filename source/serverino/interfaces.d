@@ -1253,11 +1253,13 @@ class WebSocketProxy
       return sendMessage(WebSocketMessage(text));
    }
 
-   auto sendMessage(WebSocketMessage message, bool isFIN = true)
+   auto sendMessage(WebSocketMessage message, bool isFIN = true, bool masked = false)
    {
       _isDirty = true;
 
       ubyte[] buffer;
+      ubyte[4] mask;
+
       buffer.length = 2 + 8 + 4 + message.payload.length;
 
       ushort header = 0;
@@ -1284,7 +1286,20 @@ class WebSocketProxy
          *cast(size_t*)(buffer[2..10]) = cast(size_t)message.payload.length;
       }
 
+      if (masked)
+      {
+         buffer[1] |= Flags.MASK;
+         mask[0..4] = cast(ubyte[])randomUUID.data[0..4];
+         buffer[curIdx..curIdx+4] = mask[0..4];
+         curIdx += 4;
+      }
+
       buffer[curIdx..curIdx+message.payload.length] = message.payload[0..$];
+
+      if (masked)
+         foreach(i, ref b; buffer[curIdx..$])
+            b ^= mask[i % 4];
+
       curIdx += message.payload.length;
 
       return _socket.send(buffer[0..curIdx]);
@@ -1319,7 +1334,7 @@ class WebSocketProxy
 
       auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
       ubyte[] payload;
-      ubyte[] mask;
+      ubyte[] mask = [0, 0, 0, 0];
 
       if (payloadLength == 126)
       {
@@ -1347,8 +1362,9 @@ class WebSocketProxy
 
       payload = cursor[0..payloadLength];
 
-      foreach(i, ref b; payload)
-         b ^= mask[i % 4];
+      if (isMASK)
+         foreach(i, ref ubyte b; payload)
+            b ^= mask[i % 4];
 
       _parsedData ~= payload;
       _toParse = cursor[payloadLength..$];

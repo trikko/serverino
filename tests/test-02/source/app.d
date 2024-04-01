@@ -361,12 +361,11 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      {
-         auto ln = sck.receive(buffer);
-
-         // WebSocket Frame:                      'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '!'
-         assert(buffer[0..ln].startsWith([129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100,  33]), (cast(ubyte[])buffer[0..ln]).to!string);
-      }
+      WebSocketProxy ws = new WebSocketProxy(sck);
+      auto msg = ws.receiveMessage();
+      assert(msg);
+      log(msg.asString);
+      assert(msg.asString == "Hello world!");
 
    }
 
@@ -385,17 +384,14 @@ void test()
 
          auto reply = buffer[0..ln];
 
-         log(reply);
          assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      {
-         auto ln = sck.receive(buffer);
-
-         // WebSocket Frame:                      'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '.'
-         assert(buffer[0..ln].startsWith([129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100, '.']), (cast(ubyte[])buffer[0..ln]).to!string);
-      }
+      WebSocketProxy ws = new WebSocketProxy(sck);
+      auto msg = ws.receiveMessage();
+      assert(msg);
+      assert(msg.asString == "Hello world.");
 
    }
 
