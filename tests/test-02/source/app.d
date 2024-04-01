@@ -111,16 +111,20 @@ ServerinoConfig conf()
 @priority(-1)
 @endpoint void ws3(Request r, WebSocketProxy s)
 {
-   s.sendText("Hello word!");
+   auto msg = s.receiveMessage();
+   assert(msg.isValid);
+   assert(msg.asString == "Hello from client");
+   s.sendText(msg.asString);
+   s.sendData(cast(int)123);
 }
 
-
+@route!"/chat"
 @endpoint void ws(Request r, WebSocketProxy s)
 {
    s.sendText("Hello world!");
 }
 
-@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza"; }
+@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza" || r.uri == "/hello"; }
 
 void test()
 {
@@ -364,7 +368,6 @@ void test()
       WebSocketProxy ws = new WebSocketProxy(sck);
       auto msg = ws.receiveMessage();
       assert(msg);
-      log(msg.asString);
       assert(msg.asString == "Hello world!");
 
    }
@@ -408,6 +411,42 @@ void test()
       auto ln = sck.receive(buffer);
       auto reply = buffer[0..ln];
       assert(reply.startsWith("HTTP/1.1 426 Upgrade Required"), reply);
+   }
+
+   {
+      auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      ubyte[] buffer;
+      buffer.length = 32000;
+
+      {
+         auto ln = sck.receive(buffer);
+
+         auto reply = buffer[0..ln];
+
+         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
+         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+      }
+
+      WebSocketProxy ws = new WebSocketProxy(sck);
+      ws.sendMessage(WebSocketMessage("Hello from client"), true, true);
+
+      {
+         auto msg = ws.receiveMessage();
+         assert(msg);
+         assert(msg.asString == "Hello from client");
+      }
+
+      {
+         auto msg = ws.receiveMessage();
+         assert(msg);
+         assert(msg.as!int == 123);
+      }
+
    }
 
 }
