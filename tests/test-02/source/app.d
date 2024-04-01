@@ -101,12 +101,26 @@ ServerinoConfig conf()
       .setWorkers(4);
 }
 
+@priority(100)
+@route!"/pizza"
+@endpoint void ws2(Request r, WebSocketProxy s)
+{
+   s.sendText("Hello world.");
+}
+
+@priority(-1)
+@endpoint void ws3(Request r, WebSocketProxy s)
+{
+   s.sendText("Hello word!");
+}
+
+
 @endpoint void ws(Request r, WebSocketProxy s)
 {
    s.sendText("Hello world!");
 }
 
-@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat"; }
+@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza"; }
 
 void test()
 {
@@ -335,7 +349,7 @@ void test()
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
 
-      char[] buffer;
+      ubyte[] buffer;
       buffer.length = 32000;
 
       {
@@ -350,8 +364,37 @@ void test()
       {
          auto ln = sck.receive(buffer);
 
-         // WebSocket Frame:              'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '!'
-         assert(buffer[0..ln] == [129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100,  33], buffer[0..ln]);
+         // WebSocket Frame:                      'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '!'
+         assert(buffer[0..ln].startsWith([129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100,  33]), (cast(ubyte[])buffer[0..ln]).to!string);
+      }
+
+   }
+
+   {
+      auto handshake = "GET /pizza HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      ubyte[] buffer;
+      buffer.length = 32000;
+
+      {
+         auto ln = sck.receive(buffer);
+
+         auto reply = buffer[0..ln];
+
+         log(reply);
+         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
+         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+      }
+
+      {
+         auto ln = sck.receive(buffer);
+
+         // WebSocket Frame:                      'H'  'e'  'l'  'l'  'o'  ' '  'w'  'o'  'r'  'l'  'd'  '.'
+         assert(buffer[0..ln].startsWith([129, 12, 72, 101, 108, 108, 111,  32, 119, 111, 114, 108, 100, '.']), (cast(ubyte[])buffer[0..ln]).to!string);
       }
 
    }
