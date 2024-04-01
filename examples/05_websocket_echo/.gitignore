@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/websocket_echo
+websocket_echo.so
+websocket_echo.dylib
+websocket_echo.dll
+websocket_echo.a
+websocket_echo.lib
+websocket_echo-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

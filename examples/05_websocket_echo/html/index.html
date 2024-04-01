@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>WebSocket echo</title>
+   <style>
+      body {
+         font-family: Arial, sans-serif;
+         background-color: #f2f2f2;
+         margin: 0;
+         padding: 20px;
+      }
+
+      form {
+         background-color: #fff;
+         padding: 20px;
+         border-radius: 5px;
+         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      label {
+         font-weight: bold;
+      }
+
+      textarea {
+         padding: 5px;
+         font-size: 0.8em;
+         width: 100%;
+         resize: none;
+         margin-bottom: 10px;
+      }
+
+      input[type="text"] {
+         margin-top: 10px;
+         width: 50%;
+         padding: 10px;
+         border: 1px solid #ccc;
+         border-radius: 5px;
+         margin-bottom: 10px;
+      }
+
+      input[type="button"] {
+         width: 150px;
+         padding: 10px 20px;
+         background-color: #50AF4C;
+         color: #fff;
+         border: none;
+         border-radius: 5px;
+         cursor: pointer;
+      }
+
+      input[type="button"]:disabled {
+         background-color: #ccc;
+         cursor: not-allowed;
+      }
+
+      input[type="submit"] {
+         width: 150px;
+         padding: 10px 20px;
+         background-color: #4CAF50;
+         color: #fff;
+         border: none;
+         border-radius: 5px;
+         cursor: pointer;
+      }
+
+      input[type="submit"]:disabled {
+         background-color: #ccc;
+         cursor: not-allowed;
+      }
+   </style>
+</head>
+<body>
+   <form>
+      <label for="multiline">History:</label><br>
+      <textarea id="multiline" name="multiline" rows="15" cols="50" readonly></textarea><br>
+      <label for="singleline">Send a message:</label><br>
+      <input type="text" id="singleline" placeholder="write a message and press enter" name="singleline" ><br>
+      <input type="submit" id="sendButton" value="Send" disabled>
+      <input type="button" id="connectButton" value="Connect" onclick="rebind()">
+   </form>
+
+   <script>
+
+      rebind();
+
+      var form = document.querySelector('form');
+      var singleline = document.querySelector('#singleline');
+      var multiline = document.querySelector('#multiline');
+      var sendButton = document.querySelector('#sendButton');
+      var connectButton = document.querySelector('#connectButton');
+
+      singleline.focus();
+
+      form.addEventListener('submit', function(event) {
+         event.preventDefault();
+         ws.send(singleline.value);
+         multiline.value += 'You: ' + singleline.value + '\n';
+         singleline.value = '';
+      });
+
+      function rebind()
+      {
+         ws = new WebSocket('ws://localhost:8080/echo');
+
+         ws.onmessage = function(event) {
+            multiline.value += 'Server: ' + event.data + '\n';
+         };
+
+         ws.onopen = function() {
+            sendButton.disabled = false;
+            connectButton.disabled = true;
+         };
+
+         ws.onclose = function() {
+            sendButton.disabled = true;
+            connectButton.disabled = false;
+         };
+      }
+
+   </script>
+</body>
+</html>
