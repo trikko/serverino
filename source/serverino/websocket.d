@@ -50,6 +50,9 @@ struct WebSocketWorker
       import std.stdio;
       import std.format : format;
 
+      import core.thread;
+      import core.stdc.stdlib : exit;
+
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
 
       version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
@@ -57,6 +60,37 @@ struct WebSocketWorker
 
       Socket listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
       listener.bind(socketAddress);
+
+      __gshared bool inited = false;
+
+       new Thread({
+
+         Thread.getThis().isDaemon = true;
+
+         // Check if the server is still alive
+         foreach(i; 0..5)
+         {
+            if (inited)
+               break;
+
+            Thread.sleep(1.seconds);
+         }
+
+         if (!inited)
+         {
+            log("Killing websocket. [REASON: not inited, timeout]");
+            exit(0);
+         }
+
+         // Check if the server is still alive
+         while (!WebSocket.killRequested)
+            Thread.sleep(1.seconds);
+
+         log("Killing websocket. [REASON: broken pipe?]");
+
+         exit(0);
+
+      }).start();
 
       // TODO: Max accept time
       // Wait for the connection check
@@ -104,11 +138,9 @@ struct WebSocketWorker
       r._internal = new Request.RequestImpl();
       r._internal.deserialize(environment.get("SERVERINO_REQUEST"));
 
+      inited = true;
       log("WebSocket started.");
       scope(exit) log("WebSocket stopped.");
-
-      import core.thread;
-      import core.stdc.stdlib : exit;
 
       new Thread({
 
