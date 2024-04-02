@@ -40,7 +40,6 @@ import std.format : format;
 import std.conv : to;
 import core.atomic : cas, atomicLoad, atomicStore;
 
-extern(C) int dup(int a);
 extern(C) int dup2(int a, int b);
 extern(C) int fileno(FILE *stream);
 
@@ -517,7 +516,7 @@ struct Worker
 
                   // We start a new process and pass the socket address to it.
                   import serverino.daemon : Daemon;
-                  string[string] env; // TODO: dovrebbe essere env = Daemon.workerInfo.dup;
+                  string[string] env = environment.toAA.dup;
                   env["SERVERINO_SOCKET"]    = uuid;
                   env["SERVERINO_WEBSOCKET"] = "1";
                   env["SERVERINO_REQUEST"] = request._internal.serialize();
