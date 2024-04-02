@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct WebSocketMessage</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module ">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct WebSocketMessage</h1><p>A low-level representation of a WebSocket message. Probably you don't need to use this directly.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">WebSocketMessage</span>
+				<span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= </span><span class="typ">WebSocketMessage</span><span class="pun">(</span><span class="str">"Hello world"</span><span class="pun">);
+</span><span class="kwd">auto </span><span class="pln">msg2 </span><span class="pun">= </span><span class="typ">WebSocketMessage</span><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_TEXT</span><span class="pun">, </span><span class="str">"Hello world"</span><span class="pun">);
+</span><span class="kwd">auto </span><span class="pln">msg3 </span><span class="pun">= </span><span class="typ">WebSocketMessage</span><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_PING</span><span class="pun">, </span><span class="str">"Ping me back!"</span><span class="pun">);
+</span><span class="kwd">auto </span><span class="pln">msg4 </span><span class="pun">= </span><span class="typ">WebSocketMessage</span><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_BINARY</span><span class="pun">, [</span><span class="lit">1</span><span class="pun">, </span><span class="lit">2</span><span class="pun">, </span><span class="lit">3</span><span class="pun">, </span><span class="lit">4</span><span class="pun">]);</span></code></pre>
+</section>
+
+				<section><h2>Constructors</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocketMessage.this.html" class="public">
+									<code>this</code>
+								</a>
+								<span class="tableEntryAnnotation">(opcode, payload)</span>
+							</td>
+							<td>Build a WebSocket message.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Fields</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocketMessage.isValid.html" class="public"><code>isValid</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span></code></td><td>Is this message valid?
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocketMessage.as.html" class="public">
+									<code>as</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Return the payload as a specific type.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocketMessage.asString.html" class="public">
+									<code>asString</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Return a string representation of the payload.
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

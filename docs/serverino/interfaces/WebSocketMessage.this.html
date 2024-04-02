@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Enum member Request.buildId</title>
+		<title>Function WebSocketMessage.this</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,25 +48,55 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Enum member Request.buildId</h1><p>Every time you compile the app this value will change
+				<h1>Function WebSocketMessage.this</h1><p>Build a WebSocket message.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <a href="../../serverino/interfaces/Request.html"><span class="typ">Request</span></a>
+				<span class="pln">this</span>
+				<span class="pun">(</span>
 				<br/>
-				<span class="pun">
-					{
-					<br/>
-				</span>
-				&nbsp;&nbsp;<span class="com">// ...</span>
+				&nbsp;&nbsp;<span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode</span> <span class="pln">opcode</span><span class="pun">,</span>
 				<br/>
-				&nbsp;&nbsp;<span class="kwd">enum</span> <span class="pln">buildId</span>
-				 <span class="pun">=</span> <span class="str">"c8e9e82cd42614235a3c7495893b6c6f"</span><span class="pun">;</span>
+				&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">payload</span>
 				<br/>
-				&nbsp;&nbsp;<span class="com">// ...</span>
+				<span class="pun">)</span><span class="pun">;</span>
 				<br/>
-				<span class="pun">}</span>
+				<br/>
+				<span class="pln">this</span>
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode</span> <span class="pln">opcode</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="typ">ubyte</span><span class="pun">[]</span> <span class="pln">payload</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
+				<br/>
+				<br/>
+				<span class="pln">this</span>(T)
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="typ">OpCode</span> <span class="pln">opcode</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">payload</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
+				<br/>
+				<br/>
+				<span class="pln">this</span>(T)
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">payload</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
+				<br/>
+				<br/>
+				<span class="pln">this</span>
+				<span class="pun">(</span>
+				<br/>
+				&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">payload</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
