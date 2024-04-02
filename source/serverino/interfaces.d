@@ -1252,7 +1252,7 @@ struct WebSocketMessage
 /** A WebSocket. You can use this to send and receive WebSocket messages.
 * ---
 * websocket.sendText("Hello world");      // Send a message to client
-* auto msg = websocket.receiveMessage();  77 Receive a message from client
+* auto msg = websocket.receiveMessage();  // Receive a message from client
 * ---
 **/
 class WebSocket
