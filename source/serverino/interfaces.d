@@ -1265,7 +1265,7 @@ class WebSocket
 
    /** Send a binary message.
    * ---
-   * websocket.sendData(cast(int)123456));
+   * websocket.sendData(cast(int)123456);
    * ---
    **/
    auto sendData(T)(T data) { return sendMessage(WebSocketMessage(data)); }
