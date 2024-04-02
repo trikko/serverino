@@ -15,7 +15,7 @@ mixin ServerinoMain;
 }
 
 // Handle the WebSocket connection
-@endpoint void echo(Request r, WebSocketProxy ws) {
+@endpoint void echo(Request r, WebSocket ws) {
 
 	// Read messages from the client
 	while (true) {

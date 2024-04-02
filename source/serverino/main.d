@@ -185,7 +185,7 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import std.process : environment;
 
    if (environment.get("SERVERINO_DAEMON") == null) Daemon.wake!Modules(daemonConfig);
-   if (environment.get("SERVERINO_WEBSOCKET") == "1") WebSocket.wake!Modules();
+   if (environment.get("SERVERINO_WEBSOCKET") == "1") WebSocketWorker.wake!Modules();
 	else Worker.wake!Modules(workerConfig);
 
    return 0;

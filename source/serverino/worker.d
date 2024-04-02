@@ -751,8 +751,8 @@ struct Worker
                   !__traits(compiles, s(output))
                )
                {
-                  import serverino.interfaces : WebSocketProxy;
-                  WebSocketProxy o;
+                  import serverino.interfaces : WebSocket;
+                  WebSocket o;
 
                   static if (!__traits(compiles, s(request, o)) && !__traits(compiles, s(o)))
                      static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, Output output)`.");

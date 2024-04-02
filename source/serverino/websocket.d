@@ -28,7 +28,7 @@ module serverino.websocket;
 import serverino.common;
 import serverino.config;
 import serverino.daemon;
-import serverino.interfaces : Request, WebSocketProxy, WebSocketMessage;
+import serverino.interfaces : Request, WebSocket, WebSocketMessage;
 
 import std.socket : Socket, AddressFamily, SocketType, socket_t, SocketShutdown;
 import std.experimental.logger : critical, log, warning;
@@ -39,7 +39,7 @@ version(Posix) import std.socket : UnixAddress;
 
 import std.process : environment;
 
-struct WebSocket
+struct WebSocketWorker
 {
    package:
    static:
@@ -98,7 +98,7 @@ struct WebSocket
       client.send(headers);
       client.blocking = true;
 
-      auto proxy = new WebSocketProxy(client);
+      auto proxy = new WebSocket(client);
 
       Request r = Request();
       r._internal = new Request.RequestImpl();
@@ -115,7 +115,7 @@ struct WebSocket
          Thread.getThis().isDaemon = true;
 
          // Check if the server is still alive
-         while (!WebSocketProxy.killRequested)
+         while (!WebSocket.killRequested)
             Thread.sleep(1.seconds);
 
          log("Killing websocket. [REASON: broken pipe?]");
@@ -152,7 +152,7 @@ struct WebSocket
       proxy.socket.shutdown(SocketShutdown.BOTH);
    }
 
-   void callHandlers(modules...)(Request request, WebSocketProxy socket)
+   void callHandlers(modules...)(Request request, WebSocket socket)
    {
       import std.algorithm : sort;
       import std.array : array;
@@ -186,7 +186,7 @@ struct WebSocket
                   Output o = Output.init;
 
                   static if (!__traits(compiles, s(request, o)) && !__traits(compiles, s(o)))
-                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocketProxy socket)`.");
+                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocket socket)`.");
 
                   continue;
                }
@@ -195,7 +195,7 @@ struct WebSocket
                {
                   static if (p == ParameterStorageClass.ref_)
                   {
-                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocketProxy socket)`.");
+                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocket socket)`.");
                   }
                }
 
@@ -266,7 +266,7 @@ struct WebSocket
          if (!warningShown)
          {
             warningShown = true;
-            warning("No handlers found. Try `@endpoint your_function(Request r, WebSocketProxy socket) { socket.sendText(\"Hello Websocket!\"); }` to handle requests.");
+            warning("No handlers found. Try `@endpoint your_function(Request r, WebSocket socket) { socket.sendText(\"Hello Websocket!\"); }` to handle requests.");
          }
       }
    }

@@ -103,13 +103,13 @@ ServerinoConfig conf()
 
 @priority(100)
 @route!"/pizza"
-@endpoint void ws2(Request r, WebSocketProxy s)
+@endpoint void ws2(Request r, WebSocket s)
 {
    s.sendText("Hello world.");
 }
 
 @priority(-1)
-@endpoint void ws3(Request r, WebSocketProxy s)
+@endpoint void ws3(Request r, WebSocket s)
 {
    auto msg = s.receiveMessage();
    assert(msg.isValid);
@@ -119,7 +119,7 @@ ServerinoConfig conf()
 }
 
 @route!"/chat"
-@endpoint void ws(Request r, WebSocketProxy s)
+@endpoint void ws(Request r, WebSocket s)
 {
    s.sendText("Hello world!");
 }
@@ -365,7 +365,7 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      WebSocketProxy ws = new WebSocketProxy(sck);
+      WebSocket ws = new WebSocket(sck);
       auto msg = ws.receiveMessage();
       assert(msg);
       assert(msg.asString == "Hello world!");
@@ -391,7 +391,7 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      WebSocketProxy ws = new WebSocketProxy(sck);
+      WebSocket ws = new WebSocket(sck);
       auto msg = ws.receiveMessage();
       assert(msg);
       assert(msg.asString == "Hello world.");
@@ -432,7 +432,7 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      WebSocketProxy ws = new WebSocketProxy(sck);
+      WebSocket ws = new WebSocket(sck);
       ws.sendMessage(WebSocketMessage("Hello from client"), true, true);
 
       {

@@ -1251,12 +1251,12 @@ struct WebSocketMessage
 
 /** A WebSocket proxy. You can use this to send and receive WebSocket messages.
 * ---
-* auto ws = WebSocketProxy(socket);
+* auto ws = WebSocket(socket);
 * ws.sendData("Hello world");
 * auto msg = ws.receiveMessage();
 * ---
 **/
-class WebSocketProxy
+class WebSocket
 {
    /// Create a WebSocket proxy.
    this(Socket socket) { _socket = socket; }
