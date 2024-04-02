@@ -1267,7 +1267,7 @@ class WebSocket
    * ---
    * websocket.sendData(cast(int)123456));
    * ---
-   */
+   **/
    auto sendData(T)(T data) { return sendMessage(WebSocketMessage(data)); }
 
    /// Send a close message.
