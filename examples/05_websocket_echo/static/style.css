@@ -10,6 +10,9 @@ form {
    padding: 20px;
    border-radius: 5px;
    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+   width: 600px;
+   margin-left: auto;
+   margin-right: auto;
 }
 
 label {
@@ -21,16 +24,20 @@ textarea {
    font-size: 0.8em;
    width: 100%;
    resize: none;
-   margin-bottom: 10px;
+   border-radius: 5px;
+   margin-bottom: 15px;
+   margin-top: 10px;
+   box-sizing: border-box;
 }
 
 input[type="text"] {
+   box-sizing: border-box;
    margin-top: 10px;
-   width: 50%;
+   width: 100%;
    padding: 10px;
    border: 1px solid #ccc;
    border-radius: 5px;
-   margin-bottom: 10px;
+   margin-bottom: 20px;
 }
 
 input[type="button"] {
@@ -39,7 +46,7 @@ input[type="button"] {
    background-color: #50AF4C;
    color: #fff;
    border: none;
-   border-radius: 5px;
+   border-radius: 3px;
    cursor: pointer;
 }
 
