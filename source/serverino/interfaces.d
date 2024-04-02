@@ -1249,22 +1249,25 @@ struct WebSocketMessage
    alias isValid this;
 }
 
-/** A WebSocket proxy. You can use this to send and receive WebSocket messages.
+/** A WebSocket. You can use this to send and receive WebSocket messages.
 * ---
-* auto ws = WebSocket(socket);
-* ws.sendData("Hello world");
-* auto msg = ws.receiveMessage();
+* websocket.sendText("Hello world");      // Send a message to client
+* auto msg = websocket.receiveMessage();  77 Receive a message from client
 * ---
 **/
 class WebSocket
 {
-   /// Create a WebSocket proxy.
+   /// Create a WebSocket.
    this(Socket socket) { _socket = socket; }
 
    /// Return the socket.
    Socket socket() { _isDirty = true; return this._socket; }
 
-   /// Send a binary message.
+   /** Send a binary message.
+   * ---
+   * websocket.sendData(cast(int)123456));
+   * ---
+   */
    auto sendData(T)(T data) { return sendMessage(WebSocketMessage(data)); }
 
    /// Send a close message.
