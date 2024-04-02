@@ -179,8 +179,8 @@ struct WebSocketWorker
 
       // Send a close message to the client
       proxy.sendClose();
-      proxy.socket.close();
       proxy.socket.shutdown(SocketShutdown.BOTH);
+      proxy.socket.close();
    }
 
    void callHandlers(modules...)(Request request, WebSocket socket)
