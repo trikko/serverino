@@ -92,7 +92,6 @@ struct WebSocketWorker
 
       }).start();
 
-      // TODO: Max accept time
       // Wait for the connection check
       listener.listen(1);
       listener.accept();
