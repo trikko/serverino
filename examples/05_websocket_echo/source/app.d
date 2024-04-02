@@ -24,12 +24,13 @@ mixin ServerinoMain;
 		if (WebSocketMessage msg = ws.receiveMessage())
 		{
 			// Send the message back to the client
-			ws.sendText("I received your message: `" ~ msg.asString ~ "`");
+			ws.sendText("I received your message: `" ~ msg ~ "`");
 		}
 	}
 }
 
 @route!"/"
-@endpoint void index(Request r, Output o) {
-	o ~= readText("html/index.html");
-}
+@endpoint void index(Request r, Output o) { o.serveFile("static/index.html"); }
+
+@route!"/style.css"
+@endpoint void css(Request r, Output o) { o.serveFile("static/style.css"); }
