@@ -53,12 +53,16 @@ struct WebSocketWorker
       import core.thread;
       import core.stdc.stdlib : exit;
 
+      __gshared ProcessInfo daemonProcess;
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
 
       version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
       else auto socketAddress = new UnixAddress(buildPath(tempDir, environment.get("SERVERINO_SOCKET")));
 
+      Socket client = null;
+      Socket  channel;
       Socket listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
       listener.bind(socketAddress);
 
       __gshared bool inited = false;
@@ -66,8 +70,9 @@ struct WebSocketWorker
        new Thread({
 
          Thread.getThis().isDaemon = true;
+         Thread.getThis().priority = Thread.PRIORITY_MIN;
 
-         // Check if the server is still alive
+         // Check if connection is established
          foreach(i; 0..5)
          {
             if (inited)
@@ -82,9 +87,19 @@ struct WebSocketWorker
             exit(0);
          }
 
+
          // Check if the server is still alive
          while (!WebSocket.killRequested)
+         {
             Thread.sleep(1.seconds);
+            Thread.yield();
+
+            if (!daemonProcess.isRunning)
+            {
+               log("Killing websocket. [REASON: daemon is not running]");
+               exit(0);
+            }
+         }
 
          log("Killing websocket. [REASON: broken pipe?]");
 
@@ -123,11 +138,15 @@ struct WebSocketWorker
       recv = channel.receive(buffer);
       char[] headers = cast(char[])buffer[0..recv];
 
+      // We don't need the channel anymore
+      channel.shutdown(SocketShutdown.BOTH);
+      channel.close();
+
       version(Windows)
          auto handle = WSASocketW(-1, -1, -1, &wi, 0, WSA_FLAG_OVERLAPPED);
 
       // Sending connection upgrade response to the client
-      Socket client = new Socket(cast(socket_t)handle, af);
+      client = new Socket(cast(socket_t)handle, af);
       client.send(headers);
       client.blocking = true;
 
@@ -140,20 +159,6 @@ struct WebSocketWorker
       inited = true;
       log("WebSocket started.");
       scope(exit) log("WebSocket stopped.");
-
-      new Thread({
-
-         Thread.getThis().isDaemon = true;
-
-         // Check if the server is still alive
-         while (!WebSocket.killRequested)
-            Thread.sleep(1.seconds);
-
-         log("Killing websocket. [REASON: broken pipe?]");
-
-         exit(0);
-
-      }).start();
 
       try {
          tryInit!(Modules)();
@@ -302,9 +307,6 @@ struct WebSocketWorker
       }
    }
 
-
-   Socket      channel;
-   ProcessInfo daemonProcess;
 }
 
 
