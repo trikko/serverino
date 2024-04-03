@@ -268,7 +268,7 @@ version(darwin)
 
    extern (D)
    {
-      socklen_t CMSG_ALIGN(socklen_t len) pure nothrow @nogc { return (len + size_t.sizeof - 1) & cast(socklen_t) (~(size_t.sizeof - 1)); }
+      socklen_t CMSG_ALIGN(socklen_t len) pure nothrow @nogc { return cast(socklen_t)(len + socklen_t.sizeof - 1) & cast(socklen_t) (~(socklen_t.sizeof - 1)); }
       socklen_t CMSG_SPACE(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(len) + CMSG_ALIGN(cmsghdr.sizeof); }
       socklen_t CMSG_LEN(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(cmsghdr.sizeof) + len; }
 
