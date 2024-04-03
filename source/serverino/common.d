@@ -423,9 +423,6 @@ version(Posix)
 		cmsgp.cmsg_len = CMSG_LEN(int.sizeof);
 		*(cast(int *) CMSG_DATA(cmsgp)) = fd;
 
-		sendmsg(thru.handle, &msgh, 0);
-
-
-		return true;
+		return sendmsg(thru.handle, &msgh, 0) != -1;
 	}
 }
