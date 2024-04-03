@@ -1283,6 +1283,7 @@ class WebSocket
    /** Send a custom message. isFIN is true by default and should be true for most cases.
    *   You want to set it to false if you are sending a message in parts. The last part should have isFIN set to true.
    *   The masked parameter is false by default and should be false for most cases. It is used if a message is sent from a client to a server.
+   * Returns: false if the message is partially sent. The leftover data will be sent on the next sending cycle or using sendLeftover()
    * ---
    * auto msg = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_TEXT, "Hello world");
    * ws.sendMessage(msg);
@@ -1302,30 +1303,36 @@ class WebSocket
       if (isFIN) header |= Flags.FIN;
       header |= message.opcode;
 
-      buffer[0] = cast(ubyte)(header >> 8);
-      buffer[1] = cast(ubyte)header;
+      import std.system : endian, Endian;
+      import std.bitmanip : swapEndian;
+
+      static if (endian == Endian.littleEndian)
+         header = swapEndian(header);
+
+      buffer[0..2] = (cast(ubyte*)(&header))[0..2];
 
       size_t curIdx = 2;
 
       if (message.payload.length < 126) buffer[1] = cast(ubyte)message.payload.length & ~Flags.MASK;
-      else if (message.payload.length < 65536)
+      else if (message.payload.length < 65_536)
       {
-         ushort[] len =  cast(ushort[])[message.payload.length];
+         static if(endian == Endian.littleEndian) const ushort len = swapEndian(cast(ushort) message.payload.length);
+         else const ushort len = cast(ushort) message.payload.length;
+
+         buffer[1] = 126 & ~Flags.MASK;
+         buffer[2..4] = (cast(ubyte*)(&len))[0..2];
 
          curIdx = 4;
-         buffer[1] = 126 & ~Flags.MASK;
-         buffer[2] = (cast(ubyte[])len)[1];
-         buffer[3] = (cast(ubyte[])len)[0];
       }
       else
       {
-         size_t[] len =  cast(size_t[])[message.payload.length];
-         ubyte[] bytes = cast(ubyte[])len;
+         static if(endian == Endian.littleEndian) const size_t len = swapEndian(cast(size_t) message.payload.length);
+         else const size_t len = cast(ushort) message.payload.length;
+
+         buffer[1] = 126 & ~Flags.MASK;
+         buffer[2..10] = (cast(ubyte*)(&len))[0..8];
 
          curIdx = 10;
-         buffer[1] = 127 & ~Flags.MASK;
-
-         buffer[2..10] = [bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]];
       }
 
       if (masked)
@@ -1344,8 +1351,16 @@ class WebSocket
 
       curIdx += message.payload.length;
 
-      return _socket.send(buffer[0..curIdx]);
+      return trySend(buffer[0..curIdx]);
    }
+
+   /** (ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle. **/
+   bool hasLeftover() { return _leftover.length > 0; }
+
+   /** (ONLY FOR non-blocking sockets) Try to send the data in the buffer.
+   * Returns: true if all data was sent.
+   **/
+   bool sendLeftover() { return trySend(); }
 
    /** Receive a message from the WebSocket. There could be more than one message in the buffer
    *   so you should call this function in a loop until it returns an invalid message.
@@ -1390,118 +1405,221 @@ class WebSocket
    /// Returns true if the WebSocket is dirty.
    bool isDirty() { return _isDirty; }
 
+
    private:
 
-      WebSocketMessage tryParse()
+   bool trySend(ubyte[] data = [])
+   {
+      import std.socket : wouldHaveBlocked;
+
+      if (_leftover.length > 0)
       {
-         _isDirty = true;
-
-         if (_toParse.length == 0) return WebSocketMessage.init;
-
-
-         ubyte[] cursor = _toParse;
-
-         if (cursor.length < 2)
+         auto ret = _socket.send(_leftover);
+         // Connection closed
+         if (ret == 0)
          {
-            return WebSocketMessage.init;
+            WebSocket._kill = true;
+            return false;
          }
 
-         const ushort header = cursor[0] << 8 | cursor[1];
-         cursor = cursor[2..$];
-
-         bool isFIN        = (header & Flags.FIN) > 0;
-
-         /*
-         bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
-         bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
-         bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
-         bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
-         bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
-         */
-         bool isMASK       = (header & Flags.MASK) == Flags.MASK;
-
-         auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
-
-         auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
-         ubyte[] payload;
-         ubyte[] mask = [0, 0, 0, 0];
-
-         if (payloadLength == 126)
+         // Not sent
+         else if (ret < 0)
          {
-            payloadLength = *cast(ushort*)(cursor[0..ushort.sizeof]);
-            cursor = cursor[ushort.sizeof..$];
-         }
-         else if (payloadLength == 127)
-         {
-            payloadLength = *cast(size_t*)(cursor[0..size_t.sizeof]);
-            cursor = cursor[size_t.sizeof..$];
-         }
-
-         if (isMASK)
-         {
-            if (cursor.length < 4)
-               return WebSocketMessage.init;
-
-            mask = cursor[0..4];
-            cursor = cursor[4..$];
-         }
-
-
-         if (cursor.length < payloadLength)
-            return WebSocketMessage.init;
-
-         payload = cursor[0..payloadLength];
-
-         if (isMASK)
-            foreach(i, ref ubyte b; payload)
-               b ^= mask[i % 4];
-
-         _parsedData ~= payload;
-         _toParse = cursor[payloadLength..$];
-
-         if (isFIN)
-         {
-            scope(exit) _parsedData = null;
-
-            if (opcode == Flags.OPCODE_PING)
+            if (wouldHaveBlocked())
             {
-               debug log("PING received, sending PONG");
-               sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
-               return WebSocketMessage.init;
+               _leftover ~= data;
+               return true; // Partial
             }
 
-            auto msg = WebSocketMessage
-            (
-               cast(WebSocketMessage.OpCode)opcode,
-               _parsedData
-            );
-
-            msg.isValid = true;
-
-            return msg;
+            WebSocket._kill = true;
+            return false;
          }
-         else return WebSocketMessage.init;
+
+         // Data sent
+         else
+         {
+            _leftover = _leftover[ret..$];
+
+            // Partial sent
+            if (_leftover.length > 0)
+            {
+               _leftover ~= data;
+               return true; // partial
+            }
+         }
       }
 
-      enum Flags : ushort
+      auto ret = _socket.send(data);
+      if (ret == 0)
       {
-         FIN = 0x1 << 15,
-         OPCODE_MASK = 0xF << 8,
-         OPCODE_CONTINUE = 0x0 << 8,
-         OPCODE_TEXT = 0x1 << 8,
-         OPCODE_BINARY = 0x2 << 8,
-         OPCODE_CLOSE = 0x8 << 8,
-         OPCODE_PING = 0x9 << 8,
-         OPCODE_PONG = 0xA << 8,
-         MASK = 0x1 << 7,
-         PAYLOAD_MASK = 0x7F
+         WebSocket._kill = true;
+         return false;
       }
 
-      ubyte[]   _toParse;
-      ubyte[]   _parsedData;
-      Socket    _socket;
+      // Not sent
+      else if (ret < 0)
+      {
+         if (wouldHaveBlocked())
+         {
+            _leftover ~= data;
+            return true; // Partial
+         }
 
-      bool      _isDirty = false;
+         WebSocket._kill = true;
+         return false;
+      }
 
-      __gshared  bool _kill = false;
+      // Data sent
+      else
+      {
+         // Partial sent
+         if (ret < data.length)
+         {
+            _leftover ~= data;
+            return true; // partial
+         }
+      }
+
+      _leftover.length = 0;
+      return true; // All sent
+   }
+
+   WebSocketMessage tryParse()
+   {
+      _isDirty = true;
+
+      if (_toParse.length == 0) return WebSocketMessage.init;
+
+
+      ubyte[] cursor = _toParse;
+
+      if (cursor.length < 2)
+      {
+         return WebSocketMessage.init;
+      }
+
+      import std.system : endian, Endian;
+      import std.bitmanip : swapEndian;
+
+      static if(endian == Endian.littleEndian)
+         const ushort header = swapEndian((cast(ushort[])(cursor[0..2]))[0]);
+      else
+         const ushort header = (cast(ushort[])(cursor[0..2]))[0];
+
+      cursor = cursor[2..$];
+
+      bool isFIN        = (header & Flags.FIN) > 0;
+
+      /*
+      bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
+      bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
+      bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
+      bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
+      bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
+      */
+      bool isMASK       = (header & Flags.MASK) == Flags.MASK;
+
+      auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
+
+      auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
+      ubyte[] payload;
+      ubyte[] mask = [0, 0, 0, 0];
+
+      if (payloadLength == 126)
+      {
+         log(cursor[0..ushort.sizeof]);
+
+         if (cursor.length < ushort.sizeof)
+            return WebSocketMessage.init;
+
+         static if (endian == Endian.littleEndian)
+            payloadLength = swapEndian((cast(ushort[])(cursor[0..ushort.sizeof]))[0]);
+         else
+            payloadLength = (cast(ushort[])(cursor[0..ushort.sizeof]))[0];
+
+         cursor = cursor[ushort.sizeof..$];
+      }
+      else if (payloadLength == 127)
+      {
+         if (cursor.length < size_t.sizeof)
+            return WebSocketMessage.init;
+
+         payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
+
+         static if (endian == Endian.littleEndian)
+            payloadLength = swapEndian((cast(size_t[])(cursor[0..size_t.sizeof]))[0]);
+         else
+            payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
+
+         cursor = cursor[size_t.sizeof..$];
+      }
+
+      if (isMASK)
+      {
+         if (cursor.length < 4)
+            return WebSocketMessage.init;
+
+         mask = cursor[0..4];
+         cursor = cursor[4..$];
+      }
+
+
+      if (cursor.length < payloadLength)
+         return WebSocketMessage.init;
+
+      payload = cursor[0..payloadLength];
+
+      if (isMASK)
+         foreach(i, ref ubyte b; payload)
+            b ^= mask[i % 4];
+
+      _parsedData ~= payload;
+      _toParse = cursor[payloadLength..$];
+
+      if (isFIN)
+      {
+         scope(exit) _parsedData = null;
+
+         if (opcode == Flags.OPCODE_PING)
+         {
+            debug log("PING received, sending PONG");
+            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
+            return WebSocketMessage.init;
+         }
+
+         auto msg = WebSocketMessage
+         (
+            cast(WebSocketMessage.OpCode)opcode,
+            _parsedData
+         );
+
+         msg.isValid = true;
+
+         return msg;
+      }
+      else return WebSocketMessage.init;
+   }
+
+   enum Flags : ushort
+   {
+      FIN = 0x1 << 15,
+      OPCODE_MASK = 0xF << 8,
+      OPCODE_CONTINUE = 0x0 << 8,
+      OPCODE_TEXT = 0x1 << 8,
+      OPCODE_BINARY = 0x2 << 8,
+      OPCODE_CLOSE = 0x8 << 8,
+      OPCODE_PING = 0x9 << 8,
+      OPCODE_PONG = 0xA << 8,
+      MASK = 0x1 << 7,
+      PAYLOAD_MASK = 0x7F
+   }
+
+   ubyte[]   _toParse;
+   ubyte[]   _parsedData;
+   ubyte[]   _leftover;
+   Socket    _socket;
+
+   bool      _isDirty = false;
+
+   __gshared  bool _kill = false;
 }
