@@ -115,7 +115,8 @@ struct Worker
          version(Windows)  auto nullSink = fopen("NUL", "r");
          version(Posix)    auto nullSink = fopen("/dev/null", "r");
 
-         dup2(fileno(nullSink), fileno(stdin.getFP));
+         auto ret = dup2(fileno(nullSink), fileno(stdin.getFP));
+         assert(ret != -1, "Too many open files. Can't redirect stdin to /dev/null.");
       }
 
       tryInit!Modules();
@@ -244,7 +245,7 @@ struct Worker
          {
             tryUninit!Modules();
 
-            if (daemonProcess.isTerminated()) log("Killing worker. [REASON: daemon dead?]");
+            if (daemonProcess.isTerminated()) log("Killing worker. [REASON: daemon is not running]");
             else log("Killing worker. [REASON: socket closed?]");
 
             channel.close();
