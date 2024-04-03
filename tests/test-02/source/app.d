@@ -34,6 +34,7 @@ mixin ServerinoMain;
 @onDaemonStart void run_tests()
 {
    import core.thread;
+   import core.std.stdlib : exit;
    import serverino.daemon;
 
    new Thread({
@@ -53,6 +54,7 @@ mixin ServerinoMain;
       {
          writeln("Test failed");
          writeln(t);
+         exit(-1);
       }
 
       Daemon.shutdown();

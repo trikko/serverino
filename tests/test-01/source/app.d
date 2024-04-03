@@ -36,6 +36,7 @@ mixin ServerinoMain!tagged;
 {
    import core.thread;
    import serverino.daemon;
+   import core.std.stdlib : exit;
 
    new Thread({
 
@@ -54,6 +55,7 @@ mixin ServerinoMain!tagged;
       {
          writeln("Test failed");
          writeln(t);
+         exit(-1);
       }
 
       Daemon.shutdown();
