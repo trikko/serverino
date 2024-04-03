@@ -105,7 +105,7 @@ ServerinoConfig conf()
 @route!"/pizza"
 @endpoint void ws2(Request r, WebSocket s)
 {
-   s.sendText("Hello world.");
+   s.send("Hello world.");
 }
 
 @priority(-1)
@@ -114,14 +114,14 @@ ServerinoConfig conf()
    auto msg = s.receiveMessage();
    assert(msg.isValid);
    assert(msg.asString == "Hello from client");
-   s.sendText(msg.asString);
-   s.sendData(cast(int)123);
+   s.send(msg.asString);
+   s.send(cast(int)123);
 }
 
 @route!"/chat"
 @endpoint void ws(Request r, WebSocket s)
 {
-   s.sendText("Hello world!");
+   s.send("Hello world!");
 }
 
 @onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza" || r.uri == "/hello"; }

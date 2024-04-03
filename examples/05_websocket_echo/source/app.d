@@ -24,7 +24,7 @@ mixin ServerinoMain;
 		if (WebSocketMessage msg = ws.receiveMessage())
 		{
 			// Send the message back to the client
-			ws.sendText("I received your message: `" ~ msg.asString ~ "`");
+			ws.send("I received your message: `" ~ msg.asString ~ "`");
 		}
 	}
 }

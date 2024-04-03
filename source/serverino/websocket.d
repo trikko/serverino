@@ -297,7 +297,7 @@ struct WebSocketWorker
          if (!warningShown)
          {
             warningShown = true;
-            warning("No handlers found. Try `@endpoint your_function(Request r, WebSocket socket) { socket.sendText(\"Hello Websocket!\"); }` to handle requests.");
+            warning("No handlers found. Try `@endpoint your_function(Request r, WebSocket socket) { socket.send(\"Hello Websocket!\"); }` to handle requests.");
          }
       }
    }

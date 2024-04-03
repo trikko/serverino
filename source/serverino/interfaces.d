@@ -1177,6 +1177,8 @@ struct Output
 **/
 struct WebSocketMessage
 {
+   import std.traits : isSomeString, isBasicType, isArray;
+   import std.range : ElementType;
 
    enum OpCode : ushort
    {
@@ -1205,24 +1207,22 @@ struct WebSocketMessage
 
    /// Ditto
    this(T)(OpCode opcode, T payload)
-   {
-      this.opcode = opcode;
-      this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
-   }
+   if (isSomeString!T) { this(opcode, cast(string)payload); }
+
+   this(T)(OpCode opcode, T payload)
+   if (isBasicType!T) { this(opcode, (cast(ubyte*)(&payload))[0..T.sizeof]); }
+
+   this(T)(OpCode opcode, T payload)
+   if (isArray!T && isBasicType!(ElementType!T)) { this(opcode, cast(ubyte[])payload);}
 
    /// Ditto
-   this(T)(T payload)
-   {
-      this.opcode = OpCode.OPCODE_BINARY;
-      this.payload = (cast(ubyte*)&payload)[0..T.sizeof].dup;
-   }
+   this(T)(T payload) { this(OpCode.OPCODE_BINARY, payload); }
 
    /// Ditto
-   this(string payload)
-   {
-      this.opcode = OpCode.OPCODE_TEXT;
-      this.payload = payload.representation.dup;
-   }
+   this(string payload) { this(OpCode.OPCODE_TEXT, payload); }
+
+   // Ditto
+   this(ubyte[] payload) { this(OpCode.OPCODE_BINARY, payload); }
 
    /// Return a string representation of the payload.
    string asString() { return cast(string)cast(char[])payload; }
@@ -1251,7 +1251,7 @@ struct WebSocketMessage
 
 /** A WebSocket. You can use this to send and receive WebSocket messages.
 * ---
-* websocket.sendText("Hello world");      // Send a message to client
+* websocket.send("Hello world");      // Send a message to client
 * auto msg = websocket.receiveMessage();  // Receive a message from client
 * ---
 **/
@@ -1263,12 +1263,13 @@ class WebSocket
    /// Return the socket.
    Socket socket() { _isDirty = true; return this._socket; }
 
-   /** Send a binary message.
+   /** Send a message. You can send a string, a basic type or an array of a basic type.
    * ---
-   * websocket.sendData(cast(int)123456);
+   * websocket.send(cast(int)123456);
+   * websocket.send("Hello!");
    * ---
    **/
-   auto sendData(T)(T data) { return sendMessage(WebSocketMessage(data)); }
+   auto send(T)(T data) {  return sendMessage(WebSocketMessage(data)); }
 
    /// Send a close message.
    auto sendClose() { return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_CLOSE)); }
@@ -1278,9 +1279,6 @@ class WebSocket
       import std.uuid : randomUUID;
       return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, randomUUID.data));
    }
-
-   /// Send a text message.
-   auto sendText(string text) { return sendMessage(WebSocketMessage(text)); }
 
    /** Send a custom message. isFIN is true by default and should be true for most cases.
    *   You want to set it to false if you are sending a message in parts. The last part should have isFIN set to true.
@@ -1312,15 +1310,22 @@ class WebSocket
       if (message.payload.length < 126) buffer[1] = cast(ubyte)message.payload.length & ~Flags.MASK;
       else if (message.payload.length < 65536)
       {
+         ushort[] len =  cast(ushort[])[message.payload.length];
+
          curIdx = 4;
          buffer[1] = 126 & ~Flags.MASK;
-         *cast(ushort*)(buffer[2..4]) = cast(ushort)message.payload.length;
+         buffer[2] = (cast(ubyte[])len)[1];
+         buffer[3] = (cast(ubyte[])len)[0];
       }
       else
       {
+         size_t[] len =  cast(size_t[])[message.payload.length];
+         ubyte[] bytes = cast(ubyte[])len;
+
          curIdx = 10;
          buffer[1] = 127 & ~Flags.MASK;
-         *cast(size_t*)(buffer[2..10]) = cast(size_t)message.payload.length;
+
+         buffer[2..10] = [bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]];
       }
 
       if (masked)
