@@ -34,7 +34,7 @@ mixin ServerinoMain;
 @onDaemonStart void run_tests()
 {
    import core.thread;
-   import core.std.stdlib : exit;
+   import core.stdc.stdlib : exit;
    import serverino.daemon;
 
    new Thread({

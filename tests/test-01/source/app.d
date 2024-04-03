@@ -36,7 +36,7 @@ mixin ServerinoMain!tagged;
 {
    import core.thread;
    import serverino.daemon;
-   import core.std.stdlib : exit;
+   import core.stdc.stdlib : exit;
 
    new Thread({
 
