@@ -43,3 +43,5 @@ jobs:
               && dub build --root=examples/02_priority/
               && dub build --root=examples/03_form/
               && dub build --root=examples/04_html_dom/
+              && dub build --root=examples/05_websocket_echo/
+              && dub build --root=examples/06_websocket_noise_stream/

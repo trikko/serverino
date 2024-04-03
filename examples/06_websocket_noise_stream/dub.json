@@ -1,0 +1,10 @@
+{
+	"authors": [
+		"Andrea Fontana"
+	],
+	"dependencies": {
+		"serverino": { "path" : "../.." }
+	},
+	"license": "proprietary",
+	"name": "websocket_noise"
+}

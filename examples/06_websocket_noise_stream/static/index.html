@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>WebSocket echo</title>
+   <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+   <div id="container">
+      <label for="canvas">Live noise</label>
+      <canvas id="canvas" width="512" height="512"></canvas>
+   </div>
+   <script>
+
+      rebind();
+
+      var canvas = document.querySelector('canvas');
+      var colors = [];
+
+
+      function drawRects()
+      {
+         // Draw a 16x16 squares on the canvas
+         var ctx = canvas.getContext('2d');
+         const sz = 32;
+
+         for (var y = 0; y < sz; y++) {
+            for (var x = 0; x < sz; x++) {
+               ctx.fillStyle = 'rgb(' + Math.floor(255 * colors[y*sz+x]) + ', ' + Math.floor(255 * colors[y*sz+x]) + ', ' + Math.floor(127) + ')';
+               ctx.fillRect(x * 512/sz, y * 512/sz, 512/sz, 512/sz);
+            }
+         }
+      }
+
+      function rebind()
+      {
+         ws = new WebSocket('ws://localhost:8080/echo');
+         ws.binaryType = 'arraybuffer';
+
+         ws.onmessage = function(event) {
+            colors = new Float32Array(event.data);
+            drawRects();
+         };
+
+         ws.onopen = function() {
+            console.log('Connected');
+         };
+
+      }
+
+   </script>
+</body>
+</html>
