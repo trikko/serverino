@@ -115,6 +115,7 @@ struct WebSocketWorker
       log("Listening for incoming connections.");
       listener.accept();
       log("Connection established.");
+      listener.close();
 
       // Wait for the daemon connection
       listener.listen(1);

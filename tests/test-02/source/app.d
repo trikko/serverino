@@ -363,8 +363,8 @@ void test()
 
          auto reply = buffer[0..ln];
 
-         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
-         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"), "REPLY: " ~ cast(char[])reply);
+         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="), "REPLY: " ~ cast(char[])reply);
       }
 
       WebSocket ws = new WebSocket(sck);

@@ -540,7 +540,6 @@ struct Worker
                      {
                         // Check connection with websocket.
                         s.connect(socketAddress);
-                        s.close();
                      }
                      catch(Exception e)
                      {
