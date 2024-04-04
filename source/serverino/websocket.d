@@ -115,9 +115,12 @@ struct WebSocketWorker
       log("Listening for incoming connections.");
       listener.accept();
       log("Connection established.");
+      listener.shutdown(SocketShutdown.BOTH);
       listener.close();
 
       // Wait for the daemon connection
+      listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+      listener.bind(socketAddress);
       listener.listen(1);
       log("Waiting for daemon connection.");
       channel = listener.accept();
