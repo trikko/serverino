@@ -145,6 +145,8 @@ struct WebSocketWorker
       version(Windows)
          auto handle = WSASocketW(-1, -1, -1, &wi, 0, WSA_FLAG_OVERLAPPED);
 
+      log("Socket transfer received. Handle: " ~ handle.to!string ~ " AF: " ~ af.to!string);
+
       // Sending connection upgrade response to the client
       client = new Socket(cast(socket_t)handle, af);
       client.send(headers);
