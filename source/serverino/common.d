@@ -240,7 +240,7 @@ class ProcessInfo
 }
 
 
-version(darwin)
+version(OSX)
 {
    import std.socket : Socket, socket_t,
    iovec, SOL_SOCKET, SCM_RIGHTS;
