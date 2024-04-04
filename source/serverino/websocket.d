@@ -59,13 +59,10 @@ struct WebSocketWorker
       version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
       else auto socketAddress = new UnixAddress(buildPath(tempDir, environment.get("SERVERINO_SOCKET")));
 
-      log("ADDRESS: ", socketAddress.to!string);
-
       Socket client = null;
       Socket channel = null;
       Socket listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
 
-      log("Binding to ", socketAddress.to!string);
       listener.bind(socketAddress);
 
       __gshared bool inited = false;
@@ -112,19 +109,15 @@ struct WebSocketWorker
 
       // Wait for the connection check
       listener.listen(1);
-      log("Listening for incoming connections.");
-      listener.accept();
-      log("Connection established.");
-      listener.shutdown(SocketShutdown.BOTH);
-      listener.close();
+      auto dummySkt = listener.accept();
 
       // Wait for the daemon connection
-      listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-      listener.bind(socketAddress);
       listener.listen(1);
-      log("Waiting for daemon connection.");
       channel = listener.accept();
-      log("Daemon connected.");
+
+      // We don't need this canary connection
+      dummySkt.shutdown(SocketShutdown.BOTH);
+      dummySkt.close();
 
       // Wait for socket transfer
       version(Windows)
@@ -143,14 +136,11 @@ struct WebSocketWorker
        // Wait for socket protocol (AF_INET or AF_INET6)
       AddressFamily af;
       auto recv = channel.receive((&af)[0..1]);
-      log("Address family: ", af.to!string);
 
       // Wait for headers
       ubyte[32*1024] buffer;
       recv = channel.receive(buffer);
       char[] headers = cast(char[])buffer[0..recv];
-
-      log("Headers: ", headers);
 
       // We don't need the channel anymore
       channel.shutdown(SocketShutdown.BOTH);
@@ -158,8 +148,6 @@ struct WebSocketWorker
 
       version(Windows)
          auto handle = WSASocketW(-1, -1, -1, &wi, 0, WSA_FLAG_OVERLAPPED);
-
-      log("Socket transfer received. Handle: " ~ handle.to!string ~ " AF: " ~ af.to!string);
 
       // Sending connection upgrade response to the client
       client = new Socket(cast(socket_t)handle, af);
