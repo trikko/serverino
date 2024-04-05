@@ -171,8 +171,8 @@ struct WebSocketWorker
 
       // Sending connection upgrade response to the client
       client = new Socket(cast(socket_t)handle, af);
-      client.blocking = true;
       client.send(headers);
+      client.blocking = true;
 
       auto proxy = new WebSocket(client);
 

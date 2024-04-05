@@ -435,7 +435,7 @@ package:
 
                if (communicator is null)
                {
-                  debug warning("Null communicator for worker " ~ worker.pi.id.to!string  ~ ". Was process killed?");
+                  debug warning("Worker #" ~ worker.pi.id.to!string  ~ " exited/terminated/killed (null communicator).");
                   worker.pi.kill();
                   worker.setStatus(WorkerInfo.State.STOPPED);
                   continue;
@@ -446,7 +446,7 @@ package:
 
                if (bytes == Socket.ERROR)
                {
-                  debug warning("Socket error for worker " ~ worker.pi.id.to!string  ~ ". Was process killed?");
+                  debug warning("Worker #" ~ worker.pi.id.to!string  ~ " exited/terminated/killed (socket error).");
                   worker.setStatus(WorkerInfo.State.STOPPED);
                   communicator.reset();
                }
