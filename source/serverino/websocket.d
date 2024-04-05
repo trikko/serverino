@@ -53,21 +53,29 @@ struct WebSocketWorker
       import core.thread;
       import core.stdc.stdlib : exit;
 
-      __gshared ProcessInfo daemonProcess;
-      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
+      import core.runtime : Runtime;
+      import std.path : baseName;
 
-      version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
-      else auto socketAddress = new UnixAddress(buildPath(tempDir, environment.get("SERVERINO_SOCKET")));
+      version(Posix)
+      {
+         auto base = baseName(Runtime.args[0]);
 
-      Socket client = null;
-      Socket channel = null;
-      Socket listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-
-      listener.bind(socketAddress);
+         setProcessName
+         (
+            [
+               base ~ " / websocket [daemon: " ~ environment.get("SERVERINO_DAEMON") ~ "]",
+               base ~ " / websocket",
+               base ~ " [WS]"
+            ]
+         );
+      }
 
       __gshared bool inited = false;
+      __gshared ProcessInfo daemonProcess;
 
-       new Thread({
+      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
+
+      new Thread({
 
          Thread.getThis().isDaemon = true;
          Thread.getThis().priority = Thread.PRIORITY_MIN;
@@ -107,7 +115,17 @@ struct WebSocketWorker
 
       }).start();
 
+      version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
+      else auto socketAddress = new UnixAddress(buildPath(tempDir, environment.get("SERVERINO_SOCKET")));
+
+      Socket client = null;
+      Socket channel = null;
+      Socket listener = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
+      listener.bind(socketAddress);
+
       // Wait for the connection check
+      // Just to be sure that we are ready to accept the connection
       listener.listen(1);
       auto dummySkt = listener.accept();
 
@@ -119,7 +137,7 @@ struct WebSocketWorker
       dummySkt.shutdown(SocketShutdown.BOTH);
       dummySkt.close();
 
-      // Wait for socket transfer
+      // Wait for socket transfer frpm the daemon
       version(Windows)
       {
          WSAPROTOCOL_INFOW wi;
@@ -146,13 +164,15 @@ struct WebSocketWorker
       channel.shutdown(SocketShutdown.BOTH);
       channel.close();
 
-      version(Windows)
-         auto handle = WSASocketW(-1, -1, -1, &wi, 0, WSA_FLAG_OVERLAPPED);
+      version(Windows) auto handle = WSASocketW(-1, -1, -1, &wi, 0, WSA_FLAG_OVERLAPPED);
+
+      log("WebSocket started.");
+      scope(exit) log("WebSocket stopped.");
 
       // Sending connection upgrade response to the client
       client = new Socket(cast(socket_t)handle, af);
-      client.send(headers);
       client.blocking = true;
+      client.send(headers);
 
       auto proxy = new WebSocket(client);
 
@@ -161,8 +181,6 @@ struct WebSocketWorker
       r._internal.deserialize(environment.get("SERVERINO_REQUEST"));
 
       inited = true;
-      log("WebSocket started.");
-      scope(exit) log("WebSocket stopped.");
 
       try {
          tryInit!(Modules)();

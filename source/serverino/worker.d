@@ -53,9 +53,26 @@ struct Worker
       import std.conv : to;
       import std.stdio;
       import std.format : format;
+      import std.process : thisProcessID;
+      import std.path : baseName;
+      import core.runtime : Runtime;
 
       isDynamic = environment.get("SERVERINO_DYNAMIC_WORKER") == "1";
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
+
+      version(Posix)
+      {
+         auto base = baseName(Runtime.args[0]);
+
+         setProcessName
+         (
+            [
+               base ~ " / worker [daemon: " ~ environment.get("SERVERINO_DAEMON") ~ "]",
+               base ~ " / worker",
+               base ~ " [WK]"
+            ]
+         );
+      }
 
       version(linux) auto socketAddress = new UnixAddress("\0%s".format(environment.get("SERVERINO_SOCKET")));
       else
@@ -526,8 +543,14 @@ struct Worker
                   import std.file : thisExePath;
                   import core.thread;
 
+                  import std.range : repeat;
+                  import std.array : array;
+
                   // Start the process
-                  auto pipes     = pipeProcess(thisExePath, Redirect.stdin, env, Config.detached);
+                  version(Posix) const pname = [exePath, cast(char[])(' '.repeat(30).array)];
+                  else const pname = exePath;
+
+                  auto pipes     = pipeProcess(pname, Redirect.stdin, env, Config.detached);
                   bool done      = false;
                   size_t tries   = 0;
 
@@ -866,6 +889,9 @@ struct Worker
          }
       }
    }
+
+   private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
+   private static string exePath;
 
    __gshared:
 

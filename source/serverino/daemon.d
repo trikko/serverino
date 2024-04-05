@@ -105,7 +105,13 @@ package class WorkerInfo
       env["SERVERINO_DYNAMIC_WORKER"] = isDynamicWorker?"1":"0";
 
       reloadRequested = false;
-      auto pipes = pipeProcess(exePath, Redirect.stdin, env, Config.detached);
+      import std.range : repeat;
+      import std.array : array;
+
+      version(Posix) const pname = [exePath, cast(char[])(' '.repeat(30).array)];
+      else const pname = exePath;
+
+      auto pipes = pipeProcess(pname, Redirect.stdin, env, Config.detached);
 
       Socket accepted = s.accept();
       this.pi = new ProcessInfo(pipes.pid.processID);
@@ -217,13 +223,28 @@ package:
       import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
       import std.file : tempDir, exists, remove;
-      import std.path : buildPath;
+      import std.path : buildPath, baseName;
       import std.digest.sha : sha256Of;
       import std.digest : toHexString;
       import std.ascii : LetterCase;
+      import core.runtime : Runtime;
 
       immutable daemonPid = thisProcessID.to!string;
       immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
+
+      version(Posix)
+      {
+         auto base = baseName(Runtime.args[0]);
+
+         setProcessName
+         (
+            [
+               base ~ " / daemon [PID: " ~ daemonPid ~ "]",
+               base ~ " / daemon",
+               base ~ " [D]"
+            ]
+         );
+      }
 
       workerEnvironment = environment.toAA();
       workerEnvironment["SERVERINO_DAEMON"] = daemonPid;

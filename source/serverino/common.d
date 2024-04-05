@@ -301,6 +301,8 @@ else version(Windows)
 version(Posix)
 {
 	import std.experimental.logger;
+	import core.sys.dragonflybsd.pthread_np;
+	import core.sys.freebsd.pthread_np;
 
 	int socketTransferReceive(Socket socket)
 	{
@@ -379,4 +381,67 @@ version(Posix)
 
 		return sendmsg(thru.handle, &msgh, 0) != -1;
 	}
+}
+
+version(Posix)
+{
+	import core.sys.posix.pthread : pthread_self, pthread_t;
+	extern(C) void pthread_setname_np(pthread_t, const(char)*);
+}
+
+version(Posix) package void setProcessName(string[] names)
+{
+   import core.runtime : Runtime, CArgs;
+
+   char** argv = Runtime.cArgs.argv;
+   size_t argc = Runtime.cArgs.argc;
+
+   // Get the longer contiguous arrray from start
+   size_t currentarg = 0;
+   size_t i = 0;
+   char* max = argv[currentarg];
+
+   while(true)
+   {
+      max = argv[currentarg] + i;
+
+      if (*(argv[currentarg] + i) != 0)
+      {
+         i++;
+         continue;
+      }
+
+      if (currentarg+1 < argc && max+1 == argv[currentarg+1])
+      {
+         currentarg++;
+         i = 0;
+      }
+      else break;
+   }
+
+   size_t maxLen = max-argv[0];
+   currentarg++;
+
+	// Clear the remaining arguments
+   while(currentarg < argc)
+   {
+      argv[currentarg][0] = 0;
+      currentarg++;
+   }
+
+	// Set the new name searching for the first argument that fits the space
+   import std.algorithm : map;
+   foreach(n; names.map!(x => cast(char[])x))
+   {
+      if (n.length < maxLen)
+      {
+         argv[0][0..n.length] = n[0..$];
+         argv[0][n.length..maxLen] = ' ';
+         argv[0][maxLen-1] = 0;
+         break;
+      }
+   }
+
+	import std.string : toStringz;
+	pthread_setname_np(pthread_self(), names[0].toStringz);
 }
