@@ -1194,14 +1194,14 @@ struct WebSocketMessage
    /// Build a WebSocket message.
    this(OpCode opcode, string payload)
    {
-      this.opcode = opcode;
+      this._opcode = opcode;
       this.payload = payload.representation.dup;
    }
 
    /// Ditto
    this(OpCode opcode, ubyte[] payload)
    {
-      this.opcode = opcode;
+      this._opcode = opcode;
       this.payload = payload.dup;
    }
 
@@ -1239,11 +1239,13 @@ struct WebSocketMessage
       else return *cast(T*)payload.ptr;
    }
 
+   auto opcode() { return this._opcode; }
+
    /// Is this message valid?
    bool     isValid = false;
 
    private:
-   OpCode   opcode;
+   OpCode   _opcode;
    ubyte[]  payload;
 
    alias isValid this;
@@ -1329,7 +1331,7 @@ class WebSocket
          static if(endian == Endian.littleEndian) const size_t len = swapEndian(cast(size_t) message.payload.length);
          else const size_t len = cast(ushort) message.payload.length;
 
-         buffer[1] = 126 & ~Flags.MASK;
+         buffer[1] = 127 & ~Flags.MASK;
          buffer[2..10] = (cast(ubyte*)(&len))[0..8];
 
          curIdx = 10;
