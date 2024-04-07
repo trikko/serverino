@@ -28,6 +28,7 @@ module app;
 import serverino;
 
 import std;
+import core.thread;
 
 mixin ServerinoMain;
 
@@ -347,7 +348,6 @@ void test()
 
 
    }
-
    {
       auto handshake = "GET /chat HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
@@ -368,7 +368,20 @@ void test()
       }
 
       WebSocket ws = new WebSocket(sck);
-      auto msg = ws.receiveMessage();
+      WebSocketMessage msg;
+
+      size_t tries = 0;
+
+      while(tries++ < 100)
+      {
+         msg = ws.receiveMessage();
+
+         if (msg)
+            break;
+
+         Thread.sleep(10.msecs);
+      }
+
       assert(msg);
       assert(msg.asString == "Hello world!");
 
@@ -394,7 +407,20 @@ void test()
       }
 
       WebSocket ws = new WebSocket(sck);
-      auto msg = ws.receiveMessage();
+      WebSocketMessage msg;
+
+      size_t tries = 0;
+
+      while(tries++ < 100)
+      {
+         msg = ws.receiveMessage();
+
+         if (msg)
+            break;
+
+         Thread.sleep(10.msecs);
+      }
+
       assert(msg);
       assert(msg.asString == "Hello world.");
 
@@ -438,13 +464,37 @@ void test()
       ws.sendMessage(WebSocketMessage("Hello from client"), true, true);
 
       {
-         auto msg = ws.receiveMessage();
+         WebSocketMessage msg;
+
+         size_t tries = 0;
+
+         while(tries++ < 100)
+         {
+            msg = ws.receiveMessage();
+
+            if (msg)
+               break;
+
+            Thread.sleep(10.msecs);
+         }
          assert(msg);
          assert(msg.asString == "Hello from client");
       }
 
       {
-         auto msg = ws.receiveMessage();
+         WebSocketMessage msg;
+
+         size_t tries = 0;
+
+         while(tries++ < 100)
+         {
+            msg = ws.receiveMessage();
+
+            if (msg)
+               break;
+
+            Thread.sleep(10.msecs);
+         }
          assert(msg);
          assert(msg.as!int == 123);
       }
