@@ -352,11 +352,12 @@ void test()
       auto handshake = "GET /chat HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
 
       ubyte[] buffer;
-      buffer.length = 32000;
+      buffer.length = 129;
 
       {
          auto ln = sck.receive(buffer);
@@ -367,35 +368,31 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="), "REPLY: " ~ cast(char[])reply);
       }
 
-      WebSocket ws = new WebSocket(sck);
-      WebSocketMessage msg;
+      buffer.length = 32000;
+      ubyte[] reply;
 
-      size_t tries = 0;
-
-      while(tries++ < 100)
+      while(reply.length < 2+ "Hello world!".length)
       {
-         msg = ws.receiveMessage();
+         auto recv = sck.receive(buffer);
 
-         if (msg)
-            break;
+         if(recv <= 0) break;
 
-         Thread.sleep(10.msecs);
+         reply ~= buffer[0..recv];
       }
 
-      assert(msg);
-      assert(msg.asString == "Hello world!");
-
+      assert(reply[2..$].startsWith("Hello world!".representation), reply.to!string);
    }
 
    {
       auto handshake = "GET /pizza HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
 
       ubyte[] buffer;
-      buffer.length = 32000;
+      buffer.length = 129;
 
       {
          auto ln = sck.receive(buffer);
@@ -406,23 +403,19 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      WebSocket ws = new WebSocket(sck);
-      WebSocketMessage msg;
+      buffer.length = 32000;
+      ubyte[] reply;
 
-      size_t tries = 0;
-
-      while(tries++ < 100)
+      while(reply.length < 2 + "Hello world.".length)
       {
-         msg = ws.receiveMessage();
+         auto recv = sck.receive(buffer);
 
-         if (msg)
-            break;
+         if(recv <= 0) break;
 
-         Thread.sleep(10.msecs);
+         reply ~= buffer[0..recv];
       }
 
-      assert(msg);
-      assert(msg.asString == "Hello world.");
+      assert(reply[2..$].startsWith("Hello world.".representation), reply.to!string);
 
    }
 
@@ -430,6 +423,7 @@ void test()
       auto handshake = "GET /notaccepted HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
 
@@ -445,11 +439,12 @@ void test()
       auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
 
       ubyte[] buffer;
-      buffer.length = 32000;
+      buffer.length = 129;
 
       {
          auto ln = sck.receive(buffer);
@@ -463,41 +458,20 @@ void test()
       WebSocket ws = new WebSocket(sck);
       ws.sendMessage(WebSocketMessage("Hello from client"), true, true);
 
+      buffer.length = 32000;
+      ubyte[] reply;
+
+      while(reply.length < "Hello from client".length + 2 + 4 + 2)
       {
-         WebSocketMessage msg;
+         auto recv = sck.receive(buffer);
 
-         size_t tries = 0;
+         if(recv <= 0) break;
 
-         while(tries++ < 100)
-         {
-            msg = ws.receiveMessage();
-
-            if (msg)
-               break;
-
-            Thread.sleep(10.msecs);
-         }
-         assert(msg);
-         assert(msg.asString == "Hello from client");
+         reply ~= buffer[0..recv];
       }
 
-      {
-         WebSocketMessage msg;
-
-         size_t tries = 0;
-
-         while(tries++ < 100)
-         {
-            msg = ws.receiveMessage();
-
-            if (msg)
-               break;
-
-            Thread.sleep(10.msecs);
-         }
-         assert(msg);
-         assert(msg.as!int == 123);
-      }
+      assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
+      assert(reply[2 + "Hello from client".representation.length + 2..$].startsWith([123,0,0,0]), reply.to!string);
 
    }
 
