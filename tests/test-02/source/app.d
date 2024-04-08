@@ -108,6 +108,7 @@ ServerinoConfig conf()
 @route!"/pizza"
 @endpoint void ws2(Request r, WebSocket s)
 {
+   s.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
    s.socket.blocking = true;
    s.send("Hello world.");
    s.receiveMessage();
@@ -116,6 +117,7 @@ ServerinoConfig conf()
 @priority(-1)
 @endpoint void ws3(Request r, WebSocket s)
 {
+   s.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
    s.socket.blocking = true;
    WebSocketMessage msg;
 
@@ -141,6 +143,7 @@ ServerinoConfig conf()
 @route!"/chat"
 @endpoint void ws(Request r, WebSocket s)
 {
+   s.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
    s.socket.blocking = true;
    s.send("Hello world!");
    s.receiveMessage();
@@ -371,6 +374,7 @@ void test()
       auto handshake = "GET /chat HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
       sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
@@ -407,6 +411,7 @@ void test()
       auto handshake = "GET /pizza HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
       sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
@@ -443,6 +448,7 @@ void test()
       auto handshake = "GET /notaccepted HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
       sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
@@ -459,6 +465,7 @@ void test()
       auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
       auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
       sck.blocking = true;
       sck.connect(new InternetAddress("localhost", 8080));
       sck.send(handshake);
