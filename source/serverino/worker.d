@@ -725,29 +725,30 @@ struct Worker
                   )
                )
                {
-                  if (getUDAs!(s, onWebSocketUpgrade).length > 0) continue;
-
-                  static foreach(p; ParameterStorageClassTuple!s)
+                  static if (getUDAs!(s, onWebSocketUpgrade).length == 0)
                   {
-                     static if (p == ParameterStorageClass.ref_)
+                     static foreach(p; ParameterStorageClassTuple!s)
                      {
-                        static if(!is(typeof(ValidSTC)))
-                           enum ValidSTC = false;
+                        static if (p == ParameterStorageClass.ref_)
+                        {
+                           static if(!is(typeof(ValidSTC)))
+                              enum ValidSTC = false;
+                        }
                      }
-                  }
 
-                  static if(!is(typeof(ValidSTC)))
-                     enum ValidSTC = true;
+                     static if(!is(typeof(ValidSTC)))
+                        enum ValidSTC = true;
 
 
-                  static if (ValidSTC)
-                  {
-                     FunctionPriority fp;
-                     fp.name = __traits(identifier,s);
-                     fp.priority = 0;
-                     fp.mod = fullyQualifiedName!m;
+                     static if (ValidSTC)
+                     {
+                        FunctionPriority fp;
+                        fp.name = __traits(identifier,s);
+                        fp.priority = 0;
+                        fp.mod = fullyQualifiedName!m;
 
-                     fps ~= fp;
+                        fps ~= fp;
+                     }
                   }
                }
             }
@@ -781,25 +782,27 @@ struct Worker
 
                   continue;
                }
+               else {
 
-               static foreach(p; ParameterStorageClassTuple!s)
-               {
-                  static if (p == ParameterStorageClass.ref_)
+                  static foreach(p; ParameterStorageClassTuple!s)
                   {
-                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, Output output)`.");
+                     static if (p == ParameterStorageClass.ref_)
+                     {
+                        static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, Output output)`.");
+                     }
                   }
+
+                  FunctionPriority fp;
+
+                  fp.name = __traits(identifier,s);
+                  fp.mod = fullyQualifiedName!m;
+
+                  static if (getUDAs!(s, priority).length > 0 && !is(getUDAs!(s, priority)[0]))
+                     fp.priority = getUDAs!(s, priority)[0].priority;
+
+
+                  fps ~= fp;
                }
-
-               FunctionPriority fp;
-
-               fp.name = __traits(identifier,s);
-               fp.mod = fullyQualifiedName!m;
-
-               static if (getUDAs!(s, priority).length > 0 && !is(getUDAs!(s, priority)[0]))
-                  fp.priority = getUDAs!(s, priority)[0].priority;
-
-
-               fps ~= fp;
             }
          }}
 

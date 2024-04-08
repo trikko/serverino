@@ -248,25 +248,28 @@ struct WebSocketWorker
 
                   continue;
                }
-
-               static foreach(p; ParameterStorageClassTuple!s)
+               else
                {
-                  static if (p == ParameterStorageClass.ref_)
+
+                  static foreach(p; ParameterStorageClassTuple!s)
                   {
-                     static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocket socket)`.");
+                     static if (p == ParameterStorageClass.ref_)
+                     {
+                        static assert(0, fullyQualifiedName!s ~ " is not a valid endpoint. Wrong storage class for params. Try to change its signature to `" ~ __traits(identifier,s) ~ "(Request request, WebSocket socket)`.");
+                     }
                   }
+
+                  FunctionPriority fp;
+
+                  fp.name = __traits(identifier,s);
+                  fp.mod = fullyQualifiedName!m;
+
+                  static if (getUDAs!(s, priority).length > 0 && !is(getUDAs!(s, priority)[0]))
+                     fp.priority = getUDAs!(s, priority)[0].priority;
+
+
+                  fps ~= fp;
                }
-
-               FunctionPriority fp;
-
-               fp.name = __traits(identifier,s);
-               fp.mod = fullyQualifiedName!m;
-
-               static if (getUDAs!(s, priority).length > 0 && !is(getUDAs!(s, priority)[0]))
-                  fp.priority = getUDAs!(s, priority)[0].priority;
-
-
-               fps ~= fp;
             }
          }}
 
