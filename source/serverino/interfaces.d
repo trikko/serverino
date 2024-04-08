@@ -1384,13 +1384,13 @@ class WebSocket
 
       if (received == 0)
       {
-         kill();
+         kill("connection closed");
          return WebSocketMessage.init;
       }
 
       if (received < 0)
       {
-         if (!_socket.isAlive || !wouldHaveBlocked) kill();
+         if (!_socket.isAlive || !wouldHaveBlocked) kill("error receiving data");
          return WebSocketMessage.init;
       }
 
@@ -1399,10 +1399,13 @@ class WebSocket
    }
 
    /// Close the WebSocket connection.
-   static void kill() { _kill = true; }
+   static void kill(string reason) { _killReason = reason; _kill = true; }
 
    /// Is the WebSocket connection closed?
    static bool killRequested() { return _kill; }
+
+   /// Why the WebSocket connection was closed?
+   static string killReason() { return _killReason; }
 
    /// Returns true if the WebSocket is dirty.
    bool isDirty() { return _isDirty; }
@@ -1417,15 +1420,8 @@ class WebSocket
       if (_leftover.length > 0)
       {
          auto ret = _socket.send(_leftover);
-         // Connection closed
-         if (ret == 0)
-         {
-            WebSocket._kill = true;
-            return false;
-         }
-
          // Not sent
-         else if (ret < 0)
+         if (ret < 0)
          {
             if (wouldHaveBlocked())
             {
@@ -1433,7 +1429,7 @@ class WebSocket
                return true; // Partial
             }
 
-            WebSocket._kill = true;
+            WebSocket.kill("error sending data");
             return false;
          }
 
@@ -1452,14 +1448,9 @@ class WebSocket
       }
 
       auto ret = _socket.send(data);
-      if (ret == 0)
-      {
-         WebSocket._kill = true;
-         return false;
-      }
 
       // Not sent
-      else if (ret < 0)
+      if (ret < 0)
       {
          if (wouldHaveBlocked())
          {
@@ -1467,7 +1458,7 @@ class WebSocket
             return true; // Partial
          }
 
-         WebSocket._kill = true;
+         WebSocket.kill("error sending data");
          return false;
       }
 
@@ -1623,5 +1614,6 @@ class WebSocket
 
    bool      _isDirty = false;
 
-   __gshared  bool _kill = false;
+   __gshared  string _killReason = string.init;
+   __gshared  bool   _kill = false;
 }

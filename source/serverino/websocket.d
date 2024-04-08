@@ -109,7 +109,7 @@ struct WebSocketWorker
             }
          }
 
-         log("Killing websocket. [REASON: broken pipe?]");
+         log("Killing websocket. [REASON: " ~ WebSocket.killReason ~ "]");
 
          exit(0);
 
