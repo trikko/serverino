@@ -10,9 +10,9 @@ serverino
 * 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
 
 ## Quickstart
-```
-dub init your_fabulous_project -t serverino
-cd your_fabulous_project
+```sh
+dub init your_app_name -t serverino
+cd your_app_name
 dub run
 ```
 
@@ -91,6 +91,36 @@ void requestLog(Request request)
 {
 	// There's no http output, so the next endpoint will be called.
 	info("Request: ", request.uri);
+}
+```
+
+## Websockets
+> [!NOTE]
+> Priority works in the same way as the HTTP endpoints: the first websocket endpoint that touches the connection will handle it
+
+```d
+// Accept a new connection only if the request URI is "/echo"
+// Every websocket will start a new indipendent process
+@onWebSocketUpgrade bool onUpgrade(Request req) {
+	return req.uri == "/echo";
+}
+
+// Handle the WebSocket connection
+// Just like a normal endpoint, but with a WebSocket parameter
+@endpoint void echo(Request r, WebSocket ws) {
+
+	// Keep the websocket running
+	while (true) {
+
+		// Try to receive a message from the client
+		if (WebSocketMessage msg = ws.receiveMessage())
+		{
+			// If we received a message, send it back to the client
+			ws.send("I received your message: `" ~ msg.asString ~ "`");
+		}
+	}
+
+	// When the function returns, the WebSocket connection is closed
 }
 ```
 
