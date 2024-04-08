@@ -226,7 +226,7 @@ void test_3(Request r, Output o)
 
    import core.thread;
 
-   Thread.sleep(2000.msecs);
+   Thread.sleep(10000.msecs);
 
 }
 
