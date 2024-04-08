@@ -117,11 +117,24 @@ ServerinoConfig conf()
 @endpoint void ws3(Request r, WebSocket s)
 {
    s.socket.blocking = true;
-   auto msg = s.receiveMessage();
+   WebSocketMessage msg;
+
+   while(true)
+   {
+      msg = s.receiveMessage();
+
+      if (msg)
+         break;
+
+      Thread.sleep(100.msecs);
+      Thread.yield();
+   }
+
    assert(msg.isValid);
    assert(msg.asString == "Hello from client");
    s.send(msg.asString);
    s.send(cast(int)123);
+
    s.receiveMessage();
 }
 
