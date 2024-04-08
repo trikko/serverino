@@ -108,23 +108,29 @@ ServerinoConfig conf()
 @route!"/pizza"
 @endpoint void ws2(Request r, WebSocket s)
 {
+   s.socket.blocking = true;
    s.send("Hello world.");
+   s.receiveMessage();
 }
 
 @priority(-1)
 @endpoint void ws3(Request r, WebSocket s)
 {
+   s.socket.blocking = true;
    auto msg = s.receiveMessage();
    assert(msg.isValid);
    assert(msg.asString == "Hello from client");
    s.send(msg.asString);
    s.send(cast(int)123);
+   s.receiveMessage();
 }
 
 @route!"/chat"
 @endpoint void ws(Request r, WebSocket s)
 {
+   s.socket.blocking = true;
    s.send("Hello world!");
+   s.receiveMessage();
 }
 
 @onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza" || r.uri == "/hello"; }
@@ -381,6 +387,7 @@ void test()
       }
 
       assert(reply[2..$].startsWith("Hello world!".representation), reply.to!string);
+      (new WebSocket(sck)).sendClose();
    }
 
    {
@@ -416,7 +423,7 @@ void test()
       }
 
       assert(reply[2..$].startsWith("Hello world.".representation), reply.to!string);
-
+      (new WebSocket(sck)).sendClose();
    }
 
    {
@@ -472,7 +479,9 @@ void test()
 
       assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
       assert(reply[2 + "Hello from client".representation.length + 2..$].startsWith([123,0,0,0]), reply.to!string);
-
+      ws.sendClose();
    }
 
+   import core.thread;
+   Thread.sleep(250.msecs);
 }
