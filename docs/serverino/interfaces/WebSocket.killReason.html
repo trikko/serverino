@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function WebSocket.sendData</title>
+		<title>Function WebSocket.killReason</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,23 +48,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocket.sendData</h1><p>Send a binary message.
+				<h1>Function WebSocket.killReason</h1><p>Why the WebSocket connection was closed?
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">auto</span> <span class="pln">sendData</span>(T)
-				<span class="pun">(</span>
-				<br/>
-				&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">data</span>
-				<br/>
-				<span class="pun">)</span><span class="pun">;</span>
+				<span class="kwd">static </span><span class="typ">string</span> <span class="pln">killReason</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				<section><pre class="code"><code class="lang-d"><span class="pln">websocket<wbr/></span><span class="pun">.</span><span class="pln">sendData</span><span class="pun">(</span><span class="kwd">cast</span><span class="pun">(</span><span class="typ">int</span><span class="pun">)</span><span class="lit">123456</span><span class="pun">);</span></code></pre>
-</section>
-
+				
 				
 			</div>
 			<footer>

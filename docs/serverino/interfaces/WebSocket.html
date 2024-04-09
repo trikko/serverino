@@ -58,7 +58,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 					</code>
 				</div>
-				<section><pre class="code"><code class="lang-d"><span class="pln">websocket<wbr/></span><span class="pun">.</span><span class="pln">sendText</span><span class="pun">(</span><span class="str">"Hello world"</span><span class="pun">);      </span><span class="com">// Send a message to client
+				<section><pre class="code"><code class="lang-d"><span class="pln">websocket<wbr/></span><span class="pun">.</span><span class="pln">send</span><span class="pun">(</span><span class="str">"Hello world"</span><span class="pun">);      </span><span class="com">// Send a message to client
 </span><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= </span><span class="pln">websocket<wbr/></span><span class="pun">.</span><span class="pln">receiveMessage</span><span class="pun">();  </span><span class="com">// Receive a message from client</span></code></pre>
 </section>
 
@@ -88,6 +88,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/interfaces/WebSocket.hasLeftover.html" class="public">
+									<code>hasLeftover</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>(ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle.
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/interfaces/WebSocket.isDirty.html" class="public">
 									<code>isDirty</code>
 								</a>
@@ -101,9 +111,19 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<a href="../../serverino/interfaces/WebSocket.kill.html" class="public">
 									<code>kill</code>
 								</a>
-								<span class="tableEntryAnnotation">()</span>
+								<span class="tableEntryAnnotation">(reason)</span>
 							</td>
 							<td>Close the WebSocket connection.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.killReason.html" class="public">
+									<code>killReason</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Why the WebSocket connection was closed?
 </td>
 						</tr>
 						<tr>
@@ -129,6 +149,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/interfaces/WebSocket.send.html" class="public">
+									<code>send</code>
+								</a>
+								<span class="tableEntryAnnotation">(data)</span>
+							</td>
+							<td>Send a message. You can send a string, a basic type or an array of a basic type.
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/interfaces/WebSocket.sendClose.html" class="public">
 									<code>sendClose</code>
 								</a>
@@ -139,12 +169,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
-								<a href="../../serverino/interfaces/WebSocket.sendData.html" class="public">
-									<code>sendData</code>
+								<a href="../../serverino/interfaces/WebSocket.sendLeftover.html" class="public">
+									<code>sendLeftover</code>
 								</a>
-								<span class="tableEntryAnnotation">(data)</span>
+								<span class="tableEntryAnnotation">()</span>
 							</td>
-							<td>Send a binary message.
+							<td>(ONLY FOR non-blocking sockets) Try to send the data in the buffer.
 </td>
 						</tr>
 						<tr>
@@ -167,16 +197,6 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Send a ping message. The peer should reply with a pong.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/interfaces/WebSocket.sendText.html" class="public">
-									<code>sendText</code>
-								</a>
-								<span class="tableEntryAnnotation">(text)</span>
-							</td>
-							<td>Send a text message.
 </td>
 						</tr>
 						<tr>

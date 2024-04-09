@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function WebSocket.sendText</title>
+		<title>Function WebSocket.hasLeftover</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,17 +48,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocket.sendText</h1><p>Send a text message.
+				<h1>Function WebSocket.hasLeftover</h1><p>(ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="typ">long</span> <span class="pln">sendText</span>
-				<span class="pun">(</span>
-				<br/>
-				&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">text</span>
-				<br/>
-				<span class="pun">)</span><span class="pun">;</span>
+				<span class="typ">bool</span> <span class="pln">hasLeftover</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>

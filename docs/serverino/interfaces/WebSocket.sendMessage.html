@@ -55,7 +55,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="typ">long</span> <span class="pln">sendMessage</span>
+				<span class="typ">bool</span> <span class="pln">sendMessage</span>
 				<span class="pun">(</span>
 				<br/>
 				&nbsp;&nbsp;<span class="kwd">scope </span><a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a> <span class="pln">message</span><span class="pun">,</span>
@@ -68,11 +68,14 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 					</code>
 				</div>
-				<section><pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= <a href="../../serverino/interfaces/WebSocketMessage.html"></span><span class="typ">WebSocketMessage</span></a><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_TEXT</span><span class="pun">, </span><span class="str">"Hello world"</span><span class="pun">);
+				
+				<section><h2>Returns</h2>
+<p>false if the message is partially sent. The leftover data will be sent on the next sending cycle or using sendLeftover()
+</p>
+<pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= <a href="../../serverino/interfaces/WebSocketMessage.html"></span><span class="typ">WebSocketMessage</span></a><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_TEXT</span><span class="pun">, </span><span class="str">"Hello world"</span><span class="pun">);
 </span><span class="pln">ws<wbr/></span><span class="pun">.</span><span class="pln">sendMessage</span><span class="pun">(</span><span class="pln">msg</span><span class="pun">);</span></code></pre>
 </section>
 
-				
 			</div>
 			<footer>
 				<div id="license-info">
