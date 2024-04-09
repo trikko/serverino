@@ -1225,7 +1225,7 @@ struct WebSocketMessage
    this(ubyte[] payload) { this(OpCode.OPCODE_BINARY, payload); }
 
    /// Return a string representation of the payload.
-   string asString() { return cast(string)cast(char[])payload; }
+   string asString() const { return cast(string)cast(char[])payload; }
 
    /** Return the payload as a specific type.
    * ---
@@ -1233,7 +1233,7 @@ struct WebSocketMessage
    * auto str = msg.as!string;
    * ---
    **/
-   T as(T)()
+   T as(T)() const
    if (!isArray!T)
    {
       static if (is(T == string)) return asString();
@@ -1241,13 +1241,13 @@ struct WebSocketMessage
    }
 
    /// Ditto
-   T as(T)()
+   T as(T)() const
    if (isArray!T)
    {
       return cast(T)payload;
    }
 
-   auto opcode() { return this._opcode; }
+   auto opcode() const { return this._opcode; }
 
    /// Is this message valid?
    bool     isValid = false;
@@ -1272,6 +1272,19 @@ class WebSocket
 
    /// Return the socket.
    Socket socket() { _isDirty = true; return this._socket; }
+
+   /// Set a callback to be called when a message is received. Return true to propagate the message to the next callback.
+   bool delegate(in WebSocketMessage msg) onMessage;
+
+   /// Set a callback to be called when a close message is received. Return true to propagate the message to the next callback.
+   bool delegate(in WebSocketMessage msg) onCloseMessage;
+
+   /// Set a callback to be called when a text message is received. Return true to propagate the message to the next callback.
+   bool delegate(in string msg) onTextMessage;
+
+   /// Set a callback to be called when a binary message is received. Return true to propagate the message to the next callback.
+   bool delegate(in ubyte[] msg) onBinaryMessage;
+
 
    /** Send a message. You can send a string, a basic type or an array of a basic type.
    * ---
@@ -1365,7 +1378,7 @@ class WebSocket
    }
 
    /** (ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle. **/
-   bool hasLeftover() { return _leftover.length > 0; }
+   bool hasLeftover() const { return _leftover.length > 0; }
 
    /** (ONLY FOR non-blocking sockets) Try to send the data in the buffer.
    * Returns: true if all data was sent.
@@ -1595,6 +1608,26 @@ class WebSocket
          );
 
          msg.isValid = true;
+
+         bool propagate = true;
+
+         switch(cast(WebSocketMessage.OpCode)opcode)
+         {
+            case WebSocketMessage.OpCode.OPCODE_BINARY:
+               if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
+               break;
+
+            case WebSocketMessage.OpCode.OPCODE_TEXT:
+               if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
+               break;
+
+            case WebSocketMessage.OpCode.OPCODE_CLOSE:
+               if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
+               break;
+            default: break;
+         }
+
+         if (propagate && onMessage !is null) propagate = onMessage(msg);
 
          return msg;
       }
