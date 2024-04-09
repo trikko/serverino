@@ -1234,9 +1234,17 @@ struct WebSocketMessage
    * ---
    **/
    T as(T)()
+   if (!isArray!T)
    {
       static if (is(T == string)) return asString();
       else return *cast(T*)payload.ptr;
+   }
+
+   /// Ditto
+   T as(T)()
+   if (isArray!T)
+   {
+      return cast(T)payload;
    }
 
    auto opcode() { return this._opcode; }
