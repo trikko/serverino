@@ -1541,8 +1541,6 @@ class WebSocket
 
       if (payloadLength == 126)
       {
-         log(cursor[0..ushort.sizeof]);
-
          if (cursor.length < ushort.sizeof)
             return WebSocketMessage.init;
 
