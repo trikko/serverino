@@ -1489,7 +1489,7 @@ class WebSocket
          // Partial sent
          if (ret < data.length)
          {
-            _leftover ~= data;
+            _leftover ~= data[ret..$];
             return true; // partial
          }
       }
