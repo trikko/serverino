@@ -1286,6 +1286,9 @@ class WebSocket
    bool delegate(in ubyte[] msg) onBinaryMessage;
 
 
+   /** Try to send buffered data, if any. Returns false if there is still data to send. (only for non-blocking sockets) */
+   bool send() { trySend(); return _leftover.length == 0; }
+
    /** Send a message. You can send a string, a basic type or an array of a basic type.
    * ---
    * websocket.send(cast(int)123456);
@@ -1377,13 +1380,8 @@ class WebSocket
       return trySend(buffer[0..curIdx]);
    }
 
-   /** (ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle. **/
-   bool hasLeftover() const { return _leftover.length > 0; }
-
-   /** (ONLY FOR non-blocking sockets) Try to send the data in the buffer.
-   * Returns: true if all data was sent.
-   **/
-   bool sendLeftover() { return trySend(); }
+   /** If there is any data to send, it will be sent on next send() call **/
+   bool isSendBufferEmpty() const { return _leftover.length == 0; }
 
    /** Receive a message from the WebSocket. There could be more than one message in the buffer
    *   so you should call this function in a loop until it returns an invalid message.
