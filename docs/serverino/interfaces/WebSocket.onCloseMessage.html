@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function WebSocket.hasLeftover</title>
+		<title>Variable WebSocket.onCloseMessage</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,12 +48,25 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocket.hasLeftover</h1><p>(ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle.
+				<h1>Variable WebSocket.onCloseMessage</h1><p>Set a callback to be called when a close message is received. Return true to propagate the message to the next callback.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="typ">bool</span> <span class="pln">hasLeftover</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span>
+				<span class="kwd">class</span> <a href="../../serverino/interfaces/WebSocket.html"><span class="typ">WebSocket</span></a>
+				<br/>
+				<span class="pun">
+					{
+					<br/>
+				</span>
+				&nbsp;&nbsp;<span class="com">// ...</span>
+				<br/>
+				&nbsp;&nbsp;<span class="typ">bool</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a><span class="pun">)</span> <span class="pln">onCloseMessage</span>
+				<span class="pun">;</span>
+				<br/>
+				&nbsp;&nbsp;<span class="com">// ...</span>
+				<br/>
+				<span class="pun">}</span>
 						</div>
 					</code>
 				</div>

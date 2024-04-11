@@ -80,21 +80,47 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 					</table>
 				</section>
+				<section><h2>Fields</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Type</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.onBinaryMessage.html" class="public"><code>onBinaryMessage</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <span class="typ">ubyte</span><span class="pun">[]</span><span class="pun">)</span></code></td><td>Set a callback to be called when a binary message is received. Return true to propagate the message to the next callback.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.onCloseMessage.html" class="public"><code>onCloseMessage</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a><span class="pun">)</span></code></td><td>Set a callback to be called when a close message is received. Return true to propagate the message to the next callback.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.onMessage.html" class="public"><code>onMessage</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a><span class="pun">)</span></code></td><td>Set a callback to be called when a message is received. Return true to propagate the message to the next callback.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.onTextMessage.html" class="public"><code>onTextMessage</code></a>
+							</td>
+							<td class="typecol"><code class="prettyprint lang-d"><span class="typ">bool</span> <span class="kwd">delegate</span><span class="pun">(</span><span class="kwd">in</span> <span class="typ">string</span><span class="pun">)</span></code></td><td>Set a callback to be called when a text message is received. Return true to propagate the message to the next callback.
+</td>
+						</tr>
+					</table>
+				</section>
 				<section><h2>Methods</h2>
 					<table>
 						<col class="caption"/>
 						<tr>
 							<th>Name</th><th>Description</th>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/interfaces/WebSocket.hasLeftover.html" class="public">
-									<code>hasLeftover</code>
-								</a>
-								<span class="tableEntryAnnotation">()</span>
-							</td>
-							<td>(ONLY FOR non-blocking sockets) If there is any data to send, you should call sendLeftover() to send it, otherwise the data will be sent on the next sending cycle.
-</td>
 						</tr>
 						<tr>
 							<td>
@@ -104,6 +130,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Returns true if the WebSocket is dirty.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.isSendBufferEmpty.html" class="public">
+									<code>isSendBufferEmpty</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>If there is any data to send, it will be sent on next send() call
 </td>
 						</tr>
 						<tr>
@@ -152,6 +188,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<a href="../../serverino/interfaces/WebSocket.send.html" class="public">
 									<code>send</code>
 								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Try to send buffered data, if any. Returns false if there is still data to send. (only for non-blocking sockets)
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/WebSocket.send.html" class="public">
+									<code>send</code>
+								</a>
 								<span class="tableEntryAnnotation">(data)</span>
 							</td>
 							<td>Send a message. You can send a string, a basic type or an array of a basic type.
@@ -165,16 +211,6 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Send a close message.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/interfaces/WebSocket.sendLeftover.html" class="public">
-									<code>sendLeftover</code>
-								</a>
-								<span class="tableEntryAnnotation">()</span>
-							</td>
-							<td>(ONLY FOR non-blocking sockets) Try to send the data in the buffer.
 </td>
 						</tr>
 						<tr>
