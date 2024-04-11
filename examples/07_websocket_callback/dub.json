@@ -1,0 +1,12 @@
+{
+	"authors": [
+		"Andrea Fontana"
+	],
+	"copyright": "Copyright © 2024, Andrea Fontana",
+	"dependencies": {
+		"serverino": { "path" : "../.." }
+	},
+	"description": "A minimal D application.",
+	"license": "proprietary",
+	"name": "websocket_callback"
+}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-left: 20%;
+            margin-right: 20%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <input type="text" id="input" placeholder="Write a message and press enter">
+    <script>
+        var socket = new WebSocket('ws://localhost:8080');
+        var input = document.getElementById('input');
+
+        input.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                socket.send(input.value);
+                input.value = '';
+                input['placeholder'] = 'Message sent, check app logs!';
+            }
+        });
+    </script>
+</body>

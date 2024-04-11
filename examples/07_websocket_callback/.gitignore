@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/websocket_callback
+websocket_callback.so
+websocket_callback.dylib
+websocket_callback.dll
+websocket_callback.a
+websocket_callback.lib
+websocket_callback-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
