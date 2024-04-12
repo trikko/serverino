@@ -1267,10 +1267,10 @@ struct WebSocketMessage
 **/
 class WebSocket
 {
-   /// Create a WebSocket.
-   this(Socket socket) { _socket = socket; }
+   /// Create a WebSocket. If you are using this as client, you should pass WebSocket.Role.Client as second parameter.
+   this(Socket socket, WebSocket.Role role = WebSocket.Role.Server) { _socket = socket; _role = role; }
 
-   /// Return the socket.
+   /// Return the underlying socket.
    Socket socket() { _isDirty = true; return this._socket; }
 
    /// Set a callback to be called when a message is received. Return true to propagate the message to the next callback.
@@ -1284,7 +1284,6 @@ class WebSocket
 
    /// Set a callback to be called when a binary message is received. Return true to propagate the message to the next callback.
    bool delegate(in ubyte[] msg) onBinaryMessage;
-
 
    /** Try to send buffered data, if any. Returns false if there is still data to send. (only for non-blocking sockets) */
    bool send() { trySend(); return _leftover.length == 0; }
@@ -1315,8 +1314,10 @@ class WebSocket
    * ws.sendMessage(msg);
    * ---
    **/
-   auto sendMessage(WebSocketMessage message, bool isFIN = true, bool masked = false)
+   auto sendMessage(WebSocketMessage message, bool isFIN = true)
    {
+      bool masked = (_role == WebSocket.Role.Client);
+
       _isDirty = true;
 
       ubyte[] buffer;
@@ -1429,6 +1430,11 @@ class WebSocket
    /// Returns true if the WebSocket is dirty.
    bool isDirty() { return _isDirty; }
 
+   enum Role
+   {
+      Server,
+      Client
+   };
 
    private:
 
@@ -1466,29 +1472,32 @@ class WebSocket
          }
       }
 
-      auto ret = _socket.send(data);
-
-      // Not sent
-      if (ret < 0)
+      if (data.length > 0)
       {
-         if (wouldHaveBlocked())
+         auto ret = _socket.send(data);
+
+         // Not sent
+         if (ret < 0)
          {
-            _leftover ~= data;
-            return true; // Partial
+            if (wouldHaveBlocked())
+            {
+               _leftover ~= data;
+               return true; // Partial
+            }
+
+            WebSocket.kill("error sending data");
+            return false;
          }
 
-         WebSocket.kill("error sending data");
-         return false;
-      }
-
-      // Data sent
-      else
-      {
-         // Partial sent
-         if (ret < data.length)
+         // Data sent
+         else
          {
-            _leftover ~= data[ret..$];
-            return true; // partial
+            // Partial sent
+            if (ret < data.length)
+            {
+               _leftover ~= data[ret..$];
+               return true; // partial
+            }
          }
       }
 
@@ -1650,6 +1659,7 @@ class WebSocket
    Socket    _socket;
 
    bool      _isDirty = false;
+   Role      _role = Role.Server;
 
    __gshared  string _killReason = string.init;
    __gshared  bool   _kill = false;

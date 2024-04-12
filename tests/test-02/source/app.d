@@ -482,8 +482,8 @@ void test()
          assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
-      WebSocket ws = new WebSocket(sck);
-      ws.sendMessage(WebSocketMessage("Hello from client"), true, true);
+      WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
+      ws.sendMessage(WebSocketMessage("Hello from client"), true);
 
       buffer.length = 32000;
       ubyte[] reply;
