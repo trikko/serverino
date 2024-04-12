@@ -126,11 +126,11 @@ struct WebSocketWorker
 
       // Wait for the connection check
       // Just to be sure that we are ready to accept the connection
-      listener.listen(1);
+      listener.listen(5);
       auto dummySkt = listener.accept();
 
       // Wait for the daemon connection
-      listener.listen(1);
+      listener.listen(5);
       channel = listener.accept();
 
       // We don't need this canary connection
