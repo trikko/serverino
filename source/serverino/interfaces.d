@@ -1508,126 +1508,129 @@ class WebSocket
    {
       _isDirty = true;
 
-      if (_toParse.length == 0) return WebSocketMessage.init;
-
-
-      ubyte[] cursor = _toParse;
-
-      if (cursor.length < 2)
+      while(true)
       {
-         return WebSocketMessage.init;
-      }
+         if (_toParse.length == 0) return WebSocketMessage.init;
 
-      import std.system : endian, Endian;
-      import std.bitmanip : swapEndian;
 
-      static if(endian == Endian.littleEndian)
-         const ushort header = swapEndian((cast(ushort[])(cursor[0..2]))[0]);
-      else
-         const ushort header = (cast(ushort[])(cursor[0..2]))[0];
+         ubyte[] cursor = _toParse;
 
-      cursor = cursor[2..$];
-
-      bool flagFIN   = (header & Flags.FIN) == Flags.FIN;
-      bool flagMASK  = (header & Flags.MASK) == Flags.MASK;
-
-      auto opcode = cast(ushort)(header & (0xF << 8)); // MASK = 0xF<<8
-
-      auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
-      ubyte[] payload;
-      ubyte[] mask = [0, 0, 0, 0];
-
-      if (payloadLength == 126)
-      {
-         if (cursor.length < ushort.sizeof)
+         if (cursor.length < 2)
+         {
             return WebSocketMessage.init;
+         }
 
-         static if (endian == Endian.littleEndian)
-            payloadLength = swapEndian((cast(ushort[])(cursor[0..ushort.sizeof]))[0]);
+         import std.system : endian, Endian;
+         import std.bitmanip : swapEndian;
+
+         static if(endian == Endian.littleEndian)
+            const ushort header = swapEndian((cast(ushort[])(cursor[0..2]))[0]);
          else
-            payloadLength = (cast(ushort[])(cursor[0..ushort.sizeof]))[0];
+            const ushort header = (cast(ushort[])(cursor[0..2]))[0];
 
-         cursor = cursor[ushort.sizeof..$];
-      }
-      else if (payloadLength == 127)
-      {
-         if (cursor.length < size_t.sizeof)
-            return WebSocketMessage.init;
+         cursor = cursor[2..$];
 
-         payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
+         bool flagFIN   = (header & Flags.FIN) == Flags.FIN;
+         bool flagMASK  = (header & Flags.MASK) == Flags.MASK;
 
-         static if (endian == Endian.littleEndian)
-            payloadLength = swapEndian((cast(size_t[])(cursor[0..size_t.sizeof]))[0]);
-         else
+         auto opcode = cast(ushort)(header & (0xF << 8)); // MASK = 0xF<<8
+
+         auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
+         ubyte[] payload;
+         ubyte[] mask = [0, 0, 0, 0];
+
+         if (payloadLength == 126)
+         {
+            if (cursor.length < ushort.sizeof)
+               return WebSocketMessage.init;
+
+            static if (endian == Endian.littleEndian)
+               payloadLength = swapEndian((cast(ushort[])(cursor[0..ushort.sizeof]))[0]);
+            else
+               payloadLength = (cast(ushort[])(cursor[0..ushort.sizeof]))[0];
+
+            cursor = cursor[ushort.sizeof..$];
+         }
+         else if (payloadLength == 127)
+         {
+            if (cursor.length < size_t.sizeof)
+               return WebSocketMessage.init;
+
             payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
 
-         cursor = cursor[size_t.sizeof..$];
-      }
+            static if (endian == Endian.littleEndian)
+               payloadLength = swapEndian((cast(size_t[])(cursor[0..size_t.sizeof]))[0]);
+            else
+               payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
 
-      if (flagMASK)
-      {
-         if (cursor.length < 4)
-            return WebSocketMessage.init;
-
-         mask = cursor[0..4];
-         cursor = cursor[4..$];
-      }
-
-
-      if (cursor.length < payloadLength)
-         return WebSocketMessage.init;
-
-      payload = cursor[0..payloadLength];
-
-      if (flagMASK)
-         foreach(i, ref ubyte b; payload)
-            b ^= mask[i % 4];
-
-      _parsedData ~= payload;
-      _toParse = cursor[payloadLength..$];
-
-      if (flagFIN)
-      {
-         scope(exit) _parsedData = null;
-
-         if (opcode == WebSocketMessage.OpCode.Ping)
-         {
-            debug log("PING received, sending PONG");
-            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Pong, _parsedData));
-            return WebSocketMessage.init;
+            cursor = cursor[size_t.sizeof..$];
          }
 
-         auto msg = WebSocketMessage
-         (
-            cast(WebSocketMessage.OpCode)opcode,
-            _parsedData
-         );
-
-         msg.isValid = true;
-
-         bool propagate = true;
-
-         switch(cast(WebSocketMessage.OpCode)opcode)
+         if (flagMASK)
          {
-            case WebSocketMessage.OpCode.Binary:
-               if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
-               break;
+            if (cursor.length < 4)
+               return WebSocketMessage.init;
 
-            case WebSocketMessage.OpCode.Text:
-               if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
-               break;
-
-            case WebSocketMessage.OpCode.Close:
-               if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
-               break;
-            default: break;
+            mask = cursor[0..4];
+            cursor = cursor[4..$];
          }
 
-         if (propagate && onMessage !is null) propagate = onMessage(msg);
 
-         return msg;
+         if (cursor.length < payloadLength)
+            return WebSocketMessage.init;
+
+         payload = cursor[0..payloadLength];
+
+         if (flagMASK)
+            foreach(i, ref ubyte b; payload)
+               b ^= mask[i % 4];
+
+         _parsedData ~= payload;
+         _toParse = cursor[payloadLength..$];
+
+         if (flagFIN)
+         {
+            scope(exit) _parsedData = null;
+
+            if (opcode == WebSocketMessage.OpCode.Ping)
+            {
+               debug log("PING received, sending PONG");
+               sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Pong, _parsedData));
+               return WebSocketMessage.init;
+            }
+
+            auto msg = WebSocketMessage
+            (
+               cast(WebSocketMessage.OpCode)opcode,
+               _parsedData
+            );
+
+            msg.isValid = true;
+
+            bool propagate = true;
+
+            switch(cast(WebSocketMessage.OpCode)opcode)
+            {
+               case WebSocketMessage.OpCode.Binary:
+                  if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
+                  break;
+
+               case WebSocketMessage.OpCode.Text:
+                  if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
+                  break;
+
+               case WebSocketMessage.OpCode.Close:
+                  if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
+                  break;
+               default: break;
+            }
+
+            if (propagate && onMessage !is null) propagate = onMessage(msg);
+
+            return msg;
+         }
       }
-      else return WebSocketMessage.init;
+      return WebSocketMessage.init;
    }
 
    enum Flags : ushort
