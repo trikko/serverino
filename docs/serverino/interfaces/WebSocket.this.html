@@ -48,7 +48,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocket.this</h1><p>Create a WebSocket.
+				<h1>Function WebSocket.this</h1><p>Create a WebSocket. If you are using this as client, you should pass WebSocket.Role.Client as second parameter.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -56,7 +56,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<span class="pln">this</span>
 				<span class="pun">(</span>
 				<br/>
-				&nbsp;&nbsp;<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">socket<wbr/></span><span class="pun">.</span><span class="typ">Socket</span> <span class="pln">socket</span>
+				&nbsp;&nbsp;<span class="pln">std<wbr/></span><span class="pun">.</span><span class="pln">socket<wbr/></span><span class="pun">.</span><span class="typ">Socket</span> <span class="pln">socket</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">WebSocket<wbr/></span><span class="pun">.</span><span class="typ">Role</span> <span class="pln">role</span> <span class="pun">=</span> <span class="typ">Role<wbr/></span><span class="pun">.</span><span class="typ">Server</span>
 				<br/>
 				<span class="pun">)</span><span class="pun">;</span>
 						</div>

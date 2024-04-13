@@ -48,8 +48,8 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocket.sendMessage</h1><p>Send a custom message. isFIN is true by default and should be true for most cases.
-   You want to set it to false if you are sending a message in parts. The last part should have isFIN set to true.
+				<h1>Function WebSocket.sendMessage</h1><p>Send a custom message. flagFIN is true by default and should be true for most cases.
+   You want to set it to false if you are sending a message in parts. The last part should have flagFIN set to true.
    The masked parameter is false by default and should be false for most cases. It is used if a message is sent from a client to a server.
 </p>
 				<div class="prototype">
@@ -60,9 +60,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<br/>
 				&nbsp;&nbsp;<span class="kwd">scope </span><a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a> <span class="pln">message</span><span class="pun">,</span>
 				<br/>
-				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">isFIN</span> <span class="pun">=</span> <span class="kwd">true</span><span class="pun">,</span>
-				<br/>
-				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">masked</span> <span class="pun">=</span> <span class="kwd">false</span>
+				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">flagFIN</span> <span class="pun">=</span> <span class="kwd">true</span>
 				<br/>
 				<span class="pun">)</span><span class="pun">;</span>
 						</div>
@@ -72,7 +70,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<section><h2>Returns</h2>
 <p>false if the message is partially sent. The leftover data will be sent on the next sending cycle or using sendLeftover()
 </p>
-<pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= <a href="../../serverino/interfaces/WebSocketMessage.html"></span><span class="typ">WebSocketMessage</span></a><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="pln">OPCODE_TEXT</span><span class="pun">, </span><span class="str">"Hello world"</span><span class="pun">);
+<pre class="code"><code class="lang-d"><span class="kwd">auto </span><span class="pln">msg </span><span class="pun">= <a href="../../serverino/interfaces/WebSocketMessage.html"></span><span class="typ">WebSocketMessage</span></a><span class="pun">(</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="typ">Text</span><span class="pun">, </span><span class="str">"Hello world"</span><span class="pun">);
 </span><span class="pln">ws<wbr/></span><span class="pun">.</span><span class="pln">sendMessage</span><span class="pun">(</span><span class="pln">msg</span><span class="pun">);</span></code></pre>
 </section>
 
