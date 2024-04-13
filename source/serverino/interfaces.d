@@ -1170,9 +1170,9 @@ struct Output
 /** A low-level representation of a WebSocket message. Probably you don't need to use this directly.
 * ---
 * auto msg = WebSocketMessage("Hello world");
-* auto msg2 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_TEXT, "Hello world");
-* auto msg3 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, "Ping me back!");
-* auto msg4 = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_BINARY, [1, 2, 3, 4]);
+* auto msg2 = WebSocketMessage(WebSocketMessage.OpCode.Text, "Hello world");
+* auto msg3 = WebSocketMessage(WebSocketMessage.OpCode.Ping, "Ping me back!");
+* auto msg4 = WebSocketMessage(WebSocketMessage.OpCode.Binary, [1, 2, 3, 4]);
 * ---
 **/
 struct WebSocketMessage
@@ -1182,13 +1182,12 @@ struct WebSocketMessage
 
    enum OpCode : ushort
    {
-      OPCODE_MASK = 0xF << 8,
-      OPCODE_CONTINUE = 0x0 << 8,   /// If you send a message in parts, you must use this opcode for all parts except the first one.
-      OPCODE_TEXT = 0x1 << 8,       /// Text message
-      OPCODE_BINARY = 0x2 << 8,     /// Binary message
-      OPCODE_CLOSE = 0x8 << 8,      /// Close connection
-      OPCODE_PING = 0x9 << 8,       /// Ping message
-      OPCODE_PONG = 0xA << 8,       /// Pong (response to ping)
+      Continue = 0x0 << 8,   /// If you send a message in parts, you must use this opcode for all parts except the first one.
+      Text = 0x1 << 8,       /// Text message
+      Binary = 0x2 << 8,     /// Binary message
+      Close = 0x8 << 8,      /// Close connection
+      Ping = 0x9 << 8,       /// Ping message
+      Pong = 0xA << 8,       /// Pong (response to ping)
    }
 
    /// Build a WebSocket message.
@@ -1216,13 +1215,13 @@ struct WebSocketMessage
    if (isArray!T && isBasicType!(ElementType!T)) { this(opcode, cast(ubyte[])payload);}
 
    /// Ditto
-   this(T)(T payload) { this(OpCode.OPCODE_BINARY, payload); }
+   this(T)(T payload) { this(OpCode.Binary, payload); }
 
    /// Ditto
-   this(string payload) { this(OpCode.OPCODE_TEXT, payload); }
+   this(string payload) { this(OpCode.Text, payload); }
 
    // Ditto
-   this(ubyte[] payload) { this(OpCode.OPCODE_BINARY, payload); }
+   this(ubyte[] payload) { this(OpCode.Binary, payload); }
 
    /// Return a string representation of the payload.
    string asString() const { return cast(string)cast(char[])payload; }
@@ -1297,24 +1296,24 @@ class WebSocket
    auto send(T)(T data) {  return sendMessage(WebSocketMessage(data)); }
 
    /// Send a close message.
-   auto sendClose() { return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_CLOSE)); }
+   auto sendClose() { return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Close)); }
 
    /// Send a ping message. The peer should reply with a pong.
    auto sendPing() {
       import std.uuid : randomUUID;
-      return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PING, randomUUID.data));
+      return sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Ping, randomUUID.data));
    }
 
-   /** Send a custom message. isFIN is true by default and should be true for most cases.
-   *   You want to set it to false if you are sending a message in parts. The last part should have isFIN set to true.
+   /** Send a custom message. flagFIN is true by default and should be true for most cases.
+   *   You want to set it to false if you are sending a message in parts. The last part should have flagFIN set to true.
    *   The masked parameter is false by default and should be false for most cases. It is used if a message is sent from a client to a server.
    * Returns: false if the message is partially sent. The leftover data will be sent on the next sending cycle or using sendLeftover()
    * ---
-   * auto msg = WebSocketMessage(WebSocketMessage.OpCode.OPCODE_TEXT, "Hello world");
+   * auto msg = WebSocketMessage(WebSocketMessage.OpCode.Text, "Hello world");
    * ws.sendMessage(msg);
    * ---
    **/
-   auto sendMessage(WebSocketMessage message, bool isFIN = true)
+   auto sendMessage(WebSocketMessage message, bool flagFIN = true)
    {
       bool masked = (_role == WebSocket.Role.Client);
 
@@ -1327,7 +1326,7 @@ class WebSocket
 
       ushort header = 0;
 
-      if (isFIN) header |= Flags.FIN;
+      if (flagFIN) header |= Flags.FIN;
       header |= message.opcode;
 
       import std.system : endian, Endian;
@@ -1529,18 +1528,10 @@ class WebSocket
 
       cursor = cursor[2..$];
 
-      bool isFIN        = (header & Flags.FIN) > 0;
+      bool flagFIN   = (header & Flags.FIN) == Flags.FIN;
+      bool flagMASK  = (header & Flags.MASK) == Flags.MASK;
 
-      /*
-      bool isCONTINUE   = (header & Flags.OPCODE_CONTINUE) == Flags.OPCODE_CONTINUE;
-      bool isTEXT       = (header & Flags.OPCODE_TEXT) == Flags.OPCODE_TEXT;
-      bool isBINARY     = (header & Flags.OPCODE_BINARY) == Flags.OPCODE_BINARY;
-      bool isPING       = (header & Flags.OPCODE_PING) == Flags.OPCODE_PING;
-      bool isPONG       = (header & Flags.OPCODE_PONG) == Flags.OPCODE_PONG;
-      */
-      bool isMASK       = (header & Flags.MASK) == Flags.MASK;
-
-      auto opcode = cast(Flags)(header & Flags.OPCODE_MASK);
+      auto opcode = cast(ushort)(header & (0xF << 8)); // MASK = 0xF<<8
 
       auto payloadLength = cast(size_t)cast(byte)(header & Flags.PAYLOAD_MASK);
       ubyte[] payload;
@@ -1573,7 +1564,7 @@ class WebSocket
          cursor = cursor[size_t.sizeof..$];
       }
 
-      if (isMASK)
+      if (flagMASK)
       {
          if (cursor.length < 4)
             return WebSocketMessage.init;
@@ -1588,21 +1579,21 @@ class WebSocket
 
       payload = cursor[0..payloadLength];
 
-      if (isMASK)
+      if (flagMASK)
          foreach(i, ref ubyte b; payload)
             b ^= mask[i % 4];
 
       _parsedData ~= payload;
       _toParse = cursor[payloadLength..$];
 
-      if (isFIN)
+      if (flagFIN)
       {
          scope(exit) _parsedData = null;
 
-         if (opcode == Flags.OPCODE_PING)
+         if (opcode == WebSocketMessage.OpCode.Ping)
          {
             debug log("PING received, sending PONG");
-            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.OPCODE_PONG, _parsedData));
+            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Pong, _parsedData));
             return WebSocketMessage.init;
          }
 
@@ -1618,15 +1609,15 @@ class WebSocket
 
          switch(cast(WebSocketMessage.OpCode)opcode)
          {
-            case WebSocketMessage.OpCode.OPCODE_BINARY:
+            case WebSocketMessage.OpCode.Binary:
                if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
                break;
 
-            case WebSocketMessage.OpCode.OPCODE_TEXT:
+            case WebSocketMessage.OpCode.Text:
                if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
                break;
 
-            case WebSocketMessage.OpCode.OPCODE_CLOSE:
+            case WebSocketMessage.OpCode.Close:
                if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
                break;
             default: break;
@@ -1642,13 +1633,6 @@ class WebSocket
    enum Flags : ushort
    {
       FIN = 0x1 << 15,
-      OPCODE_MASK = 0xF << 8,
-      OPCODE_CONTINUE = 0x0 << 8,
-      OPCODE_TEXT = 0x1 << 8,
-      OPCODE_BINARY = 0x2 << 8,
-      OPCODE_CLOSE = 0x8 << 8,
-      OPCODE_PING = 0x9 << 8,
-      OPCODE_PONG = 0xA << 8,
       MASK = 0x1 << 7,
       PAYLOAD_MASK = 0x7F
    }
