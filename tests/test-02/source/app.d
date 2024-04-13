@@ -502,6 +502,49 @@ void test()
       ws.sendClose();
    }
 
+   {
+      auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
+      sck.blocking = true;
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      ubyte[] buffer;
+      buffer.length = 129;
+
+      {
+         auto ln = sck.receive(buffer);
+
+         auto reply = buffer[0..ln];
+
+         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
+         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+      }
+
+      WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
+      ws.sendMessage(WebSocketMessage("Hello "), false);
+      ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "from "), false);
+      ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "client"), true);
+
+      buffer.length = 32000;
+      ubyte[] reply;
+
+      while(reply.length < "Hello from client".length + 2 + 4 + 2)
+      {
+         auto recv = sck.receive(buffer);
+
+         if(recv <= 0) break;
+
+         reply ~= buffer[0..recv];
+      }
+
+      assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
+      assert(reply[2 + "Hello from client".representation.length + 2..$].startsWith([123,0,0,0]), reply.to!string);
+      ws.sendClose();
+   }
+
    import core.thread;
    Thread.sleep(250.msecs);
 }
