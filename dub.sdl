@@ -8,6 +8,11 @@ configuration "lib" {
    targetType "library"
 }
 
+configuration "disable_websockets" {
+    targetType "library"
+    versions "disable_websockets"
+}
+
 sourcePaths "source"
 
 subPackage "./init-exec"
