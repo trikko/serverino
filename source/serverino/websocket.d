@@ -250,6 +250,7 @@ struct WebSocketWorker
                }
                else
                {
+                  version(disable_websockets) static assert(false, "You compiled with -version=disable_websockets. You need to remove it to use WebSockets.");
                   static if (__VERSION__ < 2102) static assert(false, "You need at least DMD 2.102 to use WebSockets.");
 
                   static foreach(p; ParameterStorageClassTuple!s)

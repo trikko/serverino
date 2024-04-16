@@ -465,7 +465,11 @@ package:
                      WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
                      auto data = cast(char[])buffer[WorkerPayload.sizeof..bytes];
 
-                     static if(__VERSION__ < 2102)
+                     version(disable_websockets)
+                     {
+                        // Nothing to do here.
+                     }
+                     else static if(__VERSION__ < 2102)
                      {
                         pragma(msg, "---------------------------------------------------------------------");
                         pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
