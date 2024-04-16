@@ -33,7 +33,7 @@ alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 // Serverino version
 public static int SERVERINO_MAJOR = 0;
 public static int SERVERINO_MINOR = 7;
-public static int SERVERINO_REVISION = 0;
+public static int SERVERINO_REVISION = 1;
 
 // Struct WorkerPayload is used to pass data from the worker to the daemon
 // It is prepended to the actual response payload
