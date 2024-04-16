@@ -471,10 +471,10 @@ package:
                      }
                      else static if(__VERSION__ < 2102)
                      {
-                        pragma(msg, "---------------------------------------------------------------------");
+                        pragma(msg, "-----------------------------------------------------------------------------------");
                         pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
-                        pragma(msg, "Please upgrade your DMD compiler.");
-                        pragma(msg, "---------------------------------------------------------------------");
+                        pragma(msg, "Please upgrade your DMD compiler or build using `disable_websockets` version/config");
+                        pragma(msg, "-----------------------------------------------------------------------------------");
                      }
                      else
                      {
