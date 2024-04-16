@@ -465,64 +465,74 @@ package:
                      WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
                      auto data = cast(char[])buffer[WorkerPayload.sizeof..bytes];
 
-                     if(wp.flags & WorkerPayload.Flags.WEBSOCKET_UPGRADE)
+                     static if(__VERSION__ < 2102)
                      {
-                        // OK, we have a websocket upgrade request.
-                        import std.string : indexOf, strip, split;
-
-                        auto idx = data.indexOf("x-serverino-websocket:");
-                        auto hdrs = data[0..idx] ~ "\r\n";
-                        auto metadata = data[idx..$].split("\r\n");
-
-                        // Extract the UUID and the PID from the headers. We need them to communicate with the new process.
-                        auto uuid = metadata[0]["x-serverino-websocket:".length..$].strip;
-                        auto pid = metadata[1]["x-serverino-websocket-pid:".length..$].strip;
-
-                        // Create a new socket and bind it to a random address.
-                        Socket webs = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-
-                        // We use a unix socket on both linux and macos/windows but ...
-                        version(linux) auto socketAddress = new UnixAddress("\0%s".format(uuid));
-                        else auto socketAddress = new UnixAddress(buildPath(tempDir, uuid));
-
-                        webs.connect(socketAddress);
-
-                        // Send socket to websocket
-                        auto toSend = communicator.clientSkt.release();
-
-                        version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
-                        else version(Windows)
+                        pragma(msg, "---------------------------------------------------------------------");
+                        pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
+                        pragma(msg, "Please upgrade your DMD compiler.");
+                        pragma(msg, "---------------------------------------------------------------------");
+                     }
+                     else
+                     {
+                        if(wp.flags & WorkerPayload.Flags.WEBSOCKET_UPGRADE)
                         {
-                           WSAPROTOCOL_INFOW wi;
-                           WSADuplicateSocketW(toSend, pid.to!int, &wi);
-                           auto sent = webs.send((cast(ubyte*)&wi)[0..wi.sizeof]) > 0;
-                        }
+                           // OK, we have a websocket upgrade request.
+                           import std.string : indexOf, strip, split;
 
-                        if (!sent)
-                        {
-                           log("Error sending socket to websocket.");
-                           webs.shutdown(SocketShutdown.BOTH);
-                           webs.close();
-                        }
-                        else
-                        {
-                           // Send address family (AF_INET or AF_INET6)
-                           ushort[1] addressFamily = [cast(ushort)communicator.clientSkt.addressFamily];
-                           webs.send(addressFamily);
+                           auto idx = data.indexOf("x-serverino-websocket:");
+                           auto hdrs = data[0..idx] ~ "\r\n";
+                           auto metadata = data[idx..$].split("\r\n");
 
-                           // Send worker http upgrade response
-                           webs.send(hdrs);
+                           // Extract the UUID and the PID from the headers. We need them to communicate with the new process.
+                           auto uuid = metadata[0]["x-serverino-websocket:".length..$].strip;
+                           auto pid = metadata[1]["x-serverino-websocket-pid:".length..$].strip;
 
-                           version(Posix)
+                           // Create a new socket and bind it to a random address.
+                           Socket webs = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
+                           // We use a unix socket on both linux and macos/windows but ...
+                           version(linux) auto socketAddress = new UnixAddress("\0%s".format(uuid));
+                           else auto socketAddress = new UnixAddress(buildPath(tempDir, uuid));
+
+                           webs.connect(socketAddress);
+
+                           // Send socket to websocket
+                           auto toSend = communicator.clientSkt.release();
+
+                           version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
+                           else version(Windows)
                            {
-                              import core.sys.posix.unistd : close;
-                              close(toSend);
+                              WSAPROTOCOL_INFOW wi;
+                              WSADuplicateSocketW(toSend, pid.to!int, &wi);
+                              auto sent = webs.send((cast(ubyte*)&wi)[0..wi.sizeof]) > 0;
                            }
-                        }
 
-                        communicator.unsetClientSocket();
-                        communicator.unsetWorker();
-                        continue;
+                           if (!sent)
+                           {
+                              log("Error sending socket to websocket.");
+                              webs.shutdown(SocketShutdown.BOTH);
+                              webs.close();
+                           }
+                           else
+                           {
+                              // Send address family (AF_INET or AF_INET6)
+                              ushort[1] addressFamily = [cast(ushort)communicator.clientSkt.addressFamily];
+                              webs.send(addressFamily);
+
+                              // Send worker http upgrade response
+                              webs.send(hdrs);
+
+                              version(Posix)
+                              {
+                                 import core.sys.posix.unistd : close;
+                                 close(toSend);
+                              }
+                           }
+
+                           communicator.unsetClientSocket();
+                           communicator.unsetWorker();
+                           continue;
+                        }
                      }
 
                      communicator.isKeepAlive = (wp.flags & WorkerPayload.Flags.HTTP_KEEP_ALIVE) != 0;

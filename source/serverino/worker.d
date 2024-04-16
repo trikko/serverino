@@ -925,6 +925,8 @@ bool acceptWebsocket(Modules...)(Request request)
    {
       static foreach(f; getSymbolsByUDA!(m, onWebSocketUpgrade))
       {
+         static if (__VERSION__ < 2102) static assert(false, "You need at least DMD 2.102 to use WebSockets.");
+
          static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWebSocketUpgrade but it is not a function");
          static assert(is(ReturnType!f == bool), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `bool`");
          static if(__traits(compiles, f(request))) result = f(request);

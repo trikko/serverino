@@ -250,6 +250,7 @@ struct WebSocketWorker
                }
                else
                {
+                  static if (__VERSION__ < 2102) static assert(false, "You need at least DMD 2.102 to use WebSockets.");
 
                   static foreach(p; ParameterStorageClassTuple!s)
                   {
