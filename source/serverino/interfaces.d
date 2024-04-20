@@ -1630,7 +1630,8 @@ class WebSocket
             return msg;
          }
       }
-      return WebSocketMessage.init;
+
+      assert(false);
    }
 
    enum Flags : ushort
