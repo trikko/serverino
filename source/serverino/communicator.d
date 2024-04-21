@@ -515,7 +515,7 @@ package class Communicator
                   // Parse headers for 100-continue, content-length and connection
                   auto hdrs = request.data[firstLine+2..$]
                   .splitter("\r\n")
-                  .map!((char[] row)
+                  .map!((in char[] row)
                   {
                      if (!request.isValid)
                         return (char[]).init;
