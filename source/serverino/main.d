@@ -38,7 +38,7 @@ class ServerinoLogger : Logger
    else this(LogLevel lv) { super(lv); }
 
    @trusted
-   override void writeLogMsg(ref LogEntry payload)
+   override void writeLogMsg(scope ref LogEntry payload)
    {
       import std.path : baseName;
       import std.conv : text;

@@ -292,7 +292,7 @@ package class Communicator
    }
 
    // Try to write the data to the client socket, it buffers the data if the socket is not ready
-   void write(char[] data)
+   void write(scope char[] data)
    {
       if (clientSkt is null)
       {

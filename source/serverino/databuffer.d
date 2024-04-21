@@ -33,7 +33,7 @@ package struct DataBuffer(T)
 
    public:
    pragma(inline, true):
-   void append(const T[] new_data)
+   void append(scope const T[] new_data)
    {
       if (_data.length < _length + new_data.length)
          _data.length += (new_data.length / (1024*16) + 1) * (1024*16);
@@ -44,7 +44,7 @@ package struct DataBuffer(T)
    void reserve(size_t r, bool allowShrink = false) { if (r > _data.length || allowShrink) _data.length = (r / (1024*16) + 1) * (1024*16); }
    void length(size_t l) { reserve(l); _length = l; }
 
-   void append(const T new_data) { append((&new_data)[0..1]); }
+   void append(scope const T new_data) { append((&new_data)[0..1]); }
    auto capacity() { return _data.length; }
    void clear() { _length = 0; }
    auto array() { return _data[0.._length]; }
