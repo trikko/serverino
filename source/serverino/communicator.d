@@ -253,7 +253,7 @@ package class Communicator
    // Write the buffered data to the client socket
    void write()
    {
-      auto maxToSend = bufferSent + 32*1024;
+      auto maxToSend = bufferSent + DEFAULT_BUFFER_SIZE;
       if (maxToSend > sendBuffer.length) maxToSend = sendBuffer.length;
 
       if (maxToSend == 0)
@@ -362,7 +362,7 @@ package class Communicator
 
       ProtoRequest request = requestToProcess;
 
-      char[32*1024] buffer;
+      char[DEFAULT_BUFFER_SIZE] buffer = void;
       ptrdiff_t bytesRead = 0;
 
       // Read the data from the client socket if it's not buffered

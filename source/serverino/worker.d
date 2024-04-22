@@ -190,7 +190,7 @@ struct Worker
          output._internal.clear();
          request._internal.clear();
 
-         ubyte[32*1024] buffer;
+         ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
 
          idlingAt = CoarseTime.currTime;
 

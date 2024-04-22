@@ -156,7 +156,7 @@ struct WebSocketWorker
       auto recv = channel.receive((&af)[0..1]);
 
       // Wait for headers
-      ubyte[32*1024] buffer;
+      ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
       recv = channel.receive(buffer);
       char[] headers = cast(char[])buffer[0..recv];
 

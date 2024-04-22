@@ -445,3 +445,5 @@ version(Posix) package void setProcessName(string[] names)
 	import std.string : toStringz;
 	pthread_setname_np(pthread_self(), names[0].toStringz);
 }
+
+package immutable static DEFAULT_BUFFER_SIZE = 32*1024;

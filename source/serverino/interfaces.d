@@ -1320,7 +1320,7 @@ class WebSocket
       _isDirty = true;
 
       ubyte[] buffer;
-      ubyte[4] mask;
+      ubyte[4] mask = void;
 
       buffer.length = 2 + 8 + 4 + message.payload.length;
 
@@ -1398,7 +1398,7 @@ class WebSocket
       if (msg.isValid)
          return msg;
 
-      ubyte[4096] buffer;
+      ubyte[4096] buffer = void;
       auto received = _socket.receive(buffer);
 
       if (received == 0)

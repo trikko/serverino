@@ -441,7 +441,7 @@ package:
                   continue;
                }
 
-               ubyte[32*1024] buffer;
+               ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
                auto bytes = worker.unixSocket.receive(buffer);
 
                if (bytes == Socket.ERROR)
