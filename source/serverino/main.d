@@ -162,8 +162,7 @@ template ServerinoLoop(Modules...)
 
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
-   import std.experimental.logger.core;
-   import std.compiler : version_major;
+   import std.experimental.logger : sharedLog;
 
    static if (version_minor > 100)
       sharedLog = new shared ServerinoLogger(config.daemonConfig.logLevel);

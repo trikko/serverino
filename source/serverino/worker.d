@@ -51,7 +51,6 @@ struct Worker
    void wake(Modules...)(WorkerConfigPtr config)
    {
       import std.conv : to;
-      import std.stdio;
       import std.format : format;
       import std.process : thisProcessID;
       import std.path : baseName;
@@ -127,7 +126,7 @@ struct Worker
 
       // Prevent read from stdin
       {
-         import std.stdio : stdin;
+         import std.stdio : stdin, fopen;
 
          version(Windows)  auto nullSink = fopen("NUL", "r");
          version(Posix)    auto nullSink = fopen("/dev/null", "r");
@@ -543,7 +542,7 @@ struct Worker
 
                   import std.process : pipeProcess, Redirect, Config;
                   import std.file : thisExePath;
-                  import core.thread;
+                  import core.thread : Thread;
 
                   import std.range : repeat;
                   import std.array : array;
@@ -568,6 +567,7 @@ struct Worker
                      }
                      catch(Exception e)
                      {
+                        import std.datetime : usecs;
                         Thread.sleep(100.usecs);
                         ++tries;
 

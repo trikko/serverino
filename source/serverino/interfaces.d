@@ -39,7 +39,6 @@ import serverino.databuffer;
 import serverino.common;
 import core.stdc.ctype;
 import std.math.operations;
-import std.uuid;
 
 /++ A cookie. Use `Cookie("key", "value")` to create a cookie. You can chain methods.
 + ---
@@ -466,8 +465,6 @@ struct Request
 
                if (_postDataContentType == "application/x-www-form-urlencoded")
                {
-                  import std.stdio;
-
                   // Ok that's easy...
                   parseArgsString(_data, _post);
                }
@@ -1390,6 +1387,7 @@ class WebSocket
 
       import std.system : endian, Endian;
       import std.bitmanip : swapEndian;
+      import std.random : uniform;
 
       static if (endian == Endian.littleEndian)
          header = swapEndian(header);
@@ -1422,8 +1420,9 @@ class WebSocket
 
       if (masked)
       {
+         uint rnd = uniform(0, uint.max);
          buffer[1] |= Flags.MASK;
-         mask[0..4] = cast(ubyte[])randomUUID.data[0..4];
+         mask[0..4] = (cast(ubyte*)(&rnd))[0..4];
          buffer[curIdx..curIdx+4] = mask[0..4];
          curIdx += 4;
       }

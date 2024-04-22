@@ -47,14 +47,14 @@ struct WebSocketWorker
    void wake(Modules...)()
    {
       import std.conv : to;
-      import std.stdio;
       import std.format : format;
 
-      import core.thread;
+      import core.thread : Thread;
       import core.stdc.stdlib : exit;
 
       import core.runtime : Runtime;
       import std.path : baseName;
+      import std.datetime : seconds;
 
       version(Posix)
       {

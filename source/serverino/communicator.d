@@ -38,7 +38,6 @@ import std.algorithm : strip;
 import std.conv : text, to;
 import std.format : format;
 import std.experimental.logger : log, info, warning;
-import std.path;
 
 extern(C) long syscall(long number, ...);
 
@@ -565,6 +564,7 @@ package class Communicator
                      else if (key == "connection")
                      {
                         import std.uni: sicmp;
+                        import std.string : CaseSensitive;
 
                         if (sicmp(value, "keep-alive") == 0) request.connection = ProtoRequest.Connection.KeepAlive;
                         else if (sicmp(value, "close") == 0) request.connection = ProtoRequest.Connection.Close;
