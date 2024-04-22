@@ -36,7 +36,6 @@ import std.ascii : toLower;
 import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;
-import std.format : format;
 import std.experimental.logger : log, info, warning;
 
 extern(C) long syscall(long number, ...);
