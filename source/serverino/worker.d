@@ -271,9 +271,11 @@ struct Worker
 
          ++requestId;
 
-         WorkerPayload wp;
-         wp.flags = parseHttpRequest!Modules(config, data.array);
-         wp.contentLength = output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length;
+         WorkerPayload wp = WorkerPayload
+         (
+            parseHttpRequest!Modules(config, data.array),
+            output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length
+         );
 
          if (cas(&justSent, false, true))
             channel.send((cast(char*)&wp)[0..wp.sizeof] ~  output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
