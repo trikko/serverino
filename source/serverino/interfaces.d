@@ -420,12 +420,11 @@ struct Request
 
    package struct RequestImpl
    {
+
       void process()
       {
          import std.algorithm : splitter;
-         import std.regex : match, ctRegex;
-         import std.uri : decodeComponent;
-         import std.string : translate, split, strip;
+         import std.string : split, strip;
          import std.process : thisProcessID;
 
          static string myPID;
@@ -444,8 +443,7 @@ struct Request
 
          // Read get params
          if (!_rawQueryString.empty)
-            foreach(m; match(_rawQueryString, ctRegex!("([^=&]*)(?:=([^&]*))?&?", "g")))
-               _get[m.captures[1].decodeComponent] = translate(m.captures[2],['+':' ']).decodeComponent;
+            parseArgsString(_rawQueryString, _get);
 
          // Read post params
          try
@@ -471,8 +469,7 @@ struct Request
                   import std.stdio;
 
                   // Ok that's easy...
-                  foreach(m; match(_data, ctRegex!("([^=&]+)(?:=([^&]+))?&?", "g")))
-                     _post[m.captures[1].decodeComponent] = translate(m.captures[2], ['+' : ' ']).decodeComponent;
+                  parseArgsString(_data, _post);
                }
                else if (_postDataContentType == "multipart/form-data")
                {
@@ -629,8 +626,7 @@ struct Request
 
          // Read cookies
          if ("cookie" in _header)
-            foreach(m; match(_header["cookie"], ctRegex!("([^=]+)=([^;]+)?;? ?", "g")))
-               _cookie[m.captures[1].decodeComponent] = m.captures[2].decodeComponent;
+            parseArgsString!true(_header["cookie"], _cookie);
 
          if ("authorization" in _header)
          {
@@ -757,6 +753,69 @@ struct Request
             _post[lines[index]] = lines[index + 1];
             index += 2;
          }
+      }
+
+      pragma(inline, true)
+      private void parseArgsString(bool isCookie = false)(in char[] s, ref string[string] output)
+      {
+         import std.uri : decodeComponent;
+         import std.string : translate, split, strip;
+
+         string key;
+         size_t curIdx = 0;
+         size_t lastIdx = 0;
+
+         static if (isCookie) { bool isSeparator(in char c) { return c == ';' || c == ' '; } }
+         else { bool isSeparator(in char c) { return c == '&'; } }
+
+         searchKey:
+            if (curIdx >= s.length)
+            {
+               if (curIdx != lastIdx) output[s[lastIdx..curIdx].decodeComponent] = "";
+               return;
+            }
+            else if(isSeparator(s[curIdx]))
+            {
+               if (curIdx != lastIdx) output[s[lastIdx..curIdx].decodeComponent] = "";
+
+               curIdx++;
+               lastIdx = curIdx;
+               goto searchKey;
+            }
+            else if (s[curIdx] == '=')
+            {
+               key = s[lastIdx..curIdx].decodeComponent;
+               curIdx++;
+               lastIdx = curIdx;
+               goto searchValue;
+            }
+            else
+            {
+               curIdx++;
+               goto searchKey;
+            }
+
+         searchValue:
+            if (curIdx >= s.length)
+            {
+               if (curIdx != lastIdx) output[key] = translate(s[lastIdx..curIdx],['+':' ']).decodeComponent;
+               else output[key] = "";
+               return;
+            }
+            else if(isSeparator(s[curIdx]))
+            {
+               if (curIdx != lastIdx) output[key] = translate(s[lastIdx..curIdx],['+':' ']).decodeComponent;
+               else output[key] = "";
+
+               curIdx++;
+               lastIdx = curIdx;
+               goto searchKey;
+            }
+            else
+            {
+               curIdx++;
+               goto searchValue;
+            }
       }
 
       char[] _data;
