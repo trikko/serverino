@@ -31,8 +31,6 @@ import serverino.daemon : WorkerInfo, now;
 import serverino.config : DaemonConfigPtr;
 import std.socket;
 
-
-import std.ascii : toLower;
 import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;

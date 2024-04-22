@@ -26,7 +26,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.common;
 
 import std.datetime : MonoTimeImpl, ClockType;
-import std.stdio : File;
 
 alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 

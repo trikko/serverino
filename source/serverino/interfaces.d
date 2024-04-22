@@ -27,18 +27,16 @@ OTHER DEALINGS IN THE SOFTWARE.
 module serverino.interfaces;
 
 import std.conv : to;
-import std.string : format, representation, indexOf, lastIndexOf, toLower, toStringz, strip;
-import std.range : empty, assumeSorted;
+import std.string : format, representation, indexOf, toLower, strip;
+import std.range : empty;
 import std.algorithm : map, canFind, splitter, startsWith;
 import core.thread : Thread;
-import std.datetime : SysTime, Clock, seconds, Duration, DateTime;
-import std.experimental.logger : log, warning, fatal, critical;
+import std.datetime : SysTime, Clock, seconds, Duration;
+import std.experimental.logger : log, warning;
 import std.socket : Address, Socket, SocketShutdown, socket_t, SocketOptionLevel, SocketOption, Linger, AddressFamily;
 
 import serverino.databuffer;
 import serverino.common;
-import core.stdc.ctype;
-import std.math.operations;
 
 /++ A cookie. Use `Cookie("key", "value")` to create a cookie. You can chain methods.
 + ---
