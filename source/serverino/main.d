@@ -70,9 +70,10 @@ class ServerinoLogger : Logger
       immutable uint[3]    logColor    = sha1Of(processId.to!string)[0..3].map!(x => (x.to!uint/20 + 1)*19).array;
 
       LLSTR = [
-         LogLevel.all : "[\x1b[1ml\x1b[0m]", LogLevel.trace : "[\x1b[1;32mt\x1b[0m]",
-         LogLevel.info : "[\x1b[1;32mi\x1b[0m]", LogLevel.warning : "[\x1b[1;33mw\x1b[0m]",
-         LogLevel.critical : "[\x1b[1;31mc\x1b[0m]", LogLevel.fatal : "[\x1b[1;31mf\x1b[0m]",
+         LogLevel.all : "[\x1b[1ml\x1b[0m]",
+         LogLevel.trace : "[\x1b[1;32mt\x1b[0m]", LogLevel.info : "[\x1b[1;32mi\x1b[0m]",
+         LogLevel.warning : "[\x1b[1;33mw\x1b[0m]", LogLevel.error : "[\x1b[1;31me\x1b[0m]",
+         LogLevel.critical : "[\x1b[1;31mc\x1b[0m]", LogLevel.fatal : "[\x1b[1;31mf\x1b[0m]"
       ];
 
       string prefix;
