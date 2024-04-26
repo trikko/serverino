@@ -70,6 +70,7 @@ mixin ServerinoMain;
    Thread.sleep(600.msecs);
    o.addHeader("Content-type", "text/plain");
    o ~= "slept";
+   log("Slept");
 }
 
 @route!"/simple"
@@ -153,8 +154,7 @@ ServerinoConfig conf()
 
 void test()
 {
-
-   // Testing minimal http/1.0 request
+   info("minimal HTTP/1.0");
    {
       auto req = "GET /simple HTTP/1.0\r\n\r\n";
 
@@ -177,7 +177,7 @@ void test()
       assert(data == "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple");
    }
 
-   // Testing crash endpoint. The server should not crash
+   info("Testing crash endpoint. The server must not crash");
    {
       auto req = "GET /crash HTTP/1.1\r\nhost:localhost\r\n\r\n";
 
@@ -199,7 +199,7 @@ void test()
       assert(data.empty);
    }
 
-   // Testing pipeline
+   info("Testing pipeline");
    {
       import core.thread;
 
@@ -233,7 +233,10 @@ void test()
       {
          auto req = "GET /simple HTTP/1.1\r\nhost:localhost\r\n\r\n";
          req ~= "GET /sleep HTTP/1.1\r\nhost:localhost\r\n\r\n";
+
+         // This one is HTTP/1.0 so connection will be closed
          req ~= "GET /simple HTTP/1.0\r\nhost:localhost\r\n\r\n";
+
 
          auto sck = new TcpSocket();
          sck.connect(new InternetAddress("localhost", 8080));
@@ -246,7 +249,6 @@ void test()
          while(true)
          {
             auto ln = sck.receive(buffer);
-
             if (ln <= 0) break;
 
             data ~= buffer[0..ln];
@@ -256,13 +258,9 @@ void test()
 
          assert(data == "HTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimpleHTTP/1.1 200 OK\r\nconnection: keep-alive\r\ncontent-length: 5\r\ncontent-type: text/plain\r\n\r\nsleptHTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple", "DATA: " ~ data);
       }
-
-
-
-
    }
 
-   // Testing crash endpoint. The server should not crash
+   info("Testing crash endpoint. The server must not crash");
    {
       auto req = "GET /crash HTTP/1.1\r\nhost:localhost\r\n\r\n";
 
@@ -320,7 +318,7 @@ void test()
 
    }
 
-   // Multiple parallels pipelines (100 request * 10 pipelines)
+   info("Multiple parallels pipelines (100 request * 10 pipelines)");
    {
       import core.thread;
 
@@ -370,6 +368,8 @@ void test()
 
 
    }
+
+   info("Testing WebSocket");
    {
       auto handshake = "GET /chat HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
@@ -444,6 +444,7 @@ void test()
       (new WebSocket(sck)).sendClose();
    }
 
+   info("Testing Websocket not accepted");
    {
       auto handshake = "GET /notaccepted HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 
@@ -502,6 +503,7 @@ void test()
       ws.sendClose();
    }
 
+   info("Test splitted message");
    {
       auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
 

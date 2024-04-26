@@ -336,7 +336,8 @@ package:
          // Fill socketSet with communicators, waiting for updates.
          for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
          {
-            ssRead.add(communicator.clientSkt);
+            if (communicator.worker is null)
+               ssRead.add(communicator.clientSkt);
 
             if (!communicator.completed)
                ssWrite.add(communicator.clientSkt);
@@ -549,8 +550,11 @@ package:
          }
 
          // Check the communicators for updates
-         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
+         for(auto communicator = Communicator.alives; communicator !is null;)
          {
+            auto next = communicator.next;
+            scope(exit) communicator = next;
+
             if(communicator.clientSkt is null)
                continue;
 
@@ -573,35 +577,29 @@ package:
             }
          }
 
-         auto available = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
 
-         // Check for communicators that need a worker.
-         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next)
+         auto availableWorkers = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
+         auto deadWorkers = WorkerInfo.dead();
+
+         // We have communicators waiting for a worker.
+         while(Communicator.execWaitingListFront !is null)
          {
-            // If the communicator hasn't a request to process (or it has already a worker assigned) we skip it.
-            if (communicator.requestToProcess is null || !communicator.requestToProcess.isValid || communicator.worker !is null)
-               continue;
+             if (!availableWorkers.empty)
+             {
+               auto communicator = Communicator.popFromWaitingList();
 
-            // If there are idling workers we assign one to the communicator.
-            if (!available.empty)
-            {
-               communicator.setWorker(available.front);
-               available.popFront;
-            }
-            else
-            {
-               // If we have a dead worker we can reinit it.
-               // Probably we are over the minWorkers limit but below the maxWorkers limit.
-               // Extra workers over the minWorkers limit are normally dead.
-               auto dead = WorkerInfo.dead();
+               communicator.setWorker(availableWorkers.front);
+               availableWorkers.popFront;
+             }
+             else if(!deadWorkers.empty)
+             {
+               auto communicator = Communicator.popFromWaitingList();
 
-               if (!dead.empty)
-               {
-                  dead.front.reinit(true);
-                  communicator.setWorker(dead.front);
-               }
-               else break; // All workers are busy. Will try again later.
-            }
+               deadWorkers.front.reinit(true);
+               communicator.setWorker(deadWorkers.front);
+               deadWorkers.popFront;
+             }
+             else break; // All workers are busy. We'll try again later.
          }
 
          // Check for new incoming connections.

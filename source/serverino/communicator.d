@@ -282,6 +282,9 @@ package class Communicator
       {
          unsetWorker();
 
+         if (requestToProcess !is null && requestToProcess.isValid)
+               Communicator.pushToWaitingList(this);
+
          if (!isKeepAlive)
             reset();
       }
@@ -321,6 +324,9 @@ package class Communicator
          if (completed())
          {
             unsetWorker();
+
+            if (requestToProcess !is null && requestToProcess.isValid)
+               Communicator.pushToWaitingList(this);
 
             if (!isKeepAlive)
                reset();
@@ -634,6 +640,8 @@ package class Communicator
                      hasQueuedRequests = leftover.length > 0;
                      enqueueNewRequest = hasQueuedRequests;
 
+                     pushToWaitingList(this);
+
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
 
@@ -659,6 +667,8 @@ package class Communicator
                leftover = request.data[request.headersLength + request.contentLength..$];
                request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
+
+               pushToWaitingList(this);
 
                hasQueuedRequests = leftover.length > 0;
                enqueueNewRequest = hasQueuedRequests;
@@ -686,6 +696,45 @@ package class Communicator
 
    }
 
+   pragma(inline, true)
+   static void pushToWaitingList(Communicator c)
+   {
+      // if it is already in the list, we don't add it again
+      if ( execWaitingListFront == c || c.prevWaiting !is null)
+      {
+         return;
+      }
+
+      if (execWaitingListFront is null)
+      {
+         execWaitingListFront = c;
+         execWaitingListBack = c;
+      }
+      else
+      {
+         execWaitingListBack.nextWaiting = c;
+         c.prevWaiting = execWaitingListBack;
+         execWaitingListBack = c;
+      }
+   }
+
+
+   pragma(inline, true)
+   static Communicator popFromWaitingList()
+   {
+      assert (execWaitingListFront !is null);
+
+      auto c = execWaitingListFront;
+      execWaitingListFront = c.nextWaiting;
+
+      if (execWaitingListFront is null) execWaitingListBack = null;
+      else execWaitingListFront.prevWaiting = null;
+
+      c.nextWaiting = null;
+      assert(c.prevWaiting is null);
+      return c;
+   }
+
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
@@ -707,8 +756,14 @@ package class Communicator
    Communicator      next = null;
    Communicator      prev = null;
 
+   Communicator      nextWaiting = null;
+   Communicator      prevWaiting = null;
+
    static Communicator  alives   = null; // Communicators with a client socket assigned
    static Communicator  deads    = null;  // Communicators without a client socket assigned
+
+   static Communicator  execWaitingListFront = null; // Communicators waiting for a worker
+   static Communicator  execWaitingListBack = null; // Communicators waiting for a worker
 
    Communicator.State    status;
 }
