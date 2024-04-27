@@ -123,6 +123,23 @@ template ServerinoLoop(Modules...)
 
    int mainServerinoLoop(string[] args)
    {
+
+      // Docker container has a too generous limit of open files, it slows down the server
+      // NOTE: Workaround for #issue 24524
+      // NOTE: Waiting for https://github.com/dlang/phobos/pull/8990
+      version(Posix)
+      {
+         import core.sys.posix.sys.resource : rlimit, setrlimit, getrlimit, RLIMIT_NOFILE;
+         rlimit rlim;
+         getrlimit(RLIMIT_NOFILE, &rlim);
+
+         // 16k seems to be a good value that balances performance and resources
+         // until the issue is fixed
+         rlim.rlim_cur = min(rlim.rlim_max, 16_384);
+
+         setrlimit(RLIMIT_NOFILE, &rlim);
+      }
+
       // Enable terminal colors on older windows
       version(Windows)
       {
