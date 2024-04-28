@@ -130,6 +130,8 @@ template ServerinoLoop(Modules...)
       version(Posix)
       {
          import core.sys.posix.sys.resource : rlimit, setrlimit, getrlimit, RLIMIT_NOFILE;
+         import std.algorithm : min;
+
          rlimit rlim;
          getrlimit(RLIMIT_NOFILE, &rlim);
 

@@ -558,6 +558,8 @@ package:
             if(communicator.clientSkt is null)
                continue;
 
+            immutable isWriteSet = ssWrite.isSet(communicator.clientSkt);
+
             if (ssRead.isSet(communicator.clientSkt))
             {
                updates--;
@@ -568,10 +570,12 @@ package:
                   break;
             }
 
-            if (communicator.clientSkt !is null && ssWrite.isSet(communicator.clientSkt))
+            if (isWriteSet)
             {
                updates--;
-               communicator.write();
+
+               if (communicator.clientSkt !is null)
+                  communicator.write();
 
                if (updates == 0)
                   break;
