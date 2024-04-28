@@ -206,8 +206,6 @@ package class Communicator
       requestDataReceived = false;
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
-
-      hasQueuedRequests = false;
    }
 
    // If this communicator has a worker assigned, unset it
@@ -340,7 +338,7 @@ package class Communicator
    }
 
    // Read the data from the client socket and parse the incoming data
-   void read(bool fromBuffer = false)
+   void read()
    {
       import std.string: indexOf;
 
@@ -369,37 +367,28 @@ package class Communicator
 
       // Read the data from the client socket if it's not buffered
       // Set the requestDatareceived flag to true if the first data is read to check for timeouts
-      if (!fromBuffer)
+      bytesRead = clientSkt.receive(buffer);
+
+      if (bytesRead < 0)
       {
-         bytesRead = clientSkt.receive(buffer);
-
-         if (bytesRead < 0)
+         if(!wouldHaveBlocked)
          {
-            if(!wouldHaveBlocked)
-            {
-               status = State.READY;
-               log("Socket error on read. ", lastSocketError);
-               reset();
-            }
-
-            return;
-         }
-
-         if (bytesRead == 0)
-         {
-            // Connection closed.
             status = State.READY;
+            log("Socket error on read. ", lastSocketError);
             reset();
-            return;
          }
-         else if (requestDataReceived == false) requestDataReceived = true;
 
+         return;
       }
-      else
+
+      if (bytesRead == 0)
       {
-         bytesRead = 0;
-         requestDataReceived = true;
+         // Connection closed.
+         status = State.READY;
+         reset();
+         return;
       }
+      else if (requestDataReceived == false) requestDataReceived = true;
 
       auto bufferRead = buffer[0..bytesRead];
 
@@ -413,7 +402,10 @@ package class Communicator
       bool tryParse = true;
       while(tryParse)
       {
-         bool enqueueNewRequest = false;
+         // This is set to true if there's more data to parse after the current request (probably a pipelined request)
+         bool hasMoreDataToParse = false;
+
+         // Another cycle is needed if there's more data to parse or a body to read
          tryParse = false;
 
          if (status == State.READING_HEADERS)
@@ -636,9 +628,9 @@ package class Communicator
                   else
                   {
                      // No body, we can process the request
-                     requestDataReceived = false;
-                     hasQueuedRequests = leftover.length > 0;
-                     enqueueNewRequest = hasQueuedRequests;
+
+                     requestDataReceived = false; // Request completed, we can reset the timeout
+                     hasMoreDataToParse = leftover.length > 0;
 
                      pushToWaitingList(this);
 
@@ -663,15 +655,16 @@ package class Communicator
             if (request.data.length >= request.headersLength + request.contentLength)
             {
                // We read the whole body, process the request
-               requestDataReceived = false;
+
+               requestDataReceived = false; // Request completed, we can reset the timeout
+
                leftover = request.data[request.headersLength + request.contentLength..$];
                request.data = request.data[0..request.headersLength + request.contentLength];
                request.isValid = true;
 
                pushToWaitingList(this);
 
-               hasQueuedRequests = leftover.length > 0;
-               enqueueNewRequest = hasQueuedRequests;
+               hasMoreDataToParse = leftover.length > 0;
 
                if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                else status = State.READY;
@@ -679,7 +672,7 @@ package class Communicator
             }
          }
 
-         if (enqueueNewRequest)
+         if (hasMoreDataToParse)
          {
             // There's a (partial) new request in the buffer, we need to create a new request
             request.next = new ProtoRequest();
@@ -738,7 +731,6 @@ package class Communicator
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
-   bool              hasQueuedRequests = false;
    bool              requestDataReceived;
    bool              isKeepAlive;
    size_t            responseSent;

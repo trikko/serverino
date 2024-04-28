@@ -563,17 +563,18 @@ package:
                updates--;
                communicator.lastRecv = now;
                communicator.read();
-            }
-            else if(communicator.hasQueuedRequests)
-            {
-               communicator.lastRecv = now;
-               communicator.read(true);
+
+               if (updates == 0)
+                  break;
             }
 
-            if (updates > 0 && communicator.clientSkt !is null && ssWrite.isSet(communicator.clientSkt))
+            if (communicator.clientSkt !is null && ssWrite.isSet(communicator.clientSkt))
             {
                updates--;
                communicator.write();
+
+               if (updates == 0)
+                  break;
             }
          }
 
