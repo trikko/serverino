@@ -239,6 +239,8 @@ package class WorkerInfo
                {
                   // OK, we have a websocket upgrade request.
                   import std.string : indexOf, strip, split;
+                  import std.path : buildPath;
+                  import std.file : tempDir;
 
                   auto idx = data.indexOf("x-serverino-websocket:");
                   auto hdrs = data[0..idx] ~ "\r\n";
