@@ -204,15 +204,13 @@ package class WorkerInfo
       if (bytes == Socket.ERROR)
       {
          debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (socket error).");
-         setStatus(WorkerInfo.State.STOPPED);
          communicator.reset();
+         setStatus(WorkerInfo.State.STOPPED);
       }
       else if (bytes == 0)
       {
          // User closed socket.
-         if (communicator.clientSkt !is null && communicator.clientSkt.isAlive)
-            communicator.clientSkt.shutdown(SocketShutdown.BOTH);
-
+         communicator.reset();
          setStatus(WorkerInfo.State.STOPPED);
       }
       else
