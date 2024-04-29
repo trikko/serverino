@@ -202,8 +202,8 @@ struct ServerinoConfig
       enum LISTEN_IPV4 = (p == ListenerProtocol.IPV4 || p == ListenerProtocol.BOTH);
       enum LISTEN_IPV6 = (p == ListenerProtocol.IPV6 || p == ListenerProtocol.BOTH);
 
-      static if(LISTEN_IPV4) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new InternetAddress(address, port));
-      static if(LISTEN_IPV6) daemonConfig.listeners ~= Listener(daemonConfig.listeners.length, new Internet6Address(address, port));
+      static if(LISTEN_IPV4) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new InternetAddress(address, port));
+      static if(LISTEN_IPV6) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new Internet6Address(address, port));
 
       return this;
    }
@@ -248,8 +248,27 @@ import std.typecons : Typedef;
 package alias DaemonConfigPtr = Typedef!(DaemonConfig*);
 package alias WorkerConfigPtr = Typedef!(WorkerConfig*);
 
-package struct Listener
+
+package class Listener
 {
+   void onConnectionAvailable()
+   {
+      import serverino.communicator : Communicator;
+      import serverino.daemon : now;
+
+      // We have an incoming connection to handle
+      Communicator communicator;
+
+      // First: check if any idling communicator is available
+      auto dead = Communicator.deads;
+
+      if (dead !is null) communicator = dead;
+      else communicator = new Communicator(config);
+
+      communicator.lastRecv = now;
+      communicator.setClientSocket(socket.accept());
+   }
+
    @safe:
 
    @disable this();
@@ -260,6 +279,7 @@ package struct Listener
       this.index = index;
    }
 
+   DaemonConfigPtr config;
    Address  address;
    size_t   index;
 

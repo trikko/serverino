@@ -25,6 +25,13 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.daemon;
 
+version(use_select) { version=with_select; }
+else version(use_epoll) { version=with_epoll; }
+else {
+   version(linux) version=with_epoll;
+   else version=with_select;
+}
+
 import serverino.common;
 import serverino.communicator;
 import serverino.config;
@@ -38,6 +45,8 @@ import std.format : format;
 import std.socket;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
+
+version(with_epoll) import core.sys.linux.epoll;
 
 
 // The class WorkerInfo is used to keep track of the workers.
@@ -121,6 +130,13 @@ package class WorkerInfo
       ubyte[1] data;
       accepted.receive(data);
 
+      version(with_epoll)
+      {
+         import serverino.daemon : Daemon;
+         import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+         Daemon.epollAddSocket(accepted, EPOLLIN, cast(void*) this);
+      }
+
       setStatus(WorkerInfo.State.IDLING);
    }
 
@@ -137,6 +153,12 @@ package class WorkerInfo
 
       if (this.unixSocket)
       {
+         version(with_epoll)
+         {
+            import serverino.daemon : Daemon;
+            Daemon.epollRemoveSocket(unixSocket);
+         }
+
          unixSocket.shutdown(SocketShutdown.BOTH);
          unixSocket.close();
          unixSocket = null;
@@ -166,6 +188,121 @@ package class WorkerInfo
       }
    }
 
+   void onReadAvailable()
+   {
+      if (communicator is null)
+      {
+         debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (null communicator).");
+         pi.kill();
+         setStatus(WorkerInfo.State.STOPPED);
+         return;
+      }
+
+      ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
+      auto bytes = unixSocket.receive(buffer);
+
+      if (bytes == Socket.ERROR)
+      {
+         debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (socket error).");
+         setStatus(WorkerInfo.State.STOPPED);
+         communicator.reset();
+      }
+      else if (bytes == 0)
+      {
+         // User closed socket.
+         if (communicator.clientSkt !is null && communicator.clientSkt.isAlive)
+            communicator.clientSkt.shutdown(SocketShutdown.BOTH);
+
+         setStatus(WorkerInfo.State.STOPPED);
+      }
+      else
+      {
+         if (communicator.responseLength == 0)
+         {
+            WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
+            auto data = cast(char[])buffer[WorkerPayload.sizeof..bytes];
+
+            version(disable_websockets)
+            {
+               // Nothing to do here.
+            }
+            else static if(__VERSION__ < 2102)
+            {
+               pragma(msg, "-----------------------------------------------------------------------------------");
+               pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
+               pragma(msg, "Please upgrade your DMD compiler or build using `disable_websockets` version/config");
+               pragma(msg, "-----------------------------------------------------------------------------------");
+            }
+            else
+            {
+               if(wp.flags & WorkerPayload.Flags.WEBSOCKET_UPGRADE)
+               {
+                  // OK, we have a websocket upgrade request.
+                  import std.string : indexOf, strip, split;
+
+                  auto idx = data.indexOf("x-serverino-websocket:");
+                  auto hdrs = data[0..idx] ~ "\r\n";
+                  auto metadata = data[idx..$].split("\r\n");
+
+                  // Extract the UUID and the PID from the headers. We need them to communicate with the new process.
+                  auto uuid = metadata[0]["x-serverino-websocket:".length..$].strip;
+                  auto pid = metadata[1]["x-serverino-websocket-pid:".length..$].strip;
+
+                  // Create a new socket and bind it to a random address.
+                  Socket webs = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
+                  // We use a unix socket on both linux and macos/windows but ...
+                  version(linux) auto socketAddress = new UnixAddress("\0%s".format(uuid));
+                  else auto socketAddress = new UnixAddress(buildPath(tempDir, uuid));
+
+                  webs.connect(socketAddress);
+
+                  // Send socket to websocket
+                  auto toSend = communicator.clientSkt.release();
+
+                  version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
+                  else version(Windows)
+                  {
+                     WSAPROTOCOL_INFOW wi;
+                     WSADuplicateSocketW(toSend, pid.to!int, &wi);
+                     auto sent = webs.send((cast(ubyte*)&wi)[0..wi.sizeof]) > 0;
+                  }
+
+                  if (!sent)
+                  {
+                     log("Error sending socket to websocket.");
+                     webs.shutdown(SocketShutdown.BOTH);
+                     webs.close();
+                  }
+                  else
+                  {
+                     // Send address family (AF_INET or AF_INET6)
+                     ushort[1] addressFamily = [cast(ushort)communicator.clientSkt.addressFamily];
+                     webs.send(addressFamily);
+
+                     // Send worker http upgrade response
+                     webs.send(hdrs);
+
+                     version(Posix)
+                     {
+                        import core.sys.posix.unistd : close;
+                        close(toSend);
+                     }
+                  }
+
+                  communicator.unsetClientSocket();
+                  communicator.unsetWorker();
+                  return;
+               }
+            }
+
+            communicator.isKeepAlive = (wp.flags & WorkerPayload.Flags.HTTP_KEEP_ALIVE) != 0;
+            communicator.setResponseLength(wp.contentLength);
+            communicator.write(data);
+         }
+         else communicator.write(cast(char[])buffer[0..bytes]);
+      }
+   }
    // A lazy list of busy workers.
    pragma(inline, true)
    static auto ref alive() { return WorkerInfo.instances.filter!(x => x.status != WorkerInfo.State.STOPPED); }
@@ -270,10 +407,14 @@ package:
 
       tryInit!Modules();
 
+      version(with_epoll) epoll = epoll_create1(0);
+
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
       {
+
          listener.socket = new TcpSocket(listener.address.addressFamily);
+         listener.config = config;
          version(Windows) { } else { listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true); }
 
          try
@@ -300,6 +441,8 @@ package:
 
             exit(EXIT_FAILURE);
          }
+
+         version(with_epoll) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
       }
 
       // Create all workers and start the ones that are required.
@@ -311,43 +454,58 @@ package:
             worker.reinit(false);
       }
 
-      foreach(idx; 0..128)
+      foreach(idx; 0..512)
          new Communicator(config);
 
-      // We use a socketset to check for updates
-      SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
-      SocketSet ssWrite = new SocketSet(128);
+      version(with_select)
+      {
+         // We use a socketset to check for updates
+         SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
+         SocketSet ssWrite = new SocketSet(128);
+      }
 
       ready = true;
 
       while(!exitRequested)
       {
-         ssRead.reset();
-         ssWrite.reset();
 
-         // Fill socketSet with listeners, waiting for new connections.
-         foreach(ref listener; config.listeners)
-            ssRead.add(listener.socket);
-
-         // Fill socketSet with workers, waiting updates.
-         foreach(ref worker; WorkerInfo.alive)
-            ssRead.add(worker.unixSocket);
-
-         // Fill socketSet with communicators, waiting for updates.
-         for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
+         // We have to reset and fill the socketSet every time!
+         version(with_select)
          {
-            if (communicator.worker is null)
-               ssRead.add(communicator.clientSkt);
+            ssRead.reset();
+            ssWrite.reset();
 
-            if (!communicator.completed)
-               ssWrite.add(communicator.clientSkt);
+            // Fill socketSet with listeners, waiting for new connections.
+            foreach(ref listener; config.listeners)
+               ssRead.add(listener.socket);
+
+            // Fill socketSet with workers, waiting updates.
+            foreach(ref worker; WorkerInfo.alive)
+               ssRead.add(worker.unixSocket);
+
+            // Fill socketSet with communicators, waiting for updates.
+            for(auto communicator = Communicator.alives; communicator !is null; communicator = communicator.next )
+            {
+               if (communicator.worker is null)
+                  ssRead.add(communicator.clientSkt);
+
+               if (!communicator.completed)
+                  ssWrite.add(communicator.clientSkt);
+            }
+
+
+            long updates = -1;
+            try { updates = Socket.select(ssRead, ssWrite, null, 1.seconds); }
+            catch (SocketException se) {
+               import std.experimental.logger : warning;
+               warning("Exception: ", se.msg);
+            }
          }
-
-         long updates = -1;
-         try { updates = Socket.select(ssRead, ssWrite, null, 1.seconds); }
-         catch (SocketException se) {
-            import std.experimental.logger : warning;
-            warning("Exception: ", se.msg);
+         else version(with_epoll)
+         {
+            enum MAX_EPOLL_EVENTS = 1500;
+            epoll_event[MAX_EPOLL_EVENTS] events = void;
+            long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, 1000);
          }
 
          now = CoarseTime.currTime;
@@ -422,163 +580,108 @@ package:
          }
          else if (updates == 0) continue;
 
-         // Check the workers for updates
-         foreach(ref worker; WorkerInfo.alive)
+         // ------------------------
+         // Select version main loop
+         // ------------------------
+
+         version(with_select)
          {
-            if (updates == 0)
-               break;
-
-            Communicator communicator = worker.communicator;
-
-            if (ssRead.isSet(worker.unixSocket))
+            // Check the workers for updates
+            foreach(ref worker; WorkerInfo.alive)
             {
-               --updates;
+               if (updates == 0)
+                  break;
 
-               if (communicator is null)
+               if (ssRead.isSet(worker.unixSocket))
                {
-                  debug warning("Worker #" ~ worker.pi.id.to!string  ~ " exited/terminated/killed (null communicator).");
-                  worker.pi.kill();
-                  worker.setStatus(WorkerInfo.State.STOPPED);
+                  --updates;
+                  worker.onReadAvailable();
+               }
+            }
+
+            // Check the communicators for updates
+            for(auto communicator = Communicator.alives; communicator !is null;)
+            {
+               auto next = communicator.next;
+               scope(exit) communicator = next;
+
+               if(communicator.clientSkt is null)
                   continue;
+
+               immutable isWriteSet = ssWrite.isSet(communicator.clientSkt);
+
+
+               if (ssRead.isSet(communicator.clientSkt))
+               {
+                  updates--;
+                  communicator.onReadAvailable();
+
+                  if (updates == 0)
+                     break;
                }
 
-               ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
-               auto bytes = worker.unixSocket.receive(buffer);
-
-               if (bytes == Socket.ERROR)
+               if (isWriteSet)
                {
-                  debug warning("Worker #" ~ worker.pi.id.to!string  ~ " exited/terminated/killed (socket error).");
-                  worker.setStatus(WorkerInfo.State.STOPPED);
-                  communicator.reset();
+                  updates--;
+
+                  if (communicator.clientSkt !is null)
+                     communicator.onWriteAvailable();
+
+                  if (updates == 0)
+                     break;
                }
-               else if (bytes == 0)
+            }
+
+            // Check for new incoming connections.
+            foreach(ref listener; config.listeners)
+            {
+               if (updates == 0)
+                  break;
+
+               if (ssRead.isSet(listener.socket))
                {
-                  worker.setStatus(WorkerInfo.State.STOPPED);
-
-                  // User closed socket.
-                  if (communicator.clientSkt !is null && communicator.clientSkt.isAlive)
-                     communicator.clientSkt.shutdown(SocketShutdown.BOTH);
-               }
-               else
-               {
-                  if (communicator.responseLength == 0)
-                  {
-                     WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
-                     auto data = cast(char[])buffer[WorkerPayload.sizeof..bytes];
-
-                     version(disable_websockets)
-                     {
-                        // Nothing to do here.
-                     }
-                     else static if(__VERSION__ < 2102)
-                     {
-                        pragma(msg, "-----------------------------------------------------------------------------------");
-                        pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
-                        pragma(msg, "Please upgrade your DMD compiler or build using `disable_websockets` version/config");
-                        pragma(msg, "-----------------------------------------------------------------------------------");
-                     }
-                     else
-                     {
-                        if(wp.flags & WorkerPayload.Flags.WEBSOCKET_UPGRADE)
-                        {
-                           // OK, we have a websocket upgrade request.
-                           import std.string : indexOf, strip, split;
-
-                           auto idx = data.indexOf("x-serverino-websocket:");
-                           auto hdrs = data[0..idx] ~ "\r\n";
-                           auto metadata = data[idx..$].split("\r\n");
-
-                           // Extract the UUID and the PID from the headers. We need them to communicate with the new process.
-                           auto uuid = metadata[0]["x-serverino-websocket:".length..$].strip;
-                           auto pid = metadata[1]["x-serverino-websocket-pid:".length..$].strip;
-
-                           // Create a new socket and bind it to a random address.
-                           Socket webs = new Socket(AddressFamily.UNIX, SocketType.STREAM);
-
-                           // We use a unix socket on both linux and macos/windows but ...
-                           version(linux) auto socketAddress = new UnixAddress("\0%s".format(uuid));
-                           else auto socketAddress = new UnixAddress(buildPath(tempDir, uuid));
-
-                           webs.connect(socketAddress);
-
-                           // Send socket to websocket
-                           auto toSend = communicator.clientSkt.release();
-
-                           version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
-                           else version(Windows)
-                           {
-                              WSAPROTOCOL_INFOW wi;
-                              WSADuplicateSocketW(toSend, pid.to!int, &wi);
-                              auto sent = webs.send((cast(ubyte*)&wi)[0..wi.sizeof]) > 0;
-                           }
-
-                           if (!sent)
-                           {
-                              log("Error sending socket to websocket.");
-                              webs.shutdown(SocketShutdown.BOTH);
-                              webs.close();
-                           }
-                           else
-                           {
-                              // Send address family (AF_INET or AF_INET6)
-                              ushort[1] addressFamily = [cast(ushort)communicator.clientSkt.addressFamily];
-                              webs.send(addressFamily);
-
-                              // Send worker http upgrade response
-                              webs.send(hdrs);
-
-                              version(Posix)
-                              {
-                                 import core.sys.posix.unistd : close;
-                                 close(toSend);
-                              }
-                           }
-
-                           communicator.unsetClientSocket();
-                           communicator.unsetWorker();
-                           continue;
-                        }
-                     }
-
-                     communicator.isKeepAlive = (wp.flags & WorkerPayload.Flags.HTTP_KEEP_ALIVE) != 0;
-                     communicator.setResponseLength(wp.contentLength);
-                     communicator.write(data);
-                  }
-                  else communicator.write(cast(char[])buffer[0..bytes]);
+                  updates--;
+                  listener.onConnectionAvailable();
                }
             }
          }
 
-         // Check the communicators for updates
-         for(auto communicator = Communicator.alives; communicator !is null;)
+         // ------------------------
+         // epoll version main loop
+         // ------------------------
+
+         else version(with_epoll)
          {
-            auto next = communicator.next;
-            scope(exit) communicator = next;
-
-            if(communicator.clientSkt is null)
-               continue;
-
-            immutable isWriteSet = ssWrite.isSet(communicator.clientSkt);
-
-            if (ssRead.isSet(communicator.clientSkt))
+            foreach(ref epoll_event e; events[0..updates])
             {
-               updates--;
-               communicator.lastRecv = now;
-               communicator.read();
+               Object o = cast(Object) e.data.ptr;
 
-               if (updates == 0)
-                  break;
-            }
+               Communicator communicator = cast(Communicator)(o);
+               if (communicator !is null)
+               {
+                  if (communicator.clientSkt !is null && (e.events & EPOLLIN) > 0)
+                     communicator.onReadAvailable();
 
-            if (isWriteSet)
-            {
-               updates--;
+                  if (communicator.clientSkt !is null && (e.events & EPOLLOUT) > 0)
+                     communicator.onWriteAvailable();
 
-               if (communicator.clientSkt !is null)
-                  communicator.write();
+                  continue;
+               }
 
-               if (updates == 0)
-                  break;
+               WorkerInfo worker = cast(WorkerInfo)(o);
+               if (worker !is null)
+               {
+                  worker.onReadAvailable();
+                  continue;
+               }
+
+               Listener listener = cast(Listener)(o);
+               if (listener !is null)
+               {
+                  listener.onConnectionAvailable();
+                  continue;
+               }
+
             }
          }
 
@@ -589,47 +692,24 @@ package:
          // We have communicators waiting for a worker.
          while(Communicator.execWaitingListFront !is null)
          {
-             if (!availableWorkers.empty)
-             {
+            if (!availableWorkers.empty)
+            {
                auto communicator = Communicator.popFromWaitingList();
 
                communicator.setWorker(availableWorkers.front);
                availableWorkers.popFront;
-             }
-             else if(!deadWorkers.empty)
-             {
+            }
+            else if(!deadWorkers.empty)
+            {
                auto communicator = Communicator.popFromWaitingList();
 
                deadWorkers.front.reinit(true);
                communicator.setWorker(deadWorkers.front);
                deadWorkers.popFront;
-             }
-             else break; // All workers are busy. We'll try again later.
-         }
-
-         // Check for new incoming connections.
-         foreach(ref listener; config.listeners)
-         {
-            if (updates == 0)
-               break;
-
-            if (ssRead.isSet(listener.socket))
-            {
-               updates--;
-
-               // We have an incoming connection to handle
-               Communicator communicator;
-
-               // First: check if any idling communicator is available
-               auto dead = Communicator.deads;
-
-               if (dead !is null) communicator = dead;
-               else communicator = new Communicator(config);
-
-               communicator.lastRecv = now;
-               communicator.setClientSocket(listener.socket.accept());
             }
+            else break; // All workers are busy. We'll try again later.
          }
+
 
       }
 
@@ -664,6 +744,40 @@ package:
       exit(0);
    }
 
+
+   version(with_epoll)
+   {
+
+      void epollAddSocket(Socket s, int events, void* ptr)
+      {
+         epoll_event evt;
+         evt.events = EPOLLIN;
+         evt.data.ptr = ptr;
+
+         auto res = epoll_ctl(epoll, EPOLL_CTL_ADD, s.handle, &evt);
+         assert(res == 0);
+      }
+
+      void epollRemoveSocket(Socket s)
+      {
+         epoll_ctl(epoll, EPOLL_CTL_DEL, s.handle, null);
+      }
+
+/*
+      // Not used at the moment.
+      void epollEditSocket(Socket s, int events, void* ptr)
+      {
+         epoll_event evt;
+         evt.events = events;
+         evt.data.ptr = ptr;
+
+         auto res = epoll_ctl(epoll, EPOLL_CTL_MOD, s.handle, &evt);
+         assert(res == 0);
+      }
+*/
+
+      int epoll;
+   }
 __gshared:
 
    string[string] workerEnvironment;

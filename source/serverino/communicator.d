@@ -25,6 +25,13 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.communicator;
 
+version(use_select) { version=with_select; }
+else version(use_epoll) { version=with_epoll; }
+else {
+   version(linux) version=with_epoll;
+   else version=with_select;
+}
+
 import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now;
@@ -135,6 +142,14 @@ package class Communicator
 
       if (this.clientSkt !is null)
       {
+         import serverino.daemon : Daemon;
+
+         version(with_epoll)
+         {
+            import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+            Daemon.epollRemoveSocket(clientSkt);
+         }
+
          // Remove the communicator from the list of alives
          if (prev !is null) prev.next = next;
          else alives = next;
@@ -171,9 +186,16 @@ package class Communicator
          alives = this;
 
          s.blocking = false;
-      }
+         this.clientSkt = s;
 
-      this.clientSkt = s;
+         version(with_epoll)
+         {
+            import serverino.daemon : Daemon;
+            import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+            Daemon.epollAddSocket(s, EPOLLIN | EPOLLOUT, cast(void*) this);
+         }
+      }
+      else assert(false);
    }
 
    // Reset the communicator to the initial state and clear the requests queue
@@ -245,7 +267,7 @@ package class Communicator
    }
 
    // Write the buffered data to the client socket
-   void write()
+   void onWriteAvailable()
    {
       auto maxToSend = bufferSent + DEFAULT_BUFFER_SIZE;
       if (maxToSend > sendBuffer.length) maxToSend = sendBuffer.length;
@@ -333,12 +355,12 @@ package class Communicator
       else
       {
          sendBuffer.append(data);
-         write();
+         onWriteAvailable();
       }
    }
 
    // Read the data from the client socket and parse the incoming data
-   void read()
+   void onReadAvailable()
    {
       import std.string: indexOf;
 
@@ -368,6 +390,7 @@ package class Communicator
       // Read the data from the client socket if it's not buffered
       // Set the requestDatareceived flag to true if the first data is read to check for timeouts
       bytesRead = clientSkt.receive(buffer);
+      lastRecv = now;
 
       if (bytesRead < 0)
       {
