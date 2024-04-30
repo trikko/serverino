@@ -400,8 +400,8 @@ package class Communicator
 
             version(Posix)
             {
-               import core.stdc.errno;
-               if (errno != 104) log("Socket error on read. ", lastSocketError);
+               import core.stdc.errno : errno, ECONNRESET;
+               if (errno != ECONNRESET) log("Socket error on read. ", lastSocketError);
                else debug log("Socket error on read. ", lastSocketError);
             }
             else debug log("Socket error on read. ", lastSocketError);
