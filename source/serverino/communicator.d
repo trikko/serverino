@@ -228,6 +228,16 @@ package class Communicator
       requestDataReceived = false;
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
+
+      // Remove from the waiting list, if it is there
+      if (nextWaiting !is null) nextWaiting.prevWaiting = prevWaiting;
+      else execWaitingListBack = prevWaiting;
+
+      if (prevWaiting !is null) prevWaiting.nextWaiting = nextWaiting;
+      else execWaitingListFront = nextWaiting;
+
+      nextWaiting = null;
+      prevWaiting = null;
    }
 
    // If this communicator has a worker assigned, unset it

@@ -696,22 +696,23 @@ package:
             {
                auto communicator = Communicator.popFromWaitingList();
 
-               if(communicator.requestToProcess !is null)
-               {
-                  communicator.setWorker(availableWorkers.front);
-                  availableWorkers.popFront;
-               }
+               assert(communicator.requestToProcess !is null);
+
+               communicator.setWorker(availableWorkers.front);
+               availableWorkers.popFront;
+
             }
             else if(!deadWorkers.empty)
             {
                auto communicator = Communicator.popFromWaitingList();
 
-               if(communicator.requestToProcess !is null)
-               {
-                  deadWorkers.front.reinit(true);
-                  communicator.setWorker(deadWorkers.front);
-                  deadWorkers.popFront;
-               }
+
+               assert(communicator.requestToProcess !is null);
+
+               deadWorkers.front.reinit(true);
+               communicator.setWorker(deadWorkers.front);
+               deadWorkers.popFront;
+
             }
             else break; // All workers are busy. We'll try again later.
          }
