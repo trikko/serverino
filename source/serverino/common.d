@@ -27,6 +27,28 @@ module serverino.common;
 
 import std.datetime : MonoTimeImpl, ClockType;
 
+// Serverino can be built using two different backends: select or epoll
+public enum BackendType
+{
+   select,
+   epoll
+}
+
+// The backend is selected using the version directive or by checking the OS
+version(use_select) { enum Backend = BackendType.select; }
+else version(use_epoll) { enum Backend = BackendType.epoll; }
+else {
+   version(linux) enum Backend = BackendType.epoll;
+   else enum Backend = BackendType.select;
+}
+
+static if(Backend == BackendType.epoll)
+{
+	version(linux) { }
+	else static assert(false, "epoll backend is only available on Linux");
+}
+
+// The time type used in the serverino library
 alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 // Serverino version

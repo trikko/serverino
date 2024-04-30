@@ -25,13 +25,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 module serverino.communicator;
 
-version(use_select) { version=with_select; }
-else version(use_epoll) { version=with_epoll; }
-else {
-   version(linux) version=with_epoll;
-   else version=with_select;
-}
-
 import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now;
@@ -144,7 +137,7 @@ package class Communicator
       {
          import serverino.daemon : Daemon;
 
-         version(with_epoll)
+         static if (serverino.common.Backend == BackendType.epoll)
          {
             import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
             Daemon.epollRemoveSocket(clientSkt);
@@ -188,7 +181,7 @@ package class Communicator
          s.blocking = false;
          this.clientSkt = s;
 
-         version(with_epoll)
+         static if (serverino.common.Backend == BackendType.epoll)
          {
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
