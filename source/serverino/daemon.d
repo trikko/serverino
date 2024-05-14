@@ -751,7 +751,7 @@ package:
       void epollAddSocket(Socket s, int events, void* ptr)
       {
          epoll_event evt;
-         evt.events = EPOLLIN;
+         evt.events = events;
          evt.data.ptr = ptr;
 
          auto res = epoll_ctl(epoll, EPOLL_CTL_ADD, s.handle, &evt);
