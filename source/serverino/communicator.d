@@ -135,11 +135,9 @@ package class Communicator
 
       if (this.clientSkt !is null)
       {
-         import serverino.daemon : Daemon;
-
          static if (serverino.common.Backend == BackendType.epoll)
          {
-            import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+            import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(clientSkt);
          }
 

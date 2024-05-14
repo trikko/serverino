@@ -126,7 +126,7 @@ package class WorkerInfo
       static if (serverino.common.Backend == BackendType.epoll)
       {
          import serverino.daemon : Daemon;
-         import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+         import core.sys.linux.epoll : EPOLLIN;
          Daemon.epollAddSocket(accepted, EPOLLIN, cast(void*) this);
       }
 
