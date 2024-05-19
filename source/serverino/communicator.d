@@ -234,6 +234,15 @@ package class Communicator
    // If this communicator has a worker assigned, unset it
    void unsetWorker()
    {
+      static if(serverino.common.Backend == BackendType.epoll)
+      {
+         if (clientSkt !is null && hasBuffer)
+         {
+            import serverino.daemon : Daemon;
+            import core.sys.linux.epoll : EPOLLIN;
+            Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
+         }
+      }
 
       if (this.worker !is null && this.worker.communicator is this)
       {
@@ -241,6 +250,7 @@ package class Communicator
          this.worker.setStatus(WorkerInfo.State.IDLING);
       }
 
+      hasBuffer      = false;
       this.worker    = null;
       lastRequest    = now;
       responseLength = 0;
@@ -322,6 +332,7 @@ package class Communicator
 
       if (sendBuffer.length == 0)
       {
+         bool hasMoreData = true;
          auto sent = clientSkt.send(data);
 
          if (sent == Socket.ERROR)
@@ -338,6 +349,18 @@ package class Communicator
          {
             responseSent += sent;
             if (sent < data.length) sendBuffer.append(data[sent..data.length]);
+            else hasMoreData = false;
+         }
+
+         static if(serverino.common.Backend == BackendType.epoll)
+         {
+            if (hasMoreData)
+            {
+               hasBuffer = true;
+               import serverino.daemon : Daemon;
+               import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+               Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
+            }
          }
 
          // If the response is completed, unset the worker
@@ -763,6 +786,7 @@ package class Communicator
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
+   bool              hasBuffer = false;
    bool              requestDataReceived;
    bool              isKeepAlive;
    size_t            responseSent;
