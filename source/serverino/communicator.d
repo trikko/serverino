@@ -183,7 +183,7 @@ package class Communicator
          {
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
-            Daemon.epollAddSocket(s, EPOLLIN | EPOLLOUT, cast(void*) this);
+            Daemon.epollAddSocket(s, EPOLLIN, cast(void*) this);
          }
       }
       else assert(false);
