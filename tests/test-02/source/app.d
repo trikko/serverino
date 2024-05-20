@@ -113,7 +113,7 @@ mixin ServerinoMain;
    f.write(buffer);
    f.close();
 
-   o.serveFile!true("pizza.txt");
+   o.serveFile!(OnFileServed.deleteFile)("pizza.txt");
 }
 
 @route!"/buffered"
