@@ -640,7 +640,26 @@ struct Worker
                      output._internal._sendBody = false;
                   }
 
-                  return WorkerPayload.Flags.HTTP_RESPONSE_INLINE | (output._internal._keepAlive?WorkerPayload.Flags.HTTP_KEEP_ALIVE:0);
+                  WorkerPayload.Flags flags = (output._internal._keepAlive?WorkerPayload.Flags.HTTP_KEEP_ALIVE:WorkerPayload.Flags.init);
+
+                  if (output._internal._sendFile.length == 0)
+                  {
+                     if(output._internal._sendBuffer.length > 1024*1024)
+                        warning("Sending a big response. Consider using `serveFile` to avoid memory issues.");
+
+                     flags |= WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
+                  }
+                  else
+                  {
+                     flags |= WorkerPayload.Flags.HTTP_RESPONSE_FILE;
+                     output._internal._sendBuffer.clear();
+                     output._internal._sendBuffer.append(output._internal._sendFile);
+
+                     if (output._internal._deleteOnClose)
+                        flags |= WorkerPayload.Flags.HTTP_RESPONSE_FILE_DELETE;
+                  }
+
+                  return flags;
 
                }
 

@@ -88,6 +88,34 @@ mixin ServerinoMain;
    exit(1);
 }
 
+@route!"/serveKeep"
+@endpoint void servingKeep(Request r, Output o)
+{
+   char[] buffer;
+   buffer.length = 1024*1024*10;
+   buffer[] = '\n';
+
+   File f = File("pizza.txt", "w+");
+   f.write(buffer);
+   f.close();
+
+   o.serveFile("pizza.txt");
+}
+
+@route!"/serveDelete"
+@endpoint void servingDelete(Request r, Output o)
+{
+   char[] buffer;
+   buffer.length = 1024*1024*10;
+   buffer[] = '\n';
+
+   File f = File("pizza.txt", "w+");
+   f.write(buffer);
+   f.close();
+
+   o.serveFile!true("pizza.txt");
+}
+
 @route!"/buffered"
 @endpoint void buffered(Request r, Output o)
 {
@@ -164,6 +192,70 @@ ServerinoConfig conf()
 
 void test()
 {
+   info("Serving file");
+   {
+      auto req = "GET /serveKeep HTTP/1.0\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(req);
+
+      char[] buffer;
+      char[] data;
+
+      data.reserve = 1024*1024*10;
+      buffer.length = 4096;
+
+      while(true)
+      {
+         auto ln = sck.receive(buffer);
+         if (ln <= 0) break;
+         data ~= buffer[0..ln];
+      }
+
+      auto headers = "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 10485760\r\ncontent-type: text/plain\r\n\r\n";
+      assert(data.startsWith(headers), "LEN: " ~ data.length.to!string ~ " " ~ data.take(1024).to!string);
+
+      data = data[headers.length..$];
+      import std.digest.md;
+      auto md5 = md5Of(data).toHexString().dup.toLower();
+      assert(md5 == "ecce263106eaa75fa87c463fc197bf8c", md5);
+      assert(exists("pizza.txt"));
+      std.file.remove("pizza.txt");
+   }
+
+   {
+      auto req = "GET /serveDelete HTTP/1.0\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(req);
+
+      char[] buffer;
+      char[] data;
+
+      data.reserve = 1024*1024*10;
+      buffer.length = 4096;
+
+      while(true)
+      {
+         auto ln = sck.receive(buffer);
+
+         if (ln <= 0) break;
+
+         data ~= buffer[0..ln];
+      }
+
+      auto headers = "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 10485760\r\ncontent-type: text/plain\r\n\r\n";
+      assert(data.startsWith(headers), data.take(1024).to!string);
+
+      data = data[headers.length..$];
+      import std.digest.md;
+      auto md5 = md5Of(data).toHexString().dup.toLower();
+      assert(md5 == "ecce263106eaa75fa87c463fc197bf8c", md5);
+      assert(!exists("pizza.txt"));
+   }
+
    info("Buffered send");
    {
       auto req = "GET /buffered HTTP/1.0\r\n\r\n";

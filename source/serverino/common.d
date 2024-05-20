@@ -64,7 +64,7 @@ package struct WorkerPayload
 	{
 		HTTP_RESPONSE_INLINE = 1 << 0,
 		HTTP_RESPONSE_FILE = 1 << 1,
-		HTTP_DELETE_FILE = 1 << 2,
+		HTTP_RESPONSE_FILE_DELETE = 1 << 2,
 		HTTP_KEEP_ALIVE = 1 << 3,
 		WEBSOCKET_UPGRADE = 1 << 4
 	}

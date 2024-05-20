@@ -290,8 +290,18 @@ package class WorkerInfo
             }
 
             communicator.isKeepAlive = (wp.flags & WorkerPayload.Flags.HTTP_KEEP_ALIVE) != 0;
-            communicator.setResponseLength(wp.contentLength);
-            communicator.write(data);
+            communicator.isSendFile = (wp.flags & WorkerPayload.Flags.HTTP_RESPONSE_FILE) != 0;
+
+            if (communicator.isSendFile)
+            {
+               auto deleteOnClose = (wp.flags & WorkerPayload.Flags.HTTP_RESPONSE_FILE_DELETE) != 0;
+               communicator.writeFile(data, deleteOnClose);
+            }
+            else
+            {
+               communicator.setResponseLength(wp.contentLength);
+               communicator.write(data);
+            }
          }
          else communicator.write(cast(char[])buffer[0..bytes]);
       }

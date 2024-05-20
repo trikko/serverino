@@ -35,6 +35,8 @@ import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;
 import std.experimental.logger : log, info, warning;
+import std.stdio : File;
+import std.file : getSize;
 
 extern(C) long syscall(long number, ...);
 
@@ -242,6 +244,8 @@ package class Communicator
             import core.sys.linux.epoll : EPOLLIN;
             Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
          }
+
+         hasBuffer = false;
       }
 
       if (this.worker !is null && this.worker.communicator is this)
@@ -250,11 +254,29 @@ package class Communicator
          this.worker.setStatus(WorkerInfo.State.IDLING);
       }
 
-      hasBuffer      = false;
+      if (file.isOpen)
+      {
+         try { file.close(); }
+         catch (Exception e) { warning("Error closing file: ", e.msg); }
+
+         file = File.init;
+      }
+
+      if (fileToDelete.length > 0)
+      {
+         try {
+            import std.file : remove;
+            remove(fileToDelete);
+            fileToDelete = null;
+         }
+         catch (Exception e) { warning("Error deleting file: ", e.msg); }
+      }
+
       this.worker    = null;
       lastRequest    = now;
       responseLength = 0;
       responseSent   = 0;
+      isSendFile     = false;
    }
 
    // Assign a worker to the communicator
@@ -280,53 +302,151 @@ package class Communicator
    // Write the buffered data to the client socket
    void onWriteAvailable()
    {
-      auto maxToSend = bufferSent + DEFAULT_BUFFER_SIZE;
-      if (maxToSend > sendBuffer.length) maxToSend = sendBuffer.length;
-
-      if (maxToSend == 0)
-         return;
-
-      immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
-
-      if (sent == Socket.ERROR)
+      if (isSendFile)
       {
-         if(!wouldHaveBlocked)
+         if (file.eof && sendBuffer.length == 0)
          {
-            log("Socket Error");
-            reset();
+            unsetWorker();
+
+            if (requestToProcess !is null && requestToProcess.isValid)
+                  Communicator.pushToWaitingList(this);
+
+            if (!isKeepAlive)
+               reset();
+
+            return;
+         }
+         else if (sendBuffer.length > 0)
+         {
+            immutable sent = clientSkt.send(sendBuffer.array[0..$]);
+
+            if (sent == Socket.ERROR)
+            {
+               if(!wouldHaveBlocked)
+               {
+                  log("Socket Error");
+                  reset();
+                  return;
+               }
+            }
+            else
+            {
+               auto leftover = sendBuffer.array[sent..$];
+               sendBuffer.clear();
+               sendBuffer.append(leftover);
+            }
+
+            if (sendBuffer.length < DEFAULT_BUFFER_SIZE)
+            {
+               if (!file.eof)
+               {
+                  char[DEFAULT_BUFFER_SIZE] buffer;
+                  char[] read;
+                  try { read = file.rawRead(buffer); }
+                  catch (Exception e) { warning("Error reading file: ", e.msg); reset(); return; }
+                  sendBuffer.append(read);
+               }
+            }
+
          }
       }
       else
       {
-         bufferSent += sent;
-         responseSent += sent;
-         if(bufferSent == sendBuffer.length)
-         {
-            if(hasBuffer)
-            {
-               hasBuffer = false;
-               import serverino.daemon : Daemon;
-               import core.sys.linux.epoll : EPOLLIN;
-               Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
-            }
+         auto maxToSend = bufferSent + DEFAULT_BUFFER_SIZE;
+         if (maxToSend > sendBuffer.length) maxToSend = sendBuffer.length;
 
-            bufferSent = 0;
-            sendBuffer.clear();
+         if (maxToSend == 0)
+            return;
+
+         immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
+
+         if (sent == Socket.ERROR)
+         {
+            if(!wouldHaveBlocked)
+            {
+               log("Socket Error");
+               reset();
+               return;
+            }
+         }
+         else
+         {
+            bufferSent += sent;
+            responseSent += sent;
+
+            if(bufferSent == sendBuffer.length)
+            {
+               static if (serverino.common.Backend == BackendType.epoll)
+                  if(hasBuffer)
+                  {
+                     hasBuffer = false;
+                     import serverino.daemon : Daemon;
+                     import core.sys.linux.epoll : EPOLLIN;
+                     Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
+                  }
+
+               bufferSent = 0;
+               sendBuffer.clear();
+            }
+         }
+
+         // If the response is completed, unset the worker
+         // and if the client is not keep alive, reset the communicator
+         if (completed())
+         {
+            unsetWorker();
+
+            if (requestToProcess !is null && requestToProcess.isValid)
+                  Communicator.pushToWaitingList(this);
+
+            if (!isKeepAlive)
+               reset();
          }
       }
+   }
 
-      // If the response is completed, unset the worker
-      // and if the client is not keep alive, reset the communicator
-      if (completed())
+   void writeFile(scope char[] data, bool deleteOnClose)
+   {
+      import std.string : indexOf, strip;
+
+      if (clientSkt is null)
       {
-         unsetWorker();
-
-         if (requestToProcess !is null && requestToProcess.isValid)
-               Communicator.pushToWaitingList(this);
-
-         if (!isKeepAlive)
-            reset();
+         reset();
+         return;
       }
+
+      // Get the file name from the data, after the http headers
+      auto headers = data[0..data.indexOf("\r\n\r\n") + 4];
+      auto fileName = data[headers.length..$].strip;
+
+      // Open the file
+      try { file = File(fileName, "r"); }
+      catch(Exception e) { file = File.init; warning("Error opening file: ", e.msg); }
+
+      if (!file.isOpen)
+      {
+         clientSkt.send("HTTP/1.0 404 Not Found\r\n");
+         reset();
+         return;
+      }
+
+      if (deleteOnClose)
+         fileToDelete = fileName.to!string;
+
+      responseLength = file.size + headers.length;
+
+      sendBuffer.append(headers);
+
+      static if(serverino.common.Backend == BackendType.epoll)
+      {
+
+         hasBuffer = true;
+         import serverino.daemon : Daemon;
+         import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+         Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
+
+      }
+
    }
 
    // Try to write the data to the client socket, it buffers the data if the socket is not ready
@@ -795,9 +915,17 @@ package class Communicator
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
-   bool              hasBuffer = false;
+   static if(serverino.common.Backend == BackendType.epoll)
+   {
+      bool           hasBuffer = false;
+   }
+
    bool              requestDataReceived;
    bool              isKeepAlive;
+   bool              isSendFile        = false;
+   string            fileToDelete      = null;
+   File              file;
+
    size_t            responseSent;
    size_t            responseLength;
    size_t            id;

@@ -920,8 +920,13 @@ struct Output
    /// Ditto
    @safe void addHeader(in string key, in SysTime time) { addHeader(key, toHTTPDate(time)); }
 
-   /// You can reply with a file. Automagical mime-type detection.
-   bool serveFile(const string path, bool guessMime = true)
+   /** Serve a file from disk. If you want to delete the file after serving it, use `serveFile!(OnFileServed.deleteFile)`.
+    * ---
+    * // Serve a file from disk
+    * output.serveFile("path/to/file.html");
+    * ---
+    */
+   bool serveFile(OnFileServed action = OnFileServed.keepFile)(const string path, bool guessMime = true)
    {
       _internal._dirty = true;
 
@@ -938,9 +943,6 @@ struct Output
 
          return false;
       }
-
-      size_t fs = path.getSize().to!size_t;
-      _internal._headers ~= KeyValue("content-length", fs.to!string);
 
       if (!_internal._headers.canFind!(x=>x.key == "content-type"))
       {
@@ -993,20 +995,11 @@ struct Output
          addHeader("content-type", header);
       }
 
-      ubyte[] buffer;
-      buffer.length = fs;
-      File toSend = File(path, "r");
+      import std.path : absolutePath;
 
-      auto bytesRead = toSend.rawRead(buffer);
+      _internal._deleteOnClose = action == OnFileServed.deleteFile;
+      _internal._sendFile = absolutePath(path);
 
-      if (bytesRead.length != fs)
-      {
-         sendData("HTTP/1.0 500 Internal server error\r\n");
-         return false;
-      }
-
-      //sendHeaders();
-      sendData(bytesRead);
       return true;
     }
 
@@ -1105,10 +1098,12 @@ struct Output
       DataBuffer!char _sendBuffer;
       DataBuffer!char _headersBuffer;
       string          _buffer;
+      string          _sendFile;
       Socket          _channel;
       bool            _flushed;
       bool            _sendBody;
       bool            _websocket;
+      bool            _deleteOnClose;
 
 
       @safe void buildHeaders()
@@ -1149,7 +1144,13 @@ struct Output
             if (!_keepAlive) _headersBuffer.append("connection: close\r\n");
             else _headersBuffer.append("connection: keep-alive\r\n");
 
-            if (!_sendBody) _headersBuffer.append("content-length: 0\r\n");
+            if (_sendFile.length > 0)
+            {
+               import std.file : getSize;
+               size_t fs = _sendFile.getSize().to!size_t;
+               _headersBuffer.append("content-length: " ~ fs.to!string ~ "\r\n");
+            }
+            else if (!_sendBody) _headersBuffer.append("content-length: 0\r\n");
             else _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
          }
 
@@ -1215,6 +1216,8 @@ struct Output
          _sendBuffer.clear();
          _sendBody = true;
          _websocket = false;
+         _sendFile = null;
+         _deleteOnClose = false;
       }
    }
 
@@ -1707,4 +1710,11 @@ class WebSocket
 
    __gshared  string _killReason = string.init;
    __gshared  bool   _kill = false;
+}
+
+/// Used by Output.serveFile
+enum OnFileServed
+{
+   keepFile,   /// Keep the file on disk
+   deleteFile  /// Delete the file after sending it
 }
