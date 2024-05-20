@@ -763,7 +763,6 @@ package:
          epoll_ctl(epoll, EPOLL_CTL_DEL, s.handle, null);
       }
 
-
       void epollEditSocket(Socket s, int events, void* ptr)
       {
          epoll_event evt;

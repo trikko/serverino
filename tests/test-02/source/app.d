@@ -88,6 +88,16 @@ mixin ServerinoMain;
    exit(1);
 }
 
+@route!"/buffered"
+@endpoint void buffered(Request r, Output o)
+{
+   char[] buffer;
+   buffer.length = 1024*1024*10;
+   buffer[] = '\n';
+
+   o ~= buffer;
+}
+
 @route!(x => x.uri.startsWith("/echo/"))
 @endpoint void echo(Request r, Output o)
 {
@@ -154,6 +164,39 @@ ServerinoConfig conf()
 
 void test()
 {
+   info("Buffered send");
+   {
+      auto req = "GET /buffered HTTP/1.0\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(req);
+
+      char[] buffer;
+      char[] data;
+
+      buffer.length = 4096;
+
+      {
+         auto ln = sck.receive(buffer);
+
+         if (ln > 0)
+            data ~= buffer[0..ln];
+      }
+
+      Thread.sleep(100.msecs);
+
+      while(true)
+      {
+         auto ln = sck.receive(buffer);
+
+         if (ln <= 0) break;
+
+         data ~= buffer[0..ln];
+      }
+      assert(data.startsWith("HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length:"), data.take(1024).to!string);
+   }
+
    info("minimal HTTP/1.0");
    {
       auto req = "GET /simple HTTP/1.0\r\n\r\n";

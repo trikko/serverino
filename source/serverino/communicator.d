@@ -182,7 +182,7 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.epoll)
          {
             import serverino.daemon : Daemon;
-            import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+            import core.sys.linux.epoll : EPOLLIN;
             Daemon.epollAddSocket(s, EPOLLIN, cast(void*) this);
          }
       }
@@ -302,6 +302,14 @@ package class Communicator
          responseSent += sent;
          if(bufferSent == sendBuffer.length)
          {
+            if(hasBuffer)
+            {
+               hasBuffer = false;
+               import serverino.daemon : Daemon;
+               import core.sys.linux.epoll : EPOLLIN;
+               Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
+            }
+
             bufferSent = 0;
             sendBuffer.clear();
          }
@@ -747,6 +755,7 @@ package class Communicator
    pragma(inline, true)
    static void pushToWaitingList(Communicator c)
    {
+
       // if it is already in the list, we don't add it again
       if ( execWaitingListFront == c || c.prevWaiting !is null)
       {
