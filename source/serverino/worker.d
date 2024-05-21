@@ -557,7 +557,7 @@ struct Worker
 
                   Socket s = new Socket(AddressFamily.UNIX, SocketType.STREAM);
 
-                  // Wait for the process to start (max 50ms)
+                  // Wait for the process to start
                   while(true)
                   {
                      try
@@ -571,7 +571,7 @@ struct Worker
                         Thread.sleep(100.usecs);
                         ++tries;
 
-                        if(tries > 100) break;
+                        if(tries > 200) break;
                         else continue;
                      }
 
