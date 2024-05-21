@@ -331,7 +331,7 @@ package class Communicator
             }
             else
             {
-               auto leftover = sendBuffer.array[sent..$];
+               auto leftover = sendBuffer.array[sent..$].dup;
                sendBuffer.clear();
 
                if (leftover.length > 0)
