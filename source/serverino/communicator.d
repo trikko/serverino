@@ -420,7 +420,7 @@ package class Communicator
       auto fileName = data[headers.length..$].strip;
 
       // Open the file
-      try { file = File(fileName, "r"); }
+      try { file = File(fileName, "rb"); }
       catch(Exception e) { file = File.init; warning("Error opening file: ", e.msg); }
 
       if (!file.isOpen)
