@@ -95,7 +95,7 @@ mixin ServerinoMain;
    buffer.length = 1024*1024*10;
    buffer[] = '\n';
 
-   File f = File("pizza.txt", "w+");
+   File f = File("pizza.txt", "wb+");
    f.write(buffer);
    f.close();
 
@@ -109,7 +109,7 @@ mixin ServerinoMain;
    buffer.length = 1024*1024*10;
    buffer[] = '\n';
 
-   File f = File("pizza.txt", "w+");
+   File f = File("pizza.txt", "wb+");
    f.write(buffer);
    f.close();
 
