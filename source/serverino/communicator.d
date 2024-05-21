@@ -333,7 +333,9 @@ package class Communicator
             {
                auto leftover = sendBuffer.array[sent..$];
                sendBuffer.clear();
-               sendBuffer.append(leftover);
+
+               if (leftover.length > 0)
+                  sendBuffer.append(leftover);
             }
 
             if (sendBuffer.length < DEFAULT_BUFFER_SIZE)
@@ -344,7 +346,9 @@ package class Communicator
                   char[] read;
                   try { read = file.rawRead(buffer); }
                   catch (Exception e) { warning("Error reading file: ", e.msg); reset(); return; }
-                  sendBuffer.append(read);
+
+                  if (read.length > 0)
+                     sendBuffer.append(read);
                }
             }
 

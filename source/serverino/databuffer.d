@@ -35,6 +35,9 @@ package struct DataBuffer(T)
    pragma(inline, true):
    void append(scope const T[] new_data)
    {
+      debug import std.conv;
+      debug assert(new_data.length > 0, "DataBuffer.append: new_data.length must be > 0 but is " ~ new_data.length.to!string);
+
       if (_data.length < _length + new_data.length)
          _data.length += (new_data.length / (1024*16) + 1) * (1024*16);
 
