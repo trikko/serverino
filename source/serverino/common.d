@@ -456,7 +456,7 @@ version(Posix) package void setProcessName(string[] names)
    {
       if (n.length < maxLen)
       {
-         argv[0][0..n.length] = n[0..$];
+         argv[0][0..n.length] = n;
          argv[0][n.length..maxLen] = ' ';
          argv[0][maxLen-1] = 0;
          break;

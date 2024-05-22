@@ -1428,7 +1428,7 @@ class WebSocket
          curIdx += 4;
       }
 
-      buffer[curIdx..curIdx+message.payload.length] = message.payload[0..$];
+      buffer[curIdx..curIdx+message.payload.length] = message.payload;
 
       if (masked)
          foreach(i, ref b; buffer[curIdx..$])

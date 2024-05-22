@@ -318,7 +318,7 @@ package class Communicator
          }
          else if (sendBuffer.length > 0)
          {
-            immutable sent = clientSkt.send(sendBuffer.array[0..$]);
+            immutable sent = clientSkt.send(sendBuffer.array);
 
             if (sent == Socket.ERROR)
             {
@@ -779,7 +779,7 @@ package class Communicator
                      request.data[firstLine+2..firstLine+2+ra.length] = ra;
                   }
 
-                  request.data[firstLine+2+ra.length..$] = hdrs[0..$];
+                  request.data[firstLine+2+ra.length..$] = hdrs;
 
                   if (request.isValid == false)
                   {
