@@ -311,7 +311,24 @@ void test()
       }
       assert(data == "HTTP/1.0 200 OK\r\nconnection: close\r\ncontent-length: 6\r\ncontent-type: text/plain\r\n\r\nsimple");
    }
+   
+   info("Testing boundary delimitation.");
+   {
+      string postBody ="
+      \r\n
+      --2gnBwjvY18YFWfzZrUMe2XPYwTp\r\nContent-Disposition: form-data;\r\nContent-Type: text/plain\r\najejje\r\n--2gnBwjvY18YFWfzZrUMe2XPYwTp--\r\n
+      ";
 
+      auto http = HTTP("http://127.0.0.1:8080/?");
+      http.setPostData(postBody,"multipart/form-data; boundary=2gnBwjvY18YFWfzZrUMe2XPYwTp");
+      
+      http.method = HTTP.Method.post;
+      http.onReceive = (ubyte[] data) {  return data.length; };
+      http.perform();
+      
+      assert(http.statusLine.code == 422);
+      
+   }
    info("Testing crash endpoint. The server must not crash");
    {
       auto req = "GET /crash HTTP/1.1\r\nhost:localhost\r\n\r\n";

@@ -526,6 +526,11 @@ struct Request
                         {
 
                            auto nextLine = chunk.countUntil("\n");
+			   
+			   if(nextLine < 0){
+                             throw new Exception("Invalid Boundaries delimitation.");
+                           }
+				
                            auto line = chunk[0..nextLine];
 
                            // All lines must end with \r\n
