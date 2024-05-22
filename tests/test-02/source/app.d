@@ -204,7 +204,7 @@ void test()
       char[] data;
 
       data.reserve = 1024*1024*10;
-      buffer.length = 4096;
+      buffer.length = 128;
 
       while(true)
       {

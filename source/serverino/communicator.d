@@ -331,13 +331,18 @@ package class Communicator
             }
             else
             {
-               auto leftover = sendBuffer.array[sent..$].dup;
-               sendBuffer.clear();
+               auto notsent = sendBuffer.length() - sent;
 
-               if (leftover.length > 0)
-                  sendBuffer.append(leftover);
+               if (notsent > 0)
+               {
+                  import std.algorithm : copy;
+                  copy(sendBuffer.array[sent..$], sendBuffer.array[0..notsent]);
+                  sendBuffer.length = notsent;
+               }
+               else sendBuffer.clear();
             }
 
+            // Refill buffer is not so full
             if (sendBuffer.length < DEFAULT_BUFFER_SIZE)
             {
                if (!file.eof)
