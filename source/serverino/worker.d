@@ -297,7 +297,7 @@ struct Worker
       version(debugRequest) log("-- START RECEIVING");
       try
       {
-         size_t			   contentLength = 0;
+         size_t			contentLength = 0;
 
          char[]			method;
          char[]			path;
@@ -306,7 +306,7 @@ struct Worker
          char[]			requestLine;
          char[]			headers;
 
-         bool 			hasContentLength = false;
+         bool 			   hasContentLength = false;
 
 
          headers = cast(char[]) data;
