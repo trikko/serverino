@@ -1079,8 +1079,8 @@ struct Output
    }
 
    @safe static string toHTTPDate(SysTime t) {
-      immutable mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-      immutable dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      static immutable mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      static immutable dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
       SysTime gmt = t.toUTC();
 
@@ -1117,7 +1117,7 @@ struct Output
 
          _headersBuffer.clear();
 
-         immutable string[short] StatusCode =
+         static immutable string[short] StatusCode =
          [
             101: "Switching Protocols",
 
