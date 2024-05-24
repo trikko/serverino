@@ -435,7 +435,7 @@ package:
             import core.stdc.stdlib : exit, EXIT_FAILURE;
             import std.stdio : stderr;
 
-            string msg = "Can't listen on %s. Are you allowed to listen on this port? Is port already used by another process?".format(listener.address.toString);
+            string msg = "Can't listen on %s. %s".format(listener.address.toString, se.msg);
 
             version(Posix)
             {
@@ -455,7 +455,7 @@ package:
                   if (exists("/proc/" ~ pid[$-1] ~ "/cmdline"))
                      cmdLine = readText("/proc/" ~ pid[$-1] ~ "/cmdline");
 
-                  msg = "Can't listen on %s. This port is already used by another process (PID: %s; NAME: %s).".format(listener.address.toString, pid[$-1], cmdLine);
+                  msg = "Can't listen on %s. This address is already in use by `%s` (PID: %s).".format(listener.address.toString, cmdLine, pid[$-1]);
                }
             }
 
