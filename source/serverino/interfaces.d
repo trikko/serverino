@@ -930,7 +930,7 @@ struct Output
     * output.serveFile("path/to/file.html");
     * ---
     */
-   bool serveFile(OnFileServed action = OnFileServed.keepFile)(const string path, bool guessMime = true)
+   bool serveFile(OnFileServed action = OnFileServed.KeepFile)(const string path, bool guessMime = true)
    {
       _internal._dirty = true;
 
@@ -1001,7 +1001,7 @@ struct Output
 
       import std.path : absolutePath;
 
-      _internal._deleteOnClose = action == OnFileServed.deleteFile;
+      _internal._deleteOnClose = action == OnFileServed.DeleteFile;
       _internal._sendFile = absolutePath(path);
 
       return true;
@@ -1505,7 +1505,7 @@ class WebSocket
    {
       Server,
       Client
-   };
+   }
 
    private:
 
@@ -1728,6 +1728,6 @@ class WebSocket
 /// Used by Output.serveFile
 enum OnFileServed
 {
-   keepFile,   /// Keep the file on disk
-   deleteFile  /// Delete the file after sending it
+   KeepFile,   /// Keep the file on disk
+   DeleteFile  /// Delete the file after sending it
 }

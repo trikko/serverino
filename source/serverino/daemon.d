@@ -39,7 +39,7 @@ import std.socket;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
-static if (serverino.common.Backend == BackendType.epoll) import core.sys.linux.epoll;
+static if (serverino.common.Backend == BackendType.EPOLL) import core.sys.linux.epoll;
 
 
 // The class WorkerInfo is used to keep track of the workers.
@@ -50,6 +50,12 @@ package class WorkerInfo
       IDLING = 0, // Worker is waiting for a request.
       PROCESSING, // Worker is processing a request.
       STOPPED     // Worker is stopped.
+   }
+
+   enum Type
+   {
+      STATIC = 0, // Worker is static, always running
+      DYNAMIC     // Worker is wake up if needed (high load)
    }
 
    override string toString()
@@ -72,11 +78,11 @@ package class WorkerInfo
    }
 
    // Initialize the worker.
-   void reinit(bool isDynamicWorker)
+   void reinit(Type workerType)
    {
       assert(status == State.STOPPED);
 
-      isDynamic = isDynamicWorker;
+      isDynamic = workerType == Type.DYNAMIC;
 
       // Set default status.
       clear();
@@ -104,7 +110,7 @@ package class WorkerInfo
       // We start a new process and pass the socket address to it.
       auto env = Daemon.workerEnvironment.dup;
       env["SERVERINO_SOCKET"] = uuid;
-      env["SERVERINO_DYNAMIC_WORKER"] = isDynamicWorker?"1":"0";
+      env["SERVERINO_DYNAMIC_WORKER"] = isDynamic?"1":"0";
 
       reloadRequested = false;
       import std.range : repeat;
@@ -123,7 +129,7 @@ package class WorkerInfo
       ubyte[1] data;
       accepted.receive(data);
 
-      static if (serverino.common.Backend == BackendType.epoll)
+      static if (serverino.common.Backend == BackendType.EPOLL)
       {
          import serverino.daemon : Daemon;
          import core.sys.linux.epoll : EPOLLIN;
@@ -146,7 +152,7 @@ package class WorkerInfo
 
       if (this.unixSocket)
       {
-         static if (serverino.common.Backend == BackendType.epoll)
+         static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(unixSocket);
@@ -172,7 +178,7 @@ package class WorkerInfo
       if (s == State.STOPPED)
       {
          if (isDynamic) clear();
-         else if (!Daemon.exitRequested) reinit(false);
+         else if (!Daemon.exitRequested) reinit(Type.STATIC);
       }
       // If a reload is requested we kill the worker when it's idling.
       else if (s == State.IDLING && reloadRequested)
@@ -413,7 +419,7 @@ package:
 
       tryInit!Modules();
 
-      static if (serverino.common.Backend == BackendType.epoll) epoll = epoll_create1(0);
+      static if (serverino.common.Backend == BackendType.EPOLL) epoll = epoll_create1(0);
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
@@ -472,7 +478,7 @@ package:
             exit(EXIT_FAILURE);
          }
 
-         static if (serverino.common.Backend == BackendType.epoll) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
+         static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
       }
 
       // Create all workers and start the ones that are required.
@@ -481,13 +487,13 @@ package:
          auto worker = new WorkerInfo();
 
          if (i < config.minWorkers)
-            worker.reinit(false);
+            worker.reinit(WorkerInfo.Type.STATIC);
       }
 
       foreach(idx; 0..512)
          new Communicator(config);
 
-      static if (serverino.common.Backend == BackendType.select)
+      static if (serverino.common.Backend == BackendType.SELECT)
       {
          // We use a socketset to check for updates
          SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
@@ -500,7 +506,7 @@ package:
       {
 
          // We have to reset and fill the socketSet every time!
-         static if (serverino.common.Backend == BackendType.select)
+         static if (serverino.common.Backend == BackendType.SELECT)
          {
             ssRead.reset();
             ssWrite.reset();
@@ -531,7 +537,7 @@ package:
                warning("Exception: ", se.msg);
             }
          }
-         else static if (serverino.common.Backend == BackendType.epoll)
+         else static if (serverino.common.Backend == BackendType.EPOLL)
          {
             enum MAX_EPOLL_EVENTS = 1500;
             epoll_event[MAX_EPOLL_EVENTS] events = void;
@@ -614,7 +620,7 @@ package:
          // Select version main loop
          // ------------------------
 
-         static if (serverino.common.Backend == BackendType.select)
+         static if (serverino.common.Backend == BackendType.SELECT)
          {
             // Check the workers for updates
             foreach(ref worker; WorkerInfo.alive)
@@ -680,7 +686,7 @@ package:
          // epoll version main loop
          // ------------------------
 
-         else static if (serverino.common.Backend == BackendType.epoll)
+         else static if (serverino.common.Backend == BackendType.EPOLL)
          {
             foreach(ref epoll_event e; events[0..updates])
             {
@@ -740,7 +746,7 @@ package:
 
                assert(communicator.requestToProcess !is null);
 
-               deadWorkers.front.reinit(true);
+               deadWorkers.front.reinit(WorkerInfo.Type.DYNAMIC);
                communicator.setWorker(deadWorkers.front);
                deadWorkers.popFront;
             }
@@ -779,7 +785,7 @@ package:
    }
 
 
-   static if (serverino.common.Backend == BackendType.epoll)
+   static if (serverino.common.Backend == BackendType.EPOLL)
    {
 
       void epollAddSocket(Socket s, int events, void* ptr)

@@ -26,6 +26,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 // This module is used to check and display the version of the serverino library during compilation
 import serverino.common;
 
-static if (serverino.common.Backend == BackendType.select) pragma(msg, "    Building serverino using select/socketset backend.");
-else static if (serverino.common.Backend == BackendType.epoll) pragma(msg, "    Building serverino using epoll backend.");
+static if (serverino.common.Backend == BackendType.SELECT) pragma(msg, "    Building serverino using select/socketset backend.");
+else static if (serverino.common.Backend == BackendType.EPOLL) pragma(msg, "    Building serverino using epoll backend.");
 else static assert(false, "No backend selected. Please, use -version=use_select or -version=use_epoll.");

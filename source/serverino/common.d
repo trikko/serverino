@@ -30,19 +30,19 @@ import std.datetime : MonoTimeImpl, ClockType;
 // Serverino can be built using two different backends: select or epoll
 public enum BackendType
 {
-   select,
-   epoll
+   SELECT,
+   EPOLL
 }
 
 // The backend is selected using the version directive or by checking the OS
-version(use_select) { enum Backend = BackendType.select; }
-else version(use_epoll) { enum Backend = BackendType.epoll; }
+version(use_select) { enum Backend = BackendType.SELECT; }
+else version(use_epoll) { enum Backend = BackendType.EPOLL; }
 else {
-   version(linux) enum Backend = BackendType.epoll;
-   else enum Backend = BackendType.select;
+   version(linux) enum Backend = BackendType.EPOLL;
+   else enum Backend = BackendType.SELECT;
 }
 
-static if(Backend == BackendType.epoll)
+static if(Backend == BackendType.EPOLL)
 {
 	version(linux) { }
 	else static assert(false, "epoll backend is only available on Linux");

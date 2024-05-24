@@ -136,7 +136,7 @@ package class Communicator
 
       if (this.clientSkt !is null)
       {
-         static if (serverino.common.Backend == BackendType.epoll)
+         static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(clientSkt);
@@ -180,7 +180,7 @@ package class Communicator
          s.blocking = false;
          this.clientSkt = s;
 
-         static if (serverino.common.Backend == BackendType.epoll)
+         static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN;
@@ -235,7 +235,7 @@ package class Communicator
    // If this communicator has a worker assigned, unset it
    void unsetWorker()
    {
-      static if(serverino.common.Backend == BackendType.epoll)
+      static if(serverino.common.Backend == BackendType.EPOLL)
       {
          if (clientSkt !is null && hasBuffer)
          {
@@ -375,7 +375,7 @@ package class Communicator
 
             if(bufferSent == sendBuffer.length)
             {
-               static if (serverino.common.Backend == BackendType.epoll)
+               static if (serverino.common.Backend == BackendType.EPOLL)
                   if(hasBuffer)
                   {
                      hasBuffer = false;
@@ -447,7 +447,7 @@ package class Communicator
 
       sendBuffer.append(headers);
 
-      static if(serverino.common.Backend == BackendType.epoll)
+      static if(serverino.common.Backend == BackendType.EPOLL)
       {
 
          hasBuffer = true;
@@ -479,7 +479,7 @@ package class Communicator
             {
                sendBuffer.append(data[sent..data.length]);
 
-               static if(serverino.common.Backend == BackendType.epoll)
+               static if(serverino.common.Backend == BackendType.EPOLL)
                {
 
                      hasBuffer = true;
@@ -924,7 +924,7 @@ package class Communicator
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
-   static if(serverino.common.Backend == BackendType.epoll)
+   static if(serverino.common.Backend == BackendType.EPOLL)
    {
       bool           hasBuffer = false;
    }
