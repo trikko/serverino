@@ -896,7 +896,7 @@ struct Output
 
    /++
    + Add a http header.
-   + You can't set `content-length`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
+   + You can't set `content-length`, `date`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
@@ -907,7 +907,7 @@ struct Output
    {
       string k = key.toLower;
 
-      debug if (["content-length", "status", "transfer-encoding"].canFind(k))
+      debug if (["content-length", "date", "status", "transfer-encoding"].assumeSorted.canFind(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
@@ -1079,8 +1079,8 @@ struct Output
    }
 
    @safe static string toHTTPDate(SysTime t) {
-      static immutable mm = ["", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-      static immutable dd = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      static immutable mm = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      static immutable dd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
       SysTime gmt = t.toUTC();
 
@@ -1140,7 +1140,9 @@ struct Output
          else statusDescription = "Unknown";
 
          bool has_content_type = false;
+
          _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
+         _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime) ~ "\r\n");
 
          // These headers are ignored if we are sending a websocket response
          if (!_websocket)
@@ -1161,7 +1163,7 @@ struct Output
          // send user-defined headers
          foreach(const ref header;_headers)
          {
-            if (!_sendBody && (header.key == "content-length" || header.key == "transfer-encoding"))
+            if (!_sendBody && header.key == "content-length")
                continue;
 
             _headersBuffer.append(header.key ~ ": " ~ header.value ~ "\r\n");
