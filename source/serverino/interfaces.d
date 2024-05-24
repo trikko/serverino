@@ -1084,7 +1084,7 @@ struct Output
 
       SysTime gmt = t.toUTC();
 
-      return format("%s, %s %s %s %s:%s:%s GMT",
+      return format("%s, %02s %s %s %02s:%02s:%02s GMT",
          dd[gmt.dayOfWeek], gmt.day, mm[gmt.month], gmt.year,
          gmt.hour, gmt.minute, gmt.second
       );
