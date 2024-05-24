@@ -689,14 +689,11 @@ package:
             }
          }
 
-
-         auto availableWorkers = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
-         auto deadWorkers = WorkerInfo.dead();
-
-         // We have communicators waiting for a worker.
-         while(Communicator.execWaitingListFront !is null)
+         // Check if we have some free workers and some waiting communicators.
+         if (Communicator.execWaitingListFront !is null)
          {
-            if (!availableWorkers.empty)
+            auto availableWorkers = WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.IDLING);
+            while(!availableWorkers.empty && Communicator.execWaitingListFront !is null)
             {
                auto communicator = Communicator.popFromWaitingList();
 
@@ -704,24 +701,24 @@ package:
 
                communicator.setWorker(availableWorkers.front);
                availableWorkers.popFront;
-
             }
-            else if(!deadWorkers.empty)
+         }
+
+         // Check if we have some dead workers to start and some waiting communicators.
+         if (Communicator.execWaitingListFront !is null)
+         {
+            auto deadWorkers = WorkerInfo.dead();
+            while(!deadWorkers.empty && Communicator.execWaitingListFront !is null)
             {
                auto communicator = Communicator.popFromWaitingList();
-
 
                assert(communicator.requestToProcess !is null);
 
                deadWorkers.front.reinit(true);
                communicator.setWorker(deadWorkers.front);
                deadWorkers.popFront;
-
             }
-            else break; // All workers are busy. We'll try again later.
          }
-
-
       }
 
       // Exit requested, shutdown everything.
