@@ -435,7 +435,31 @@ package:
             import core.stdc.stdlib : exit, EXIT_FAILURE;
             import std.stdio : stderr;
 
-            critical("Can't listen on http://%s/. Are you allowed to listen on this port? Is port already used by another process?".format(listener.address.toString));
+            string msg = "Can't listen on %s. Are you allowed to listen on this port? Is port already used by another process?".format(listener.address.toString);
+
+            version(Posix)
+            {
+               import std.process : executeShell;
+               import std.string : replace, split, chomp;
+               import std.file : exists, readText;
+
+               auto pid = executeShell("fuser " ~ listener.address.toPortString ~ "/tcp").output
+                  .chomp
+                  .replace(' ', '\n')
+                  .split('\n');
+
+               if (pid.length > 1 && pid[$-1].length > 0)
+               {
+                  string cmdLine = "?";
+
+                  if (exists("/proc/" ~ pid[$-1] ~ "/cmdline"))
+                     cmdLine = readText("/proc/" ~ pid[$-1] ~ "/cmdline");
+
+                  msg = "Can't listen on %s. This port is already used by another process (PID: %s; NAME: %s).".format(listener.address.toString, pid[$-1], cmdLine);
+               }
+            }
+
+            critical(msg);
 
             foreach(ref l; config.listeners)
             {
