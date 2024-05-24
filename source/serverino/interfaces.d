@@ -1110,15 +1110,11 @@ struct Output
       bool            _deleteOnClose;
 
 
-      @safe void buildHeaders()
-      {
-         import std.uri : encodeComponent;
-         import std.array : appender;
+      private static immutable string[ushort] StatusCode;
 
-         _headersBuffer.clear();
+      private shared static this() {
 
-         static immutable string[short] StatusCode =
-         [
+         StatusCode = [
             101: "Switching Protocols",
 
             200: "OK", 201 : "Created", 202 : "Accepted", 203 : "Non-Authoritative Information", 204 : "No Content", 205 : "Reset Content", 206 : "Partial Content",
@@ -1132,6 +1128,15 @@ struct Output
 
             500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
          ];
+
+      }
+
+      @safe void buildHeaders()
+      {
+         import std.uri : encodeComponent;
+         import std.array : appender;
+
+         _headersBuffer.clear();
 
          string statusDescription;
 
