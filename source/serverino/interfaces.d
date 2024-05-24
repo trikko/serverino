@@ -1148,7 +1148,7 @@ struct Output
 
          _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
 
-         version(DISABLE_DATE_HEADER) { }
+         version(SERVERINO_TESTS) { }
          else _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime) ~ "\r\n");
 
          // These headers are ignored if we are sending a websocket response

@@ -63,6 +63,13 @@ mixin ServerinoMain;
    }).start();
 }
 
+@route!"/nullptr"
+@endpoint void nullptr(Request r, Output o)
+{
+   void *p = cast(void*)0x1;
+   *(cast(int*)p) = 10;
+}
+
 @route!"/sleep"
 @endpoint void sleep(Request r, Output o)
 {
@@ -192,6 +199,16 @@ ServerinoConfig conf()
 
 void test()
 {
+   info("Worker crash");
+   {
+      bool asserted = false;
+
+      try { get("http://localhost:8080/nullptr"); }
+      catch (CurlException e) { asserted = true; }
+
+      assert(asserted);
+   }
+
    info("Serving file");
    {
       auto req = "GET /serveKeep HTTP/1.0\r\n\r\n";
