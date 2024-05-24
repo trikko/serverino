@@ -907,7 +907,7 @@ struct Output
    {
       string k = key.toLower;
 
-      debug if (["content-length", "date", "status", "transfer-encoding"].assumeSorted.canFind(k))
+      debug if (["content-length", "date", "status", "transfer-encoding"].canFind(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
