@@ -169,9 +169,11 @@ package class WorkerInfo
       statusChangedAt = now;
 
       // Automatically reinit the worker if it's stopped and it's not dynamic.
-      if (s == State.STOPPED && !isDynamic && !Daemon.exitRequested)
-         reinit(false);
-
+      if (s == State.STOPPED)
+      {
+         if (isDynamic) clear();
+         else if (!Daemon.exitRequested) reinit(false);
+      }
       // If a reload is requested we kill the worker when it's idling.
       else if (s == State.IDLING && reloadRequested)
       {
