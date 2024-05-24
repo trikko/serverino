@@ -1142,7 +1142,9 @@ struct Output
          bool has_content_type = false;
 
          _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
-         _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime) ~ "\r\n");
+
+         version(DISABLE_DATE_HEADER) { }
+         else _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime) ~ "\r\n");
 
          // These headers are ignored if we are sending a websocket response
          if (!_websocket)
