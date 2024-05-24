@@ -347,7 +347,7 @@ package class Communicator
             {
                if (!file.eof)
                {
-                  char[DEFAULT_BUFFER_SIZE] buffer;
+                  char[DEFAULT_BUFFER_SIZE] buffer = void;
                   char[] read;
                   try { read = file.rawRead(buffer); }
                   catch (Exception e) { warning("Error reading file: ", e.msg); reset(); return; }
@@ -369,16 +369,7 @@ package class Communicator
 
          immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
 
-         if (sent == Socket.ERROR)
-         {
-            if(!wouldHaveBlocked)
-            {
-               log("Socket Error");
-               reset();
-               return;
-            }
-         }
-         else
+         if (sent >= 0)
          {
             bufferSent += sent;
             responseSent += sent;
@@ -396,21 +387,32 @@ package class Communicator
 
                bufferSent = 0;
                sendBuffer.clear();
+
+               // If the response is completed, unset the worker
+               // and if the client is not keep alive, reset the communicator
+               if (completed())
+               {
+                  unsetWorker();
+
+                  if (requestToProcess !is null && requestToProcess.isValid)
+                        Communicator.pushToWaitingList(this);
+
+                  if (!isKeepAlive)
+                     reset();
+               }
+            }
+
+         }
+         else
+         {
+            if(!wouldHaveBlocked)
+            {
+               log("Socket Error");
+               reset();
+               return;
             }
          }
 
-         // If the response is completed, unset the worker
-         // and if the client is not keep alive, reset the communicator
-         if (completed())
-         {
-            unsetWorker();
-
-            if (requestToProcess !is null && requestToProcess.isValid)
-                  Communicator.pushToWaitingList(this);
-
-            if (!isKeepAlive)
-               reset();
-         }
       }
    }
 
@@ -469,10 +471,40 @@ package class Communicator
 
       if (sendBuffer.length == 0)
       {
-         bool hasMoreData = true;
          auto sent = clientSkt.send(data);
 
-         if (sent == Socket.ERROR)
+         if (sent >= 0)
+         {
+            responseSent += sent;
+            if (sent < data.length)
+            {
+               sendBuffer.append(data[sent..data.length]);
+
+               static if(serverino.common.Backend == BackendType.epoll)
+               {
+
+                     hasBuffer = true;
+                     import serverino.daemon : Daemon;
+                     import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+                     Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
+
+               }
+            }
+
+            // If the response is completed, unset the worker
+            // and if the client is not keep alive, reset the communicator
+            else if (completed())
+            {
+               unsetWorker();
+
+               if (requestToProcess !is null && requestToProcess.isValid)
+                  Communicator.pushToWaitingList(this);
+
+               if (!isKeepAlive)
+                  reset();
+            }
+         }
+         else
          {
             if(!wouldHaveBlocked)
             {
@@ -481,36 +513,6 @@ package class Communicator
                return;
             }
             else sendBuffer.append(data);
-         }
-         else
-         {
-            responseSent += sent;
-            if (sent < data.length) sendBuffer.append(data[sent..data.length]);
-            else hasMoreData = false;
-         }
-
-         static if(serverino.common.Backend == BackendType.epoll)
-         {
-            if (hasMoreData)
-            {
-               hasBuffer = true;
-               import serverino.daemon : Daemon;
-               import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
-               Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
-            }
-         }
-
-         // If the response is completed, unset the worker
-         // and if the client is not keep alive, reset the communicator
-         if (completed())
-         {
-            unsetWorker();
-
-            if (requestToProcess !is null && requestToProcess.isValid)
-               Communicator.pushToWaitingList(this);
-
-            if (!isKeepAlive)
-               reset();
          }
       }
       else
@@ -553,7 +555,315 @@ package class Communicator
       bytesRead = clientSkt.receive(buffer);
       lastRecv = now;
 
-      if (bytesRead < 0)
+      if (bytesRead > 0)
+      {
+         if (requestDataReceived == false) requestDataReceived = true;
+
+         auto bufferRead = buffer[0..bytesRead];
+
+         // If there's leftover data from the previous read, append it to the current buffer
+         if (leftover.length)
+         {
+            bufferRead = leftover ~ bufferRead;
+            leftover.length = 0;
+         }
+
+         bool tryParse = true;
+         while(tryParse)
+         {
+            // This is set to true if there's more data to parse after the current request (probably a pipelined request)
+            bool hasMoreDataToParse = false;
+
+            // Another cycle is needed if there's more data to parse or a body to read
+            tryParse = false;
+
+            if (status == State.READING_HEADERS)
+            {
+               // We are still waiting for the headers to be completed
+               if (!request.headersDone)
+               {
+                  auto headersEnd = bufferRead.indexOf("\r\n\r\n");
+
+                  // Are the headers completed?
+                  if (headersEnd >= 0)
+                  {
+                     if (headersEnd > config.maxRequestSize)
+                     {
+                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                        reset();
+                        return;
+                     }
+
+                     import std.algorithm : splitter, map, joiner;
+
+                     // Extra data after the headers is stored in the leftover buffer
+                     request.data ~= bufferRead[0..headersEnd];
+                     leftover = bufferRead[headersEnd+4..$];
+
+                     // The headers are completed
+                     bufferRead.length = 0;
+                     request.headersDone = true;
+                     request.isValid = true;
+
+                     auto firstLine = request.data.indexOf("\r\n");
+
+                     // HACK: A single line (http 1.0?) request.
+                     if (firstLine < 0)
+                     {
+                        firstLine = request.data.length;
+                        request.data ~= "\r\n";
+                     }
+
+                     if (firstLine < 18)
+                     {
+                        request.isValid = false;
+                        clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                        debug warning("Bad Request. Request line too short.");
+                        reset();
+                        return;
+                     }
+
+                     auto fields = request.data[uint.sizeof..firstLine].splitter(' ');
+                     size_t popped = 0;
+
+                     if (!fields.empty)
+                     {
+                        request.method = fields.front;
+                        fields.popFront;
+                        popped++;
+                     }
+
+                     if (!fields.empty)
+                     {
+                        request.path = fields.front;
+                        fields.popFront;
+                        popped++;
+                     }
+
+                     if (!fields.empty)
+                     {
+                        request.httpVersion = cast(ProtoRequest.HttpVersion)fields.front;
+                        fields.popFront;
+                        popped++;
+                     }
+
+                     // HTTP version must be 1.0 or 1.1
+                     if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
+                     {
+                        request.isValid = false;
+                        clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                        debug warning("Bad Request. Http version unknown.");
+                        reset();
+                        return;
+                     }
+
+                     if (popped != 3 || !fields.empty)
+                     {
+                        request.isValid = false;
+                        clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                        debug warning("Bad Request. Malformed request line.");
+                        reset();
+                        return;
+                     }
+
+                     if (request.path[0] != '/')
+                     {
+                        request.isValid = false;
+                        clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                        debug warning("Bad Request. Absolute uri?");
+                        reset();
+                        return;
+                     }
+
+                     // Parse headers for 100-continue, content-length and connection
+                     auto hdrs = request.data[firstLine+2..$]
+                     .splitter("\r\n")
+                     .map!((in char[] row)
+                     {
+                        if (!request.isValid)
+                           return (char[]).init;
+
+                        auto headerColon = row.indexOf(':');
+
+                        if (headerColon < 0)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+
+                        // Headers keys are case insensitive, so we lowercase them
+                        // We strip the leading and trailing spaces from both key and value
+                        char[] key = cast(char[])row[0..headerColon].strip!(x =>x==' ' || x=='\t');
+                        char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
+
+                        // Fast way to lowercase the key. Check if it is ASCII only.
+                        foreach(idx, ref k; key)
+                        {
+                           if (k > 0xF9)
+                           {
+                              request.isValid = false;
+                              return (char[]).init;
+                           }
+                           else if (k >= 'A' && k <= 'Z')
+                           k |= 32;
+                        }
+
+                        foreach(idx, ref k; value)
+                        {
+                           if (k > 0xF9)
+                           {
+                              request.isValid = false;
+                              return (char[]).init;
+                           }
+                        }
+
+                        if (key.length == 0 || value.length == 0)
+                        {
+                           request.isValid = false;
+                           return (char[]).init;
+                        }
+
+                        // 100-continue
+                        if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
+                        else if (key == "connection")
+                        {
+                           import std.uni: sicmp;
+                           import std.string : CaseSensitive;
+
+                           if (sicmp(value, "keep-alive") == 0) request.connection = ProtoRequest.Connection.KeepAlive;
+                           else if (sicmp(value, "close") == 0) request.connection = ProtoRequest.Connection.Close;
+                           else if (value.indexOf("upgrade", CaseSensitive.no) >= 0) request.connection = ProtoRequest.Connection.Upgrade;
+                           else request.connection = ProtoRequest.connection.Unknown;
+                        }
+                        else
+                        try { if (key == "content-length") request.contentLength = value.to!size_t; }
+                        catch (Exception e) { request.isValid = false; return (char[]).init; }
+
+                        return key ~ ":" ~ value;
+                     })
+                     .join("\r\n") ~ "\r\n\r\n";
+
+
+                     request.data.length = firstLine+2 + hdrs.length;
+
+                     // If required by configuration, add the remote ip to the headers
+                     // It is disabled by default, as it is a slow operation and it is not always needed
+                     string ra = string.init;
+                     if(config.withRemoteIp)
+                     {
+                        ra = "x-remote-ip:" ~ clientSkt.remoteAddress().toAddrString() ~ "\r\n";
+                        request.data.length += ra.length;
+                        request.data[firstLine+2..firstLine+2+ra.length] = ra;
+                     }
+
+                     request.data[firstLine+2+ra.length..$] = hdrs;
+
+                     if (request.isValid == false)
+                     {
+                        clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                        debug warning("Bad Request. Malformed request.");
+                        reset();
+                        return;
+                     }
+
+                     // Keep alive is the default for HTTP/1.1, close for HTTP/1.0
+                     if (request.connection == ProtoRequest.Connection.Unknown)
+                     {
+                        if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11) request.connection = ProtoRequest.Connection.KeepAlive;
+                        else request.connection = ProtoRequest.Connection.Close;
+                     }
+
+                     request.headersLength = request.data.length;
+
+                     // If the request has a body, we need to read it
+                     if (request.contentLength != 0)
+                     {
+                        if (request.headersLength + request.contentLength  > config.maxRequestSize)
+                        {
+                           clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                           reset();
+                           return;
+                        }
+
+                        request.data.reserve(request.headersLength + request.contentLength);
+                        request.isValid = false;
+                        tryParse = true;
+                        status = State.READING_BODY;
+
+                        // If required, we send the 100-continue response now
+                        if (request.expect100)
+                           clientSkt.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
+                     }
+                     else
+                     {
+                        // No body, we can process the request
+
+                        requestDataReceived = false; // Request completed, we can reset the timeout
+                        hasMoreDataToParse = leftover.length > 0;
+
+                        pushToWaitingList(this);
+
+                        if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
+                        else status = State.READY;
+
+                     }
+                  }
+                  else leftover = bufferRead.dup;
+               }
+
+            }
+            else if (status == State.READING_BODY)
+            {
+               // We are reading the body of the request
+               request.data ~= leftover;
+               request.data ~= bufferRead;
+
+               leftover.length = 0;
+               bufferRead.length = 0;
+
+               if (request.data.length >= request.headersLength + request.contentLength)
+               {
+                  // We read the whole body, process the request
+
+                  requestDataReceived = false; // Request completed, we can reset the timeout
+
+                  leftover = request.data[request.headersLength + request.contentLength..$];
+                  request.data = request.data[0..request.headersLength + request.contentLength];
+                  request.isValid = true;
+
+                  pushToWaitingList(this);
+
+                  hasMoreDataToParse = leftover.length > 0;
+
+                  if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
+                  else status = State.READY;
+
+               }
+            }
+
+            if (hasMoreDataToParse)
+            {
+               // There's a (partial) new request in the buffer, we need to create a new request
+               request.next = new ProtoRequest();
+               request = request.next;
+               status = State.READING_HEADERS;
+
+               bufferRead = leftover;
+               leftover.length = 0;
+
+               // We try to parse the new request immediately
+               tryParse = true;
+            }
+         }
+      }
+      else if (bytesRead == 0)
+      {
+         // Connection closed.
+         status = State.READY;
+         reset();
+         return;
+      }
+      else
       {
          if(!wouldHaveBlocked)
          {
@@ -573,311 +883,6 @@ package class Communicator
          return;
       }
 
-      if (bytesRead == 0)
-      {
-         // Connection closed.
-         status = State.READY;
-         reset();
-         return;
-      }
-      else if (requestDataReceived == false) requestDataReceived = true;
-
-      auto bufferRead = buffer[0..bytesRead];
-
-      // If there's leftover data from the previous read, append it to the current buffer
-      if (leftover.length)
-      {
-         bufferRead = leftover ~ bufferRead;
-         leftover.length = 0;
-      }
-
-      bool tryParse = true;
-      while(tryParse)
-      {
-         // This is set to true if there's more data to parse after the current request (probably a pipelined request)
-         bool hasMoreDataToParse = false;
-
-         // Another cycle is needed if there's more data to parse or a body to read
-         tryParse = false;
-
-         if (status == State.READING_HEADERS)
-         {
-            // We are still waiting for the headers to be completed
-            if (!request.headersDone)
-            {
-               auto headersEnd = bufferRead.indexOf("\r\n\r\n");
-
-               // Are the headers completed?
-               if (headersEnd >= 0)
-               {
-                  if (headersEnd > config.maxRequestSize)
-                  {
-                     clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
-                     reset();
-                     return;
-                  }
-
-                  import std.algorithm : splitter, map, joiner;
-
-                  // Extra data after the headers is stored in the leftover buffer
-                  request.data ~= bufferRead[0..headersEnd];
-                  leftover = bufferRead[headersEnd+4..$];
-
-                  // The headers are completed
-                  bufferRead.length = 0;
-                  request.headersDone = true;
-                  request.isValid = true;
-
-                  auto firstLine = request.data.indexOf("\r\n");
-
-                  // HACK: A single line (http 1.0?) request.
-                  if (firstLine < 0)
-                  {
-                     firstLine = request.data.length;
-                     request.data ~= "\r\n";
-                  }
-
-                  if (firstLine < 18)
-                  {
-                     request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug warning("Bad Request. Request line too short.");
-                     reset();
-                     return;
-                  }
-
-                  auto fields = request.data[uint.sizeof..firstLine].splitter(' ');
-                  size_t popped = 0;
-
-                  if (!fields.empty)
-                  {
-                     request.method = fields.front;
-                     fields.popFront;
-                     popped++;
-                  }
-
-                  if (!fields.empty)
-                  {
-                     request.path = fields.front;
-                     fields.popFront;
-                     popped++;
-                  }
-
-                  if (!fields.empty)
-                  {
-                     request.httpVersion = cast(ProtoRequest.HttpVersion)fields.front;
-                     fields.popFront;
-                     popped++;
-                  }
-
-                  // HTTP version must be 1.0 or 1.1
-                  if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
-                  {
-                     request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug warning("Bad Request. Http version unknown.");
-                     reset();
-                     return;
-                  }
-
-                  if (popped != 3 || !fields.empty)
-                  {
-                     request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug warning("Bad Request. Malformed request line.");
-                     reset();
-                     return;
-                  }
-
-                  if (request.path[0] != '/')
-                  {
-                     request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug warning("Bad Request. Absolute uri?");
-                     reset();
-                     return;
-                  }
-
-                  // Parse headers for 100-continue, content-length and connection
-                  auto hdrs = request.data[firstLine+2..$]
-                  .splitter("\r\n")
-                  .map!((in char[] row)
-                  {
-                     if (!request.isValid)
-                        return (char[]).init;
-
-                     auto headerColon = row.indexOf(':');
-
-                     if (headerColon < 0)
-                     {
-                        request.isValid = false;
-                        return (char[]).init;
-                     }
-
-                     // Headers keys are case insensitive, so we lowercase them
-                     // We strip the leading and trailing spaces from both key and value
-                     char[] key = cast(char[])row[0..headerColon].strip!(x =>x==' ' || x=='\t');
-                     char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
-
-                     // Fast way to lowercase the key. Check if it is ASCII only.
-                     foreach(idx, ref k; key)
-                     {
-                        if (k > 0xF9)
-                        {
-                           request.isValid = false;
-                           return (char[]).init;
-                        }
-                        else if (k >= 'A' && k <= 'Z')
-                          k |= 32;
-                     }
-
-                     foreach(idx, ref k; value)
-                     {
-                        if (k > 0xF9)
-                        {
-                           request.isValid = false;
-                           return (char[]).init;
-                        }
-                     }
-
-                     if (key.length == 0 || value.length == 0)
-                     {
-                        request.isValid = false;
-                        return (char[]).init;
-                     }
-
-                     // 100-continue
-                     if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
-                     else if (key == "connection")
-                     {
-                        import std.uni: sicmp;
-                        import std.string : CaseSensitive;
-
-                        if (sicmp(value, "keep-alive") == 0) request.connection = ProtoRequest.Connection.KeepAlive;
-                        else if (sicmp(value, "close") == 0) request.connection = ProtoRequest.Connection.Close;
-                        else if (value.indexOf("upgrade", CaseSensitive.no) >= 0) request.connection = ProtoRequest.Connection.Upgrade;
-                        else request.connection = ProtoRequest.connection.Unknown;
-                     }
-                     else
-                     try { if (key == "content-length") request.contentLength = value.to!size_t; }
-                     catch (Exception e) { request.isValid = false; return (char[]).init; }
-
-                     return key ~ ":" ~ value;
-                  })
-                  .join("\r\n") ~ "\r\n\r\n";
-
-
-                  request.data.length = firstLine+2 + hdrs.length;
-
-                  // If required by configuration, add the remote ip to the headers
-                  // It is disabled by default, as it is a slow operation and it is not always needed
-                  string ra = string.init;
-                  if(config.withRemoteIp)
-                  {
-                     ra = "x-remote-ip:" ~ clientSkt.remoteAddress().toAddrString() ~ "\r\n";
-                     request.data.length += ra.length;
-                     request.data[firstLine+2..firstLine+2+ra.length] = ra;
-                  }
-
-                  request.data[firstLine+2+ra.length..$] = hdrs;
-
-                  if (request.isValid == false)
-                  {
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
-                     debug warning("Bad Request. Malformed request.");
-                     reset();
-                     return;
-                  }
-
-                  // Keep alive is the default for HTTP/1.1, close for HTTP/1.0
-                  if (request.connection == ProtoRequest.Connection.Unknown)
-                  {
-                     if (request.httpVersion == ProtoRequest.HttpVersion.HTTP_11) request.connection = ProtoRequest.Connection.KeepAlive;
-                     else request.connection = ProtoRequest.Connection.Close;
-                  }
-
-                  request.headersLength = request.data.length;
-
-                  // If the request has a body, we need to read it
-                  if (request.contentLength != 0)
-                  {
-                     if (request.headersLength + request.contentLength  > config.maxRequestSize)
-                     {
-                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
-                        reset();
-                        return;
-                     }
-
-                     request.data.reserve(request.headersLength + request.contentLength);
-                     request.isValid = false;
-                     tryParse = true;
-		               status = State.READING_BODY;
-
-                     // If required, we send the 100-continue response now
-                     if (request.expect100)
-                        clientSkt.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
-                  }
-                  else
-                  {
-                     // No body, we can process the request
-
-                     requestDataReceived = false; // Request completed, we can reset the timeout
-                     hasMoreDataToParse = leftover.length > 0;
-
-                     pushToWaitingList(this);
-
-                     if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
-                     else status = State.READY;
-
-                  }
-               }
-               else leftover = bufferRead.dup;
-            }
-
-         }
-         else if (status == State.READING_BODY)
-         {
-            // We are reading the body of the request
-            request.data ~= leftover;
-            request.data ~= bufferRead;
-
-            leftover.length = 0;
-            bufferRead.length = 0;
-
-            if (request.data.length >= request.headersLength + request.contentLength)
-            {
-               // We read the whole body, process the request
-
-               requestDataReceived = false; // Request completed, we can reset the timeout
-
-               leftover = request.data[request.headersLength + request.contentLength..$];
-               request.data = request.data[0..request.headersLength + request.contentLength];
-               request.isValid = true;
-
-               pushToWaitingList(this);
-
-               hasMoreDataToParse = leftover.length > 0;
-
-               if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
-               else status = State.READY;
-
-            }
-         }
-
-         if (hasMoreDataToParse)
-         {
-            // There's a (partial) new request in the buffer, we need to create a new request
-            request.next = new ProtoRequest();
-            request = request.next;
-            status = State.READING_HEADERS;
-
-            bufferRead = leftover;
-            leftover.length = 0;
-
-            // We try to parse the new request immediately
-            tryParse = true;
-         }
-      }
 
    }
 

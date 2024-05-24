@@ -194,19 +194,7 @@ package class WorkerInfo
       ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
       auto bytes = unixSocket.receive(buffer);
 
-      if (bytes == Socket.ERROR)
-      {
-         debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (socket error).");
-         communicator.reset();
-         setStatus(WorkerInfo.State.STOPPED);
-      }
-      else if (bytes == 0)
-      {
-         // User closed socket.
-         communicator.reset();
-         setStatus(WorkerInfo.State.STOPPED);
-      }
-      else
+      if (bytes > 0)
       {
          if (communicator.responseLength == 0)
          {
@@ -305,6 +293,19 @@ package class WorkerInfo
          }
          else communicator.write(cast(char[])buffer[0..bytes]);
       }
+      else if (bytes == 0)
+      {
+         // User closed socket.
+         communicator.reset();
+         setStatus(WorkerInfo.State.STOPPED);
+      }
+      else
+      {
+         debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (socket error).");
+         communicator.reset();
+         setStatus(WorkerInfo.State.STOPPED);
+      }
+
    }
    // A lazy list of busy workers.
    pragma(inline, true)
