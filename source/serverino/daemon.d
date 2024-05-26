@@ -427,7 +427,8 @@ package:
 
          listener.socket = new TcpSocket(listener.address.addressFamily);
          listener.config = config;
-         version(Windows) { } else { listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true); }
+
+         version(Posix) listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
          try
          {
