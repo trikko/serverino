@@ -45,7 +45,6 @@ void test_4(Request r, Output o) { if (r.path == "/error") return;  history ~= 4
 @endpoint @priority(4)
 void test_5(Request r) { history ~= 5; return; }
 
-
-// This will fire a log critical error and will be ignored
-@priority(4)
-void test_6(Request r) { history ~= 6; return; }
+// Functions missing the @endpoint attribute
+@priority(4) void wrong_function(Request r) { return; }
+@route!"/hello" void wrong_function_2(Request r) { return; }

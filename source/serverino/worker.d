@@ -859,16 +859,13 @@ struct Worker
                         static if (hasUDA!(f, priority) || hasUDA!(f, route))
                         {
                            import std.algorithm : canFind;
+                           import std.logger : critical;
                            static if(!taggedHandlers.canFind!(a => a.name == ff.name))
-                              untagged ~= "`" ~ ff.mod ~ "." ~ ff.name ~ "`";
-
+                              critical("Function `", ff.mod ~ "." ~ ff.name, "` is not tagged with `@endpoint`. It will be ignored.");
                         }
                      }
                   }
 
-                  import std.logger : critical;
-                  foreach(u; untagged)
-                     critical("Function ", u, " is not tagged with `@endpoint`. It will be ignored.");
                }
             }
 
@@ -881,17 +878,22 @@ struct Worker
 
                   import std.traits : hasUDA, TemplateOf, getUDAs;
 
-                  bool willLaunch = true;
                   static if (hasUDA!(f, route))
                   {
-                     willLaunch = false;
-                     static foreach(attr;  getUDAs!(f, route))
+                     // If one of the route UDAs returns true, we will launch the function.
+                     bool willLaunchFunc()
                      {
+                        static foreach(attr;  getUDAs!(f, route))
                         {
-                           if(attr.apply(request)) willLaunch = true;
+                           { if(attr.apply(request)) return true; }
                         }
+
+                        return false;
                      }
+
+                     bool willLaunch = willLaunchFunc();
                   }
+                  else immutable willLaunch = true;
 
                   if (willLaunch)
                   {
