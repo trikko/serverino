@@ -50,6 +50,7 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Cookie.secure.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Cookie.this.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/HttpVersion.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/OnFileServed.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Output.addHeader.html</loc></url>
@@ -82,6 +83,7 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.Method.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.method.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.password.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.path.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.post.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.requestLine.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.route.html</loc></url>
@@ -90,7 +92,6 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.has.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.read.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.toString.html</loc></url>
-<url><loc>http://127.0.0.1/serverino/interfaces/Request.uri.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.user.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.worker.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/WebSocket.html</loc></url>

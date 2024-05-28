@@ -101,7 +101,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">(key, value)</span>
 							</td>
 							<td>Add a http header.
- You can't set <code class="lang-d"><span class="pln">content</span><span class="pun">-</span><span class="pln">length</span></code>, <code class="lang-d"><a href="../../serverino/interfaces/Output.status.html"><span class="pln">status</span></a></code> or <code class="lang-d"><span class="pln">transfer</span><span class="pun">-</span><span class="pln">encoding</span></code> headers. They are managed by serverino internally.
+ You can't set <code class="lang-d"><span class="pln">content</span><span class="pun">-</span><span class="pln">length</span></code>, <code class="lang-d"><span class="pln">date</span></code>, <code class="lang-d"><a href="../../serverino/interfaces/Output.status.html"><span class="pln">status</span></a></code> or <code class="lang-d"><span class="pln">transfer</span><span class="pun">-</span><span class="pln">encoding</span></code> headers. They are managed by serverino internally.
 </td>
 						</tr>
 						<tr>
@@ -131,7 +131,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(path, guessMime)</span>
 							</td>
-							<td>You can reply with a file. Automagical mime-type detection.
+							<td>Serve a file from disk. If you want to delete the file after serving it, use <code class="lang-d"><span class="pln">serveFile</span><span class="pun">!(</span><span class="typ">OnFileServed<wbr/></span><span class="pun">.</span><span class="pln">deleteFile</span><span class="pun">)</span></code>.
 </td>
 						</tr>
 						<tr>

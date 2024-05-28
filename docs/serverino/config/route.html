@@ -75,16 +75,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				
 				<section><h3>Example</h3>
 <pre class="code"><code class="lang-d"><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln">
-</span><span class="pun">@</span><span class="pln">route</span><span class="pun">!(</span><span class="pln">x </span><span class="pun">=&gt; </span><span class="pln">x<wbr/></span><span class="pun">.</span><span class="pln">uri<wbr/></span><span class="pun">.</span><span class="pln">startsWith</span><span class="pun">(</span><span class="str">"/api"</span><span class="pun">))
+</span><span class="pun">@</span><span class="pln">route</span><span class="pun">!(</span><span class="pln">x </span><span class="pun">=&gt; </span><span class="pln">x<wbr/></span><span class="pun">.</span><span class="pln">path<wbr/></span><span class="pun">.</span><span class="pln">startsWith</span><span class="pun">(</span><span class="str">"/api"</span><span class="pun">))
 </span><span class="typ">void </span><span class="pln">api</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { ... }</span></code></pre>
 </section>
-<h2 id="1">Alias route</h2><p>UDA. You can use to filter requests using a uri.
+<h2 id="1">Alias route</h2><p>UDA. You can use to filter requests using a path.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">alias</span> <span class="pln">route</span>(<span class="typ">string</span> uri)
-				 <span class="pun">=</span> <a href="../../serverino/config/route.html"><span class="pln">route</span></a>!((r)=>compareUri!uri(r))<span class="pun">;</span>
+				<span class="kwd">alias</span> <span class="pln">route</span>(<span class="typ">string</span> path)
+				 <span class="pun">=</span> <a href="../../serverino/config/route.html"><span class="pln">route</span></a>!((r)=>comparePath!path(r))<span class="pun">;</span>
 						</div>
 					</code>
 				</div>

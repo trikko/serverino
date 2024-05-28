@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Enum member Request.buildId</title>
+		<title>Enum OnFileServed</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,29 +48,39 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Enum member Request.buildId</h1><p>Every time you compile the app this value will change
+				<h1>Enum OnFileServed</h1><p>Used by Output.serveFile
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <a href="../../serverino/interfaces/Request.html"><span class="typ">Request</span></a>
-				<br/>
-				<span class="pun">
-					{
-					<br/>
-				</span>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				&nbsp;&nbsp;<span class="kwd">enum</span> <span class="pln">buildId</span>
-				 <span class="pun">=</span> <span class="str">"9ad9726cd15b53dc96290b81c04147f6"</span><span class="pun">;</span>
-				<br/>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				<span class="pun">}</span>
+				<span class="kwd">enum</span> <span class="typ">OnFileServed</span>
+				 <span class="pun">:</span> <span class="typ">int</span> <span class="pun">{ ... }</span>
 						</div>
 					</code>
 				</div>
 				
+				<section><h2>Enum members</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td id="DeleteFile">
+								<code>DeleteFile</code>
+							</td>
+							<td>Delete the file after sending it
+</td>
+						</tr>
+						<tr>
+							<td id="KeepFile">
+								<code>KeepFile</code>
+							</td>
+							<td>Keep the file on disk
+</td>
+						</tr>
+					</table>
+				</section>
 				
 			</div>
 			<footer>

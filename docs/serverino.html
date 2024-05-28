@@ -91,7 +91,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
  <code class="lang-d"><a href="./serverino/config/priority.html" title="serverino.config.priority"><span class="pln">priority</span></a></code> (default is 0). The first endpoint that write something to the output is the one that will respond to the request.
 </p>
 
-<p> The <code class="lang-d"><a href="./serverino/config/route.html" title="serverino.config.route"><span class="pln">route</span></a></code> attribute can be used to filter the requests that are passed to the endpoint, using a uri or a <code class="lang-d"><span class="typ">bool </span><span class="kwd">delegate</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">)</span></code> argument.
+<p> The <code class="lang-d"><a href="./serverino/config/route.html" title="serverino.config.route"><span class="pln">route</span></a></code> attribute can be used to filter the requests that are passed to the endpoint, using a path or a <code class="lang-d"><span class="typ">bool </span><span class="kwd">delegate</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">)</span></code> argument.
  In this example, only requests to <code class="lang-d"><span class="pun">/</span><span class="pln">hello</span></code> are passed to the <code class="lang-d"><span class="pln">hello</span></code> endpoint. The <code class="lang-d"><a href="./serverino/config/route.html" title="serverino.config.route"><span class="pln">route</span></a></code> attribute can be used multiple times to specify multiple routes also using a delegate.
 </p>
 </section>
@@ -100,9 +100,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 			</div>
 			<footer>
 				<div id="license-info">
-					
-					
-					
+
+
+
 				</div>
 			</footer>
 		</div>
