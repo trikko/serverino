@@ -78,6 +78,9 @@ private template comparePath(string _uri)
 +/
 public alias route(string path) = route!(r => comparePath!path(r));
 
+// Catch involuntarily use of `@route("...")`
+public void route(string s) { assert(false, "Do not use `@route(\"" ~ s ~ "\")`: try `@route!\"" ~ s ~ "\"` instead."); }
+
 /++
    Struct used to setup serverino.
    You must return this struct from a function with @onServerInit UDA attached.
