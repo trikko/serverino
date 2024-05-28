@@ -272,7 +272,7 @@ struct Request
    @safe @nogc @property nothrow public auto cookie() const { return SafeAccess!string(_internal._cookie); }
 
    /// The path requested by user
-   @safe @nogc @property nothrow public const(string) path() const { return _internal._uri; }
+   @safe @nogc @property nothrow public const(string) path() const { return _internal._path; }
 
    deprecated("Use `request.path` instead") alias uri = path;
 
@@ -677,7 +677,7 @@ struct Request
       {
          DataBuffer!char buffer;
          buffer.append(_method ~ "\n");
-         buffer.append(_uri ~ "\n");
+         buffer.append(_path ~ "\n");
          buffer.append(_httpVersion ~ "\n");
          buffer.append(_host ~ "\n");
          buffer.append(_user ~ "\n");
@@ -711,7 +711,7 @@ struct Request
          auto lines = s.split("\n");
 
          _method = lines[0];
-         _uri = lines[1];
+         _path = lines[1];
          _httpVersion = cast(HttpVersion)lines[2];
          _host = lines[3];
          _user = lines[4];
@@ -825,7 +825,7 @@ struct Request
       string[string]  _header;
       string[string]  _cookie;
 
-      string _uri;
+      string _path;
       string _method;
       string _host;
       string _postDataContentType;
@@ -855,7 +855,7 @@ struct Request
          _post    = null;
          _header  = null;
          _cookie  = null;
-         _uri     = string.init;
+         _path    = string.init;
 
          _method        = string.init;
          _host          = string.init;

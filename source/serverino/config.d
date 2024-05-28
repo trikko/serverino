@@ -59,12 +59,12 @@ public struct route(alias T)
    static bool apply(const Request r) { return T(r); }
 }
 
-private template comparePath(string _uri)
+private template comparePath(string _path)
 {
    import std.uri : encode;
    enum comparePath = (const Request r){
-      static assert(_uri[0] == '/', "Every route must begin with a '/'");
-      return r.path == _uri.encode();
+      static assert(_path[0] == '/', "Every route must begin with a '/'");
+      return r.path == _path.encode();
    };
 }
 

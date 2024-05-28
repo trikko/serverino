@@ -468,7 +468,7 @@ struct Worker
                   else return "/" ~ norm;
             }
 
-            request._internal._uri            = normalize(cast(string)path[0..pathLen]);
+            request._internal._path           = normalize(cast(string)path[0..pathLen]);
             request._internal._rawQueryString = cast(string)path[queryStart..queryLen];
             request._internal._method         = cast(string)method;
 
