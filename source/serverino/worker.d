@@ -847,8 +847,6 @@ struct Worker
                {
                   untaggedWarningShown = true;
 
-                  string[] untagged;
-
                   static foreach(ff; untaggedHandlers)
                   {
                      {
