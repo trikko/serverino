@@ -66,7 +66,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 + Every function decorated with `serverino.config.endpoint` is an endpoint. They are called in order of priority assigned with
 + `serverino.config.priority` (default is 0). The first endpoint that write something to the output is the one that will respond to the request.
 +
-+ The `serverino.config.route` attribute can be used to filter the requests that are passed to the endpoint, using a uri or a `bool delegate(Request r)` argument.
++ The `serverino.config.route` attribute can be used to filter the requests that are passed to the endpoint, using a path or a `bool delegate(Request r)` argument.
 + In this example, only requests to `/hello` are passed to the `hello` endpoint. The `serverino.config.route` attribute can be used multiple times to specify multiple routes also using a delegate.
 +/
 module serverino;

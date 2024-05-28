@@ -17,7 +17,7 @@ void example(Request request, Output output)
 {
 	// Skip if the request is not for the root
 	// You can also use @route!("/") to achieve the same result
-	if (request.uri != "/")
+	if (request.path != "/")
 		return;
 
 	// Read the query parameter, default to "https://trikko.github.io/serverino"

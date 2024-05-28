@@ -52,17 +52,17 @@ void homepage(Request request, Output output)
 
 // This endpoint shows a private page: it's protected by the auth endpoint below.
 @endpoint @route!"/private/profile"
-void user(Request request, Output output) 
-{ 
-	output ~= "Hello user!"; 
+void user(Request request, Output output)
+{
+	output ~= "Hello user!";
 }
 
 // This endpoint shows a private page: it's protected by the auth endpoint below.
-@endpoint 
+@endpoint
 void blah(Request request, Output output)
 {
-	// Same as marking this endpoint with @route!"/private/dump" 
-	if (request.uri != "/private/dump") 
+	// Same as marking this endpoint with @route!"/private/dump"
+	if (request.path != "/private/dump")
 		return;
 
 	output ~= request.dump();
@@ -71,7 +71,7 @@ void blah(Request request, Output output)
 // This endpoint simply checks if the user and password are correct for all the private pages.
 // Since it has a higher priority than the previous endpoints, it will be called first.
 @priority(10)
-@endpoint @route!(r => r.uri.startsWith("/private/"))
+@endpoint @route!(r => r.path.startsWith("/private/"))
 void auth(Request request, Output output)
 {
 	if (request.user != "user" || request.password != "password")
@@ -90,7 +90,7 @@ void auth(Request request, Output output)
 void requestLog(Request request)
 {
 	// There's no http output, so the next endpoint will be called.
-	info("Request: ", request.uri);
+	info("Request: ", request.path);
 }
 ```
 
@@ -102,7 +102,7 @@ void requestLog(Request request)
 // Accept a new connection only if the request URI is "/echo"
 // Every websocket will start a new indipendent process
 @onWebSocketUpgrade bool onUpgrade(Request req) {
-	return req.uri == "/echo";
+	return req.path == "/echo";
 }
 
 // Handle the WebSocket connection
@@ -135,11 +135,11 @@ It's pretty easy. Just add these lines inside your nginx configuration:
 server {
    listen 80 default_server;
    listen [::]:80 default_server;
-   
+
    location /your_path/ {
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
-      
+
       proxy_pass http://localhost:8080;
    }
    ...
@@ -165,10 +165,10 @@ server {
       proxy_http_version 1.1;
       proxy_set_header Host $host;
       proxy_set_header X-Real-IP $remote_addr;
-      
+
       proxy_pass http://your_upstream_name;
     }
-    
+
     ...
     ...
  }

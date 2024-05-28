@@ -11,7 +11,7 @@ mixin ServerinoMain;
 
 // Accept a new connection only if the request URI is "/echo"
 @onWebSocketUpgrade bool onUpgrade(Request req) {
-	return req.uri == "/echo";
+	return req.path == "/echo";
 }
 
 // Handle the WebSocket connection

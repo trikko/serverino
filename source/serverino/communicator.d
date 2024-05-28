@@ -279,7 +279,7 @@ package class Communicator
    }
 
    // Assign a worker to the communicator
-   void setWorker(ref WorkerInfo worker)
+   void setWorker(WorkerInfo worker)
    {
       this.worker = worker;
       worker.communicator = this;

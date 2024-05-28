@@ -616,7 +616,7 @@ struct Worker
 
             version(debugRequest)
             {
-               log("-- REQ: ", request.uri);
+               log("-- REQ: ", request.path);
                log("-- PARSING STATUS: ", request._internal._parsingStatus);
 
                try { log("-- REQ: ", request); }
@@ -839,6 +839,39 @@ struct Worker
       {
          bool callUntilIsDirty(FunctionPriority[] taggedHandlers)()
          {
+            static if (untaggedHandlers !is null && untaggedHandlers.length > 0)
+            {
+               static bool untaggedWarningShown = false;
+
+               if (!untaggedWarningShown)
+               {
+                  untaggedWarningShown = true;
+
+                  string[] untagged;
+
+                  static foreach(ff; untaggedHandlers)
+                  {
+                     {
+                        mixin(`import ` ~ untaggedHandlers[0].mod ~ ";");
+                        alias currentMod = mixin(untaggedHandlers[0].mod);
+                        alias f = __traits(getMember,currentMod, untaggedHandlers[0].name);
+                        import std.traits : hasUDA;
+                        static if (hasUDA!(f, priority) || hasUDA!(f, route))
+                        {
+                           import std.algorithm : canFind;
+                           static if(!taggedHandlers.canFind!(a => a.name == ff.name))
+                              untagged ~= "`" ~ ff.mod ~ "." ~ ff.name ~ "`";
+
+                        }
+                     }
+                  }
+
+                  import std.logger : critical;
+                  foreach(u; untagged)
+                     critical("Function ", u, " is not tagged with `@endpoint`. It will be ignored.");
+               }
+            }
+
             static foreach(ff; taggedHandlers)
             {
                {

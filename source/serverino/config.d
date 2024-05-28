@@ -50,7 +50,7 @@ import serverino.interfaces : Request;
 + Example:
 + ---
 + @endpoint
-+ @route!(x => x.uri.startsWith("/api"))
++ @route!(x => x.path.startsWith("/api"))
 + void api(Request r, Output o) { ... }
 + ---
 +/
@@ -59,16 +59,16 @@ public struct route(alias T)
    static bool apply(const Request r) { return T(r); }
 }
 
-private template compareUri(string _uri)
+private template comparePath(string _uri)
 {
    import std.uri : encode;
-   enum compareUri = (const Request r){
+   enum comparePath = (const Request r){
       static assert(_uri[0] == '/', "Every route must begin with a '/'");
-      return r.uri == _uri.encode();
+      return r.path == _uri.encode();
    };
 }
 
-/++ UDA. You can use to filter requests using a uri.
+/++ UDA. You can use to filter requests using a path.
 + Example:
 + ---
 + @endpoint
@@ -76,7 +76,7 @@ private template compareUri(string _uri)
 + void api(Request r, Output o) { ... }
 + ---
 +/
-public alias route(string uri) = route!(r => compareUri!uri(r));
+public alias route(string path) = route!(r => comparePath!path(r));
 
 /++
    Struct used to setup serverino.

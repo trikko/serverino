@@ -116,7 +116,7 @@ enum HttpVersion
 + ---
 + void handler(Request request, Output output)
 + {
-+    info("You asked for ", request.uri, " with method ", request.method, " and params ", request.get.data);
++    info("You asked for ", request.path, " with method ", request.method, " and params ", request.get.data);
 + }
 + ---
 +/
@@ -144,7 +144,7 @@ struct Request
       output ~= "\n";
       output ~= "Request:\n";
       output ~= format(" • Method: %s\n", method.to!string);
-      output ~= format(" • Uri: %s\n", uri);
+      output ~= format(" • Path: %s\n", path);
 
       if (!_internal._user.empty)
          output ~= format(" • Authorization: user => `%s` password => `%s`\n",_internal._user,_internal._password.map!(x=>'*'));
@@ -271,8 +271,10 @@ struct Request
    /// Cookies received from user
    @safe @nogc @property nothrow public auto cookie() const { return SafeAccess!string(_internal._cookie); }
 
-   /// The uri requested by user
-   @safe @nogc @property nothrow public const(string) uri() const { return _internal._uri; }
+   /// The path requested by user
+   @safe @nogc @property nothrow public const(string) path() const { return _internal._uri; }
+
+   deprecated("Use `request.path` instead") alias uri = path;
 
    /// Which worker is processing this request?
    @safe @nogc @property nothrow public auto worker() const { return _internal._worker; }

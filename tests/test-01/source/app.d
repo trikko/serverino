@@ -149,8 +149,8 @@ void test_routing_1(Request r, Output o)
 }
 
 @endpoint @priority(10000)
-@route!(r => r.uri == "/world_routing")
-@route!(r => r.uri == "/blah_routing")
+@route!(r => r.path == "/world_routing")
+@route!(r => r.path == "/blah_routing")
 void test_routing_2(Request r, Output o)
 {
    JSONValue v = parseJSON(`{"route" : "world"}`);
@@ -171,7 +171,7 @@ void test_routing_3(Request r, Output o)
 @endpoint @priority(5)
 void json(Request r, Output o)
 {
-   if (r.uri != "/json/dump/test") return;
+   if (r.path != "/json/dump/test") return;
 
    o.addHeader("content-type", "application/json");
 
@@ -183,7 +183,7 @@ void json(Request r, Output o)
    v.object["headers"] = r.header.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
    v.object["method"] = r.method.to!string.toUpper;
    v.object["host"] = r.host;
-   v.object["uri"] = r.uri;
+   v.object["path"] = r.path;
    v.object["username"] = r.user;
    v.object["password"] = r.password;
    v.object["content-type"] = r.body.contentType;
@@ -205,14 +205,14 @@ void json(Request r, Output o)
 @endpoint @priority(5)
 void test_1(Request r, Output o)
 {
-   if (r.uri == "/401")
+   if (r.path == "/401")
       o.status = 401;
 }
 
 @endpoint @priority(5)
 void test_2(Request r, Output o)
 {
-   if (r.uri != "/test_get") return;
+   if (r.path != "/test_get") return;
 
    o.addHeader("content-type", "text-plain");
    o ~= r.get.read("hello", "world");
@@ -222,7 +222,7 @@ void test_2(Request r, Output o)
 @endpoint @priority(5)
 void test_3(Request r, Output o)
 {
-   if (r.uri != "/long") return;
+   if (r.path != "/long") return;
 
    import core.thread;
 
@@ -260,7 +260,7 @@ void test()
       auto j = parseJSON(content);
 
       assert(j["method"].str == "POST");
-      assert(j["uri"].str == "/json/dump/test");
+      assert(j["path"].str == "/json/dump/test");
       assert(j["host"].str == "localhost:8080");
 
       assert(j["get"].array.map!(x=>x.str).array.sort.array == ["hello:123", "world:"]);
@@ -305,7 +305,7 @@ Content-Type: application/json\r
       auto j = parseJSON(content);
 
       assert(j["method"].str == "POST");
-      assert(j["uri"].str == "/json/dump/test");
+      assert(j["path"].str == "/json/dump/test");
       assert(j["host"].str == "127.0.0.1:8080");
 
       assert(j["get"].array.map!(x=>x.str).array.sort.array == []);
@@ -483,7 +483,7 @@ Content-Disposition: form-data; name=\"field1\"\r
 
       auto j = parseJSON(content);
       assert(j["method"].str == "POST");
-      assert(j["uri"].str == "/json/dump/test");
+      assert(j["path"].str == "/json/dump/test");
       assert(j["host"].str == "127.0.0.1:8080");
       assert(j["username"].str ==  string.init);
       assert(j["password"].str ==  string.init);
@@ -522,7 +522,7 @@ Content-Type: application/json\r
       auto j = parseJSON(content);
 
       assert(j["method"].str == "POST");
-      assert(j["uri"].str == "/json/dump/test");
+      assert(j["path"].str == "/json/dump/test");
       assert(j["host"].str == "127.0.0.1:8080");
 
       assert(j["get"].array.map!(x=>x.str).array.sort.array == []);

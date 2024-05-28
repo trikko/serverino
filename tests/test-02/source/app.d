@@ -133,10 +133,10 @@ mixin ServerinoMain;
    o ~= buffer;
 }
 
-@route!(x => x.uri.startsWith("/echo/"))
+@route!(x => x.path.startsWith("/echo/"))
 @endpoint void echo(Request r, Output o)
 {
-   o ~= r.uri[6..$];
+   o ~= r.path[6..$];
 }
 
 @onServerInit
@@ -195,7 +195,7 @@ ServerinoConfig conf()
    s.receiveMessage();
 }
 
-@onWebSocketUpgrade bool upgrade(Request r) { return r.uri == "/chat" || r.uri == "/pizza" || r.uri == "/hello"; }
+@onWebSocketUpgrade bool upgrade(Request r) { return r.path == "/chat" || r.path == "/pizza" || r.path == "/hello"; }
 
 void test()
 {

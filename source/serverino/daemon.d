@@ -405,7 +405,7 @@ package:
       writeCanary();
       scope(exit) removeCanary();
 
-      info("Daemon started.");
+      info("Daemon started using ", Backend == Backend.EPOLL ? "epoll" : "select", " backend.");
       now = CoarseTime.currTime;
 
       version(Posix)
