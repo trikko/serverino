@@ -9,7 +9,7 @@ import serverino;
 
 mixin ServerinoMain;
 
-// Accept a new connection only if the request URI is "/echo"
+// Accept a new connection only if the request path is "/echo"
 @onWebSocketUpgrade bool onUpgrade(Request req) {
 	return req.path == "/echo";
 }

@@ -99,7 +99,7 @@ void requestLog(Request request)
 > Priority works in the same way as the HTTP endpoints: the first websocket endpoint that touches the connection will handle it
 
 ```d
-// Accept a new connection only if the request URI is "/echo"
+// Accept a new connection only if the request path is "/echo"
 // Every websocket will start a new indipendent process
 @onWebSocketUpgrade bool onUpgrade(Request req) {
 	return req.path == "/echo";
