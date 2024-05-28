@@ -831,8 +831,8 @@ struct Worker
 
       }
 
-      enum taggedHandlers = getTaggedHandlers();
-      enum untaggedHandlers = getUntaggedHandlers();
+      static immutable taggedHandlers = getTaggedHandlers();
+      static immutable untaggedHandlers = getUntaggedHandlers();
 
 
       static if (taggedHandlers !is null && taggedHandlers.length>0)

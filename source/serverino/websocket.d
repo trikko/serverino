@@ -279,7 +279,7 @@ struct WebSocketWorker
 
       }
 
-      enum taggedHandlers = getTaggedHandlers();
+      static immutable taggedHandlers = getTaggedHandlers();
 
       static if (taggedHandlers !is null && taggedHandlers.length>0)
       {
