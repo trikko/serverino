@@ -595,7 +595,7 @@ package class Communicator
 
                   // Extra data after the headers is stored in the leftover buffer
                   request.data ~= bufferRead[0..headersEnd];
-                  leftover = bufferRead[headersEnd+4..$];
+                  leftover = bufferRead[headersEnd+4..$].dup;
 
                   // The headers are completed
                   bufferRead.length = 0;
@@ -822,7 +822,7 @@ package class Communicator
 
                   requestDataReceived = false; // Request completed, we can reset the timeout
 
-                  leftover = request.data[request.headersLength + request.contentLength..$];
+                  leftover = request.data[request.headersLength + request.contentLength..$].dup;
                   request.data = request.data[0..request.headersLength + request.contentLength];
                   request.isValid = true;
 
@@ -843,7 +843,7 @@ package class Communicator
                request = request.next;
                status = State.READING_HEADERS;
 
-               bufferRead = leftover;
+               bufferRead = leftover.dup;
                leftover.length = 0;
 
                // We try to parse the new request immediately
