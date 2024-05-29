@@ -612,6 +612,11 @@ package:
 
          if (updates < 0 || exitRequested)
          {
+            // Retry if wait was interrupted by a signal.
+            import core.stdc.errno : errno, EINTR;
+            if (updates < 0 && errno == EINTR) continue;
+
+            // If not, exit.
             removeCanary();
             break;
          }
