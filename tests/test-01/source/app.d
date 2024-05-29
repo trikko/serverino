@@ -334,7 +334,7 @@ Content-Disposition: form-data; name=\"field1\"\r
       http.method = HTTP.Method.post;
       http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
       http.perform();
-      assert(http.statusLine.code == 422);
+      assert(http.statusLine.code == 400);
    }
 
    {

@@ -687,9 +687,7 @@ struct Worker
             {
                debug warning("Parsing error: ", request._internal._parsingStatus);
 
-               if (request._internal._parsingStatus == Request.ParsingStatus.InvalidBody) output.status = 422;
-               else output.status = 400;
-
+               output.status = 400;
                output._internal._sendBody = false;
                return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
@@ -700,14 +698,12 @@ struct Worker
       {
          output.status = 400;
          output._internal._sendBody = false;
-
          debug warning("UTFException: ", e.toString);
       }
       catch(Exception e) {
 
          output.status = 500;
          output._internal._sendBody = false;
-
          debug critical("Unhandled exception: ", e.toString);
       }
 

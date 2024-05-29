@@ -343,7 +343,7 @@ void test()
       http.onReceive = (ubyte[] data) {  return data.length; };
       http.perform();
 
-      assert(http.statusLine.code == 422);
+      assert(http.statusLine.code == 400);
 
    }
    info("Testing crash endpoint. The server must not crash");
