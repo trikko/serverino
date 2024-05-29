@@ -139,8 +139,10 @@ struct Request
 
       string output;
       output ~= format("Serverino %s.%s.%s\n\n", SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION);
-      output ~= format("Worker: #%s\n", worker.to!string);
-      output ~= format("Build ID: %s\n", buildId);
+      output ~= format("Worker ID:  %s\n", worker.to!string);
+      output ~= format("Request ID: %s\n", id());
+      output ~= format("Build ID:   %s\n", buildId);
+
       output ~= "\n";
       output ~= "Request:\n";
       output ~= format(" • Method: %s\n", method.to!string);
@@ -214,6 +216,13 @@ struct Request
       Trace, /// TRACE
       Unknown = -1 /// Unknown method
 	}
+
+   /// The request ID. It is unique for each request.
+   @safe @property public auto id() const
+   {
+      auto hash = simpleNotSecureCompileTimeHash(worker.to!string ~ "." ~ _internal._requestId.to!string)[0..8];
+      return hash[0..4] ~ format("-%04d", _internal._requestId%10000);
+   }
 
    /++ Params from query string
     + ---
@@ -294,10 +303,10 @@ struct Request
    /// The sequence of endpoints called so far
    @safe @nogc @property nothrow public auto route() const { return _internal._route; }
 
-   static package string simpleNotSecureCompileTimeHash(string seed = "")
+   @safe nothrow static package string simpleNotSecureCompileTimeHash(string seed = "")
    {
       // Definetely not a secure hash function
-      // Created just to give a unique ID to each build.
+      // Created just to give a unique ID to each build / request
 
       char[16] h = "SimpleNotSecure!";
       char[32] h2;
@@ -311,15 +320,15 @@ struct Request
       {
          sc += 1+(cast(ushort)c);
          sc *= 79_193;
-         h[15-idx%16] ^= cast(char)(sc%255);
+         h[15-idx%16] ^= cast(char)(sc%256);
       }
 
       foreach(idx, c; h)
       {
          sc += 1+(cast(ushort)c);
          sc *= 96_911;
-         h2[idx*2] = hex[(sc%256)/16];
-         h2[idx*2+1]= hex[(sc%256)%16];
+         h2[idx] = hex[(sc%256)/16];
+         h2[$-idx-1]= hex[(sc%256)%16];
       }
 
       return h2.dup;
@@ -833,6 +842,7 @@ struct Request
       string _user;
       string _password;
       size_t _uploadId;
+      size_t _requestId;
 
       string _rawQueryString;
       string _rawHeaders;
@@ -873,6 +883,8 @@ struct Request
 
          _route.length = 0;
          _route.reserve(10);
+
+         _requestId = 0;
       }
    }
 

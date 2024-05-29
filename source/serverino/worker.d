@@ -386,6 +386,7 @@ struct Worker
             import std.algorithm : max;
             import std.uni : sicmp;
 
+            request._internal._requestId      = requestId;
             request._internal._httpVersion    = (httpVersion == "HTTP/1.1")?(HttpVersion.HTTP11):(HttpVersion.HTTP10);
             request._internal._data           = cast(char[])data;
             request._internal._rawHeaders     = cast(string)headers;
