@@ -317,10 +317,16 @@ package class Communicator
          }
          else if (sendBuffer.length > 0)
          {
-            immutable sent = clientSkt.send(sendBuffer.array);
+            buffer_again: immutable sent = clientSkt.send(sendBuffer.array);
 
             if (sent == Socket.ERROR)
             {
+               version(Posix)
+               {
+                  import core.stdc.errno : errno, EINTR;
+                  if (errno == EINTR) goto buffer_again;
+               }
+
                if(!wouldHaveBlocked)
                {
                   log("Socket Error");
@@ -366,7 +372,7 @@ package class Communicator
          if (maxToSend == 0)
             return;
 
-         immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
+         again: immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
 
          if (sent >= 0)
          {
@@ -404,6 +410,12 @@ package class Communicator
          }
          else
          {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR) goto again;
+            }
+
             if(!wouldHaveBlocked)
             {
                log("Socket Error");
@@ -470,7 +482,7 @@ package class Communicator
 
       if (sendBuffer.length == 0)
       {
-         auto sent = clientSkt.send(data);
+         again: auto sent = clientSkt.send(data);
 
          if (sent >= 0)
          {
@@ -505,6 +517,12 @@ package class Communicator
          }
          else
          {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR) goto again;
+            }
+
             if(!wouldHaveBlocked)
             {
                log("Socket error on write. ", lastSocketError);
@@ -551,7 +569,7 @@ package class Communicator
 
       // Read the data from the client socket if it's not buffered
       // Set the requestDatareceived flag to true if the first data is read to check for timeouts
-      bytesRead = clientSkt.receive(buffer);
+      again: bytesRead = clientSkt.receive(buffer);
       lastRecv = now;
 
       if (bytesRead > 0)
@@ -860,6 +878,12 @@ package class Communicator
       }
       else
       {
+         version(Posix)
+         {
+            import core.stdc.errno : errno, EINTR;
+            if (errno == EINTR) goto again;
+         }
+
          if(!wouldHaveBlocked)
          {
             status = State.READY;

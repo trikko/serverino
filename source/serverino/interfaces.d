@@ -1485,7 +1485,7 @@ class WebSocket
          return msg;
 
       ubyte[4096] buffer = void;
-      auto received = _socket.receive(buffer);
+      again: auto received = _socket.receive(buffer);
 
       if (received == 0)
       {
@@ -1495,6 +1495,12 @@ class WebSocket
 
       if (received < 0)
       {
+         version(Posix)
+         {
+            import core.stdc.errno : errno, EINTR;
+            if (errno == EINTR) goto again;
+         }
+
          if (!_socket.isAlive || !wouldHaveBlocked) kill("error receiving data");
          return WebSocketMessage.init;
       }
@@ -1529,10 +1535,17 @@ class WebSocket
 
       if (_leftover.length > 0)
       {
-         auto ret = _socket.send(_leftover);
+         leftover_again: auto ret = _socket.send(_leftover);
+
          // Not sent
          if (ret < 0)
          {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR) goto leftover_again;
+            }
+
             if (wouldHaveBlocked())
             {
                _leftover ~= data;
@@ -1559,11 +1572,17 @@ class WebSocket
 
       if (data.length > 0)
       {
-         auto ret = _socket.send(data);
+         again: auto ret = _socket.send(data);
 
          // Not sent
          if (ret < 0)
          {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR) goto again;
+            }
+
             if (wouldHaveBlocked())
             {
                _leftover ~= data;
