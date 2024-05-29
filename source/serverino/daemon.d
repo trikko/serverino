@@ -424,9 +424,13 @@ package:
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
       {
+         listener.config = config;
 
          listener.socket = new TcpSocket(listener.address.addressFamily);
-         listener.config = config;
+         listener.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
+
+         if (listener.socket.addressFamily == AddressFamily.INET6)
+            listener.socket.setOption(SocketOptionLevel.IPV6, SocketOption.IPV6_V6ONLY, true);
 
          version(Posix) listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 

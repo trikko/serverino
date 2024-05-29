@@ -177,6 +177,7 @@ package class Communicator
          if (next !is null) next.prev = this;
          alives = this;
 
+         s.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
          s.blocking = false;
          this.clientSkt = s;
 
