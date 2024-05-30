@@ -525,7 +525,7 @@ void test()
                break;
          }
 
-         assert(data == response);
+         assert(data == response, "RESPONSE: " ~ data.to!string);
       }
 
       ThreadGroup tg = new ThreadGroup();
