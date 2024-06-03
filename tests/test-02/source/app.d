@@ -525,7 +525,7 @@ void test()
                break;
          }
 
-         assert(data == response, "RESPONSE: " ~ cast(string)data);
+         assert(data == response, "WAITING: " ~ cast(string)response ~ "\nRECEIVED: " ~ cast(string)data);
       }
 
       ThreadGroup tg = new ThreadGroup();
