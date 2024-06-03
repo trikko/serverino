@@ -733,13 +733,17 @@ struct Worker
 
             foreach(sy; __traits(allMembers, globalNs))
             {
+               import std.traits : hasUDA;
                alias s = __traits(getMember, globalNs, sy);
                static if
                (
                   (
-                     __traits(compiles, s(request, output)) ||
-                     __traits(compiles, s(request)) ||
-                     __traits(compiles, s(output))
+                      !hasUDA!(s, endpoint) &&
+                      (
+                        __traits(compiles, s(request, output)) ||
+                        __traits(compiles, s(request)) ||
+                        __traits(compiles, s(output))
+                     )
                   )
                )
                {
@@ -847,16 +851,15 @@ struct Worker
                   static foreach(ff; untaggedHandlers)
                   {
                      {
-                        mixin(`import ` ~ untaggedHandlers[0].mod ~ ";");
-                        alias currentMod = mixin(untaggedHandlers[0].mod);
-                        alias f = __traits(getMember,currentMod, untaggedHandlers[0].name);
+                        mixin(`import ` ~ ff.mod ~ ";");
+                        alias currentMod = mixin(ff.mod);
+                        alias f = __traits(getMember,currentMod,ff.name);
+
                         import std.traits : hasUDA;
                         static if (hasUDA!(f, priority) || hasUDA!(f, route))
                         {
-                           import std.algorithm : canFind;
                            import std.logger : critical;
-                           static if(!taggedHandlers.canFind!(a => a.name == ff.name))
-                              critical("Function `", ff.mod ~ "." ~ ff.name, "` is not tagged with `@endpoint`. It will be ignored.");
+                           critical("Function `", ff.mod ~ "." ~ ff.name, "` is not tagged with `@endpoint`. It will be ignored.");
                         }
                      }
                   }
