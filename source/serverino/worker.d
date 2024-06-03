@@ -735,16 +735,15 @@ struct Worker
             {
                import std.traits : hasUDA;
                alias s = __traits(getMember, globalNs, sy);
+
                static if
                (
                   (
-                      !hasUDA!(s, endpoint) &&
-                      (
-                        __traits(compiles, s(request, output)) ||
-                        __traits(compiles, s(request)) ||
-                        __traits(compiles, s(output))
-                     )
+                     __traits(compiles, s(request, output)) ||
+                     __traits(compiles, s(request)) ||
+                     __traits(compiles, s(output))
                   )
+                  && !hasUDA!(s, endpoint)
                )
                {
                   static if (getUDAs!(s, onWebSocketUpgrade).length == 0)
