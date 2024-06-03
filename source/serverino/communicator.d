@@ -222,12 +222,28 @@ package class Communicator
       lastRecv = CoarseTime.zero;
       lastRequest = CoarseTime.zero;
 
-      // Remove from the waiting list, if it is there
-      if (nextWaiting !is null) nextWaiting.prevWaiting = prevWaiting;
-      else execWaitingListBack = prevWaiting;
+      // It nextWaiting and prevWaiting are null, it is not in the waiting list or it is the only one
+      if (prevWaiting is null && nextWaiting is null)
+      {
+         // Is it the only one?
+         if (execWaitingListFront == this)
+         {
+            // If it is the only one, it is also the last one
+            assert(execWaitingListBack == this);
+            execWaitingListFront = null;
+            execWaitingListBack = null;
+         }
+      }
+      else // It is in the waiting list
+      {
+         // Remove from the waiting list, if it is there
+         if (nextWaiting !is null) nextWaiting.prevWaiting = prevWaiting;
+         else execWaitingListBack = prevWaiting;
 
-      if (prevWaiting !is null) prevWaiting.nextWaiting = nextWaiting;
-      else execWaitingListFront = nextWaiting;
+         if (prevWaiting !is null) prevWaiting.nextWaiting = nextWaiting;
+         else execWaitingListFront = nextWaiting;
+      }
+
 
       nextWaiting = null;
       prevWaiting = null;
@@ -816,7 +832,8 @@ package class Communicator
                      requestDataReceived = false; // Request completed, we can reset the timeout
                      hasMoreDataToParse = leftover.length > 0;
 
-                     pushToWaitingList(this);
+                     if(request == requestToProcess)
+                        pushToWaitingList(this);
 
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
                      else status = State.READY;
@@ -845,7 +862,8 @@ package class Communicator
                   request.data = request.data[0..request.headersLength + request.contentLength];
                   request.isValid = true;
 
-                  pushToWaitingList(this);
+                  if(request == requestToProcess)
+                     pushToWaitingList(this);
 
                   hasMoreDataToParse = leftover.length > 0;
 
