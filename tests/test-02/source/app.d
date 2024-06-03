@@ -530,12 +530,25 @@ void test()
 
       ThreadGroup tg = new ThreadGroup();
 
+      import core.atomic;
+
+      int idx = 0;
+
       foreach(k; 0..10)
-         tg.add(new Thread({pipeline(k+1);}).start());
+         tg.add
+         (
+            new Thread
+            (
+               {
+                  auto cur = atomicFetchAdd(idx, 1);
+                  pipeline(cur);
+               }
+            ).start()
+         );
 
       tg.joinAll();
 
-
+      assert(idx == 10);
    }
 
    info("Testing WebSocket");
