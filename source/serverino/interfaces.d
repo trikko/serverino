@@ -1147,7 +1147,7 @@ struct Output
 
       @safe void buildHeaders()
       {
-         import std.uri : encodeComponent;
+         import std.uri : encodeComponent, encode;
          import std.array : appender;
 
          _headersBuffer.clear();
@@ -1198,7 +1198,7 @@ struct Output
          // If required, I add headers to write cookies
          foreach(Cookie c;_cookies)
          {
-            _headersBuffer.append(format("set-cookie: %s=%s", encodeComponent(c._name), encodeComponent(c._value)));
+            _headersBuffer.append(format("set-cookie: %s=%s", c._name, encodeComponent(c._value)));
 
             if (c._maxAge != Duration.zero)
             {
@@ -1210,8 +1210,8 @@ struct Output
                _headersBuffer.append(format("; Expires=%s",  Output.toHTTPDate(c._expire)));
             }
 
-            if (!c._path.length == 0) _headersBuffer.append(format("; path=%s", c._path.encodeComponent()));
-            if (!c._domain.length == 0) _headersBuffer.append(format("; domain=%s", c._domain.encodeComponent()));
+            if (!c._path.length == 0) _headersBuffer.append(format("; path=%s", c._path.encode));
+            if (!c._domain.length == 0) _headersBuffer.append(format("; domain=%s", c._domain));
 
             if (c._sameSite != Cookie.SameSite.NotSet)
             {

@@ -547,11 +547,11 @@ Content-Type: application/json\r
       http.onReceive = (ubyte[] data) { return data.length; };
       http.perform();
 
-      assert(cookies.canFind("test1=value; path=%2F; domain=cookie.localhost; SameSite=Lax"));
+      assert(cookies.canFind("test1=value; path=/; domain=cookie.localhost; SameSite=Lax"));
       assert(cookies.canFind("test2=value; SameSite=None; Secure"));
       assert(cookies.canFind("test3=value; Max-Age=10"));
       assert(cookies.canFind("test4=value; Secure; HttpOnly"));
-      assert(cookies.canFind("test5=; Max-Age=-1; path=%2F; domain=cookie.localhost; SameSite=Lax"));
+      assert(cookies.canFind("test5=; Max-Age=-1; path=/; domain=cookie.localhost; SameSite=Lax"));
    }
 
    // Headers editing
