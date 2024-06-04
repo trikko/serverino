@@ -1198,7 +1198,7 @@ struct Output
          // If required, I add headers to write cookies
          foreach(Cookie c;_cookies)
          {
-            _headersBuffer.append(format("set-cookie: %s=%s", c._name, encodeComponent(c._value)));
+            _headersBuffer.append(format("set-cookie: %s=%s", encodeComponent(c._name), encodeComponent(c._value)));
 
             if (c._maxAge != Duration.zero)
             {
