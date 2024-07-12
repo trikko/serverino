@@ -632,7 +632,36 @@ struct Worker
                      scope(exit) atomicStore(processedStartedAt, CoarseTime.zero);
 
                      atomicStore(processedStartedAt, CoarseTime.currTime);
-                     callHandlers!Modules(request, output);
+
+                     try { callHandlers!Modules(request, output); }
+                     catch (Exception e) {
+
+                        // If an exception is thrown, we try to call the exception handler if any.
+                        bool handled = false;
+
+                        import std.meta : AliasSeq;
+                        import std.traits : moduleName, getSymbolsByUDA, isFunction, ReturnType, Parameters;
+                        alias allModules = AliasSeq!Modules;
+
+                        // Search for a function marked with @onWorkerException
+                        static foreach(m; allModules)
+                        {
+                           static foreach(f; getSymbolsByUDA!(m, onWorkerException))
+                           {
+                              static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerException but it is not a function");
+                              static assert(is(ReturnType!f == bool), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `bool`");
+
+                              static if (is(Parameters!f == AliasSeq!(Request, Output, Exception))) handled = f(request, output, e);
+                              else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerException but it is not callable");
+
+                              static if (!__traits(compiles, hasExceptionHandler)) { enum hasExceptionHandler; }
+                              else static assert(0, "You can't mark more than one function with @onWorkerException");
+                           }
+                        }
+
+                        // Rethrow if no handler found or handler returned false
+                        if (!handled) throw e;
+                     }
                   }
 
                   if (!output._internal._dirty)

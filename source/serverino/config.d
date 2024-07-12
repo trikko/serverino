@@ -39,6 +39,7 @@ public enum onDaemonStart;       /// UDA. Called when daemon start. Running in m
 public enum onDaemonStop;        /// UDA. Called when daemon exit. Running in main thread, not in worker.
 public enum onWorkerStart;       /// UDA. Functions with @onWorkerStart attached are called when worker is started
 public enum onWorkerStop;        /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
+public enum onWorkerException;   /// UDA. Functions with @onWorkerException attached are called when worker throws an exception
 public enum onServerInit;        /// UDA. Used to setup serverino. Must return a ServerinoConfig struct. See `ServerinoConfig` struct.
 public enum onWebSocketUpgrade;  /// UDA. Functions with @onWebSocketUpgrade attached are called when a websocket upgrade is requested
 public enum onWebSocketStart;    /// UDA. Functions with @onWebSocketStart attached are called when a websocket is started
