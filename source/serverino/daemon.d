@@ -534,12 +534,12 @@ package:
                   ssWrite.add(communicator.clientSkt);
             }
 
-
             long updates = -1;
             try { updates = Socket.select(ssRead, ssWrite, null, 1.seconds); }
             catch (SocketException se) {
                import std.experimental.logger : warning;
                warning("Exception: ", se.msg);
+               updates = 0;
             }
          }
          else static if (serverino.common.Backend == BackendType.EPOLL)
