@@ -32,10 +32,25 @@ import std.stdio : File;
 import std.datetime : Duration, seconds, hours, msecs;
 import std.traits : ReturnType;
 
+/++ Used as optional return type for functions with `@endpoint`` UDA attached.
+ It is used to override the default behavior of serverino: if an endpoint returns Fallthrough.Yes, the next endpoint is called even if the current one has written to the output.
+ ---
+ // Doing a request to the server will return "Hello world!"
+
+ // Will continue with the next function
+ @endpoint @priority(3) auto test_1(Request r, Output o) { output ~= "Hello"; return Fallthrough.Yes; }
+
+ // This blocks the chain (default behavior when output is written)
+ @endpoint @priority(2) auto test_2(Request r, Output o) { output ~= " world!"; }
+
+ // Never executed (blocked by test_2)
+ @endpoint @priority(1) auto test_3(Request r, Output o) { output ~= "Not executed!"; }
+ ---
+ +/
 public enum Fallthrough : bool
 {
-	Yes = true,
-   No = false
+	Yes   = true,  /// Continue with the next function
+   No    = false  /// Stop the chain
 }
 
 public struct priority { long priority; } /// UDA. Set @endpoint priority
@@ -45,11 +60,22 @@ public enum onDaemonStart;       /// UDA. Called when daemon start. Running in m
 public enum onDaemonStop;        /// UDA. Called when daemon exit. Running in main thread, not in worker.
 public enum onWorkerStart;       /// UDA. Functions with @onWorkerStart attached are called when worker is started
 public enum onWorkerStop;        /// UDA. Functions with @onWorkerStop attached are called when worker is stopped
-public enum onWorkerException;   /// UDA. Functions with @onWorkerException attached are called when worker throws an exception
 public enum onServerInit;        /// UDA. Used to setup serverino. Must return a ServerinoConfig struct. See `ServerinoConfig` struct.
 public enum onWebSocketUpgrade;  /// UDA. Functions with @onWebSocketUpgrade attached are called when a websocket upgrade is requested
 public enum onWebSocketStart;    /// UDA. Functions with @onWebSocketStart attached are called when a websocket is started
 public enum onWebSocketStop;     /// UDA. Functions with @onWebSocketStop attached are called when a websocket is stopped
+
+/++ UDA. Functions with @onWorkerException attached are called when worker throws an exception
+   ---
+   @onWorkerException bool myExceptionHandler(Request r, Output o, Exception e)
+   {
+      o.status = 500;
+      info("Oh no! An exception occurred: ", e.msg);
+      return true; // This means the exception is handled, if false, the exception is rethrown
+   }
+   ---
+++/
+public enum onWorkerException;
 
 import serverino.interfaces : Request;
 

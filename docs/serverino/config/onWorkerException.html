@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Enum member Request.buildId</title>
+		<title>Enum onWorkerException</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -28,12 +28,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 				<ul class="tree-view">
 					<li>
-						<div class="module ">
+						<div class="module selected">
 							<a href="../../serverino/config.html">config</a>
 						</div>
 					</li>
 					<li>
-						<div class="module selected">
+						<div class="module ">
 							<a href="../../serverino/interfaces.html">interfaces</a>
 						</div>
 					</li>
@@ -48,29 +48,32 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Enum member Request.buildId</h1><p>Every time you compile the app this value will change
+				<h1>Enum onWorkerException</h1><p>UDA. Functions with @onWorkerException attached are called when worker throws an exception
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <a href="../../serverino/interfaces/Request.html"><span class="typ">Request</span></a>
-				<br/>
-				<span class="pun">
-					{
-					<br/>
-				</span>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				&nbsp;&nbsp;<span class="kwd">enum</span> <span class="pln">buildId</span>
-				 <span class="pun">=</span> <span class="str">"ef9123aea04b193ece6a08ea8d005546"</span><span class="pun">;</span>
-				<br/>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				<span class="pun">}</span>
+				<span class="kwd">enum</span> <span class="typ">onWorkerException</span>
+				 <span class="pun">:</span> <span class="typ">void</span> <span class="pun">{ ... }</span>
 						</div>
 					</code>
 				</div>
-				
+				<section><pre class="code"><code class="lang-d"><span class="pun">@</span><span class="pln">onWorkerException </span><span class="typ">bool </span><span class="pln">myExceptionHandler</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">, </span><span class="typ">Exception </span><span class="pln">e</span><span class="pun">)
+{
+   </span><span class="pln">o<wbr/></span><span class="pun">.</span><span class="pln">status </span><span class="pun">= </span><span class="lit">500</span><span class="pun">;
+   </span><span class="pln">info</span><span class="pun">(</span><span class="str">"Oh no! An exception occurred: "</span><span class="pun">, </span><span class="pln">e<wbr/></span><span class="pun">.</span><span class="pln">msg</span><span class="pun">);
+   </span><span class="kwd">return true</span><span class="pun">; </span><span class="com">// This means the exception is handled, if false, the exception is rethrown
+</span><span class="pun">}</span></code></pre>
+</section>
+
+				<section><h2>Enum members</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+					</table>
+				</section>
 				
 			</div>
 			<footer>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Enum Fallthrough</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Enum Fallthrough</h1><p>Used as optional return type for functions with <code class="lang-d"><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a></code>` UDA attached.
+ It is used to override the default behavior of serverino: if an endpoint returns Fallthrough.Yes, the next endpoint is called even if the current one has written to the output.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">enum</span> <span class="typ">Fallthrough</span>
+				 <span class="pun">:</span> <span class="typ">bool</span> <span class="pun">{ ... }</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="com">// Doing a request to the server will return "Hello world!"
+
+// Will continue with the next function
+</span><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln"> </span><span class="pun">@<a href="../../serverino/config/priority.html"></span><span class="pln">priority</span></a><span class="pun">(</span><span class="lit">3</span><span class="pun">) </span><span class="kwd">auto </span><span class="pln">test_1</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="str">"Hello"</span><span class="pun">; </span><span class="kwd">return <a href="../../serverino/config/Fallthrough.html#Yes"></span><span class="typ">Fallthrough<wbr/></span><span class="pun">.</span><span class="typ">Yes</span></a><span class="pun">; }
+
+</span><span class="com">// This blocks the chain (default behavior when output is written)
+</span><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln"> </span><span class="pun">@<a href="../../serverino/config/priority.html"></span><span class="pln">priority</span></a><span class="pun">(</span><span class="lit">2</span><span class="pun">) </span><span class="kwd">auto </span><span class="pln">test_2</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="str">" world!"</span><span class="pun">; }
+
+</span><span class="com">// Never executed (blocked by test_2)
+</span><span class="pun">@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln"> </span><span class="pun">@<a href="../../serverino/config/priority.html"></span><span class="pln">priority</span></a><span class="pun">(</span><span class="lit">1</span><span class="pun">) </span><span class="kwd">auto </span><span class="pln">test_3</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) { </span><span class="pln">output </span><span class="pun">~= </span><span class="str">"Not executed!"</span><span class="pun">; }</span></code></pre>
+</section>
+
+				<section><h2>Enum members</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td id="No">
+								<code>No</code>
+							</td>
+							<td>Stop the chain
+</td>
+						</tr>
+						<tr>
+							<td id="Yes">
+								<code>Yes</code>
+							</td>
+							<td>Continue with the next function
+</td>
+						</tr>
+					</table>
+				</section>
+				
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

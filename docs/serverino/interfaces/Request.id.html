@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Enum member Request.buildId</title>
+		<title>Function Request.id</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,25 +48,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Enum member Request.buildId</h1><p>Every time you compile the app this value will change
+				<h1>Function Request.id</h1><p>The request ID. It is unique for each request.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <a href="../../serverino/interfaces/Request.html"><span class="typ">Request</span></a>
-				<br/>
-				<span class="pun">
-					{
-					<br/>
-				</span>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				&nbsp;&nbsp;<span class="kwd">enum</span> <span class="pln">buildId</span>
-				 <span class="pun">=</span> <span class="str">"ef9123aea04b193ece6a08ea8d005546"</span><span class="pun">;</span>
-				<br/>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				<span class="pun">}</span>
+				<span class="typ">string</span> <span class="pln">id</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">@property @safe const</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>

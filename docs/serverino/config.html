@@ -107,6 +107,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						<tr>
 							<td>
 								<code>
+									<a id="Fallthrough" class="public" href="../serverino/config/Fallthrough.html">Fallthrough</a>
+								</code>
+							</td>
+							<td>Used as optional return type for functions with <code class="lang-d"><span class="pun">@<a href="../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a></code>` UDA attached.
+ It is used to override the default behavior of serverino: if an endpoint returns Fallthrough.Yes, the next endpoint is called even if the current one has written to the output.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
 									<a id="onDaemonStart" class="public" href="../serverino/config/onDaemonStart.html">onDaemonStart</a>
 								</code>
 							</td>
@@ -156,6 +166,15 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</code>
 							</td>
 							<td>UDA. Functions with @onWebSocketUpgrade attached are called when a websocket upgrade is requested
+</td>
+						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="onWorkerException" class="public" href="../serverino/config/onWorkerException.html">onWorkerException</a>
+								</code>
+							</td>
+							<td>UDA. Functions with @onWorkerException attached are called when worker throws an exception
 </td>
 						</tr>
 						<tr>

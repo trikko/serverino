@@ -3,12 +3,14 @@
 <url><loc>http://127.0.0.1/index.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/endpoint.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/Fallthrough.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onDaemonStart.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onDaemonStop.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onServerInit.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onWebSocketStart.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onWebSocketStop.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onWebSocketUpgrade.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/onWorkerException.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onWorkerStart.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/onWorkerStop.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/priority.html</loc></url>
@@ -80,6 +82,7 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.get.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.header.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.host.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.id.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.Method.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.method.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.password.html</loc></url>
