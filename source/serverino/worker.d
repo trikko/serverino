@@ -907,7 +907,7 @@ struct Worker
                   static if (hasUDA!(f, route))
                   {
                      // If one of the route UDAs returns true, we will launch the function.
-                     bool willLaunchFunc()
+                     bool willLaunchFunc()()
                      {
                         static foreach(attr;  getUDAs!(f, route))
                         {
@@ -919,19 +919,40 @@ struct Worker
 
                      bool willLaunch = willLaunchFunc();
                   }
-                  else immutable willLaunch = true;
+                  else enum willLaunch = true;
+
+                  request._internal._route ~= ff.mod ~ "." ~ ff.name;
 
                   if (willLaunch)
                   {
-                     static if (__traits(compiles, f(request, output))) f(request, output);
-                     else static if (__traits(compiles, f(request))) f(request);
-                     else f(output);
+                     // Temporarily set the dirty flag to false. It will be restored at the end of the function.
+                     bool wasDirty = output._internal._dirty;
+                     if (wasDirty) output._internal._dirty = false;
+                     scope(exit) if (wasDirty) output._internal._dirty = true;
+
+                     import std.meta : AliasSeq;
+
+                     // Get the parameters of the function
+                     static if (__traits(compiles, f(request, output))) auto params = AliasSeq!(request, output);
+                     else static if (__traits(compiles, f(request))) auto params = AliasSeq!(request);
+                     else auto params = AliasSeq!(output);
+
+                     // Check if the function has a fallthrough return value
+                     Fallthrough tmpFt;
+                     enum withFallthrough = __traits(compiles,  tmpFt = f(params));
+
+                     static if (withFallthrough)
+                     {
+                        if (f(params) == Fallthrough.No) return true;
+                     }
+                     else
+                     {
+                        f(params);
+                        if (output._internal._dirty) return true;
+                     }
+
                   }
-
-                  request._internal._route ~= ff.mod ~ "." ~ ff.name;
                }
-
-               if (output._internal._dirty) return true;
             }
 
             return false;

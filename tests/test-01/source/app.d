@@ -230,6 +230,35 @@ void test_3(Request r, Output o)
 
 }
 
+@endpoint @route!(x => x.path == "/fallthrough") @priority(400)
+auto fallthrough1(Request r, Output o)
+{
+   o ~= "fallthrough ";
+   return Fallthrough.Yes;
+}
+
+@endpoint @route!(x => x.path == "/fallthrough") @priority(300)
+void fallthrough2(Request r, Output o)
+{
+   // Nothing happens
+   info("running fallthrough 2()");
+}
+
+@endpoint @route!(x => x.path == "/fallthrough") @priority(200)
+void fallthrough3(Request r, Output o)
+{
+   o ~= "works!";
+}
+
+@endpoint @route!(x => x.path == "/fallthrough") @priority(100)
+void fallthrough4(Request r, Output o)
+{
+   o ~= "doesn't works!";
+}
+
+
+
+
 @onServerInit
 ServerinoConfig conf()
 {
@@ -608,4 +637,18 @@ Content-Type: application/json\r
       remove("test_serverino_file.json");
 
    }
+
+   // Fallthrough
+
+   {
+      string content;
+
+      auto http = HTTP("http://127.0.0.1:8080/fallthrough");
+      http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
+      http.perform();
+
+      assert(content == "fallthrough works!", content);
+      assert(http.statusLine.code == 200);
+   }
+
 }

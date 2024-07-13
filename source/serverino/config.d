@@ -32,6 +32,12 @@ import std.stdio : File;
 import std.datetime : Duration, seconds, hours, msecs;
 import std.traits : ReturnType;
 
+public enum Fallthrough : bool
+{
+	Yes = true,
+   No = false
+}
+
 public struct priority { long priority; } /// UDA. Set @endpoint priority
 
 public enum endpoint;            /// UDA. Functions with @endpoint attached are called when a request is received

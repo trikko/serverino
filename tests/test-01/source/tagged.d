@@ -43,7 +43,7 @@ void test_3(Request r, Output o) { if (r.path == "/error") return; history ~= 3;
 void test_4(Request r, Output o) { if (r.path == "/error") return;  history ~= 4; o ~= "4"; }
 
 @endpoint @priority(4)
-void test_5(Request r) { history ~= 5; return; }
+void test_5(Request r, Output o) { history ~= 5; }
 
 // Functions missing the @endpoint attribute
 @priority(4) void wrong_function(Request r) { return; }
