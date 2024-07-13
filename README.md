@@ -93,10 +93,10 @@ void requestLog(Request request)
 	info("Request: ", request.path);
 }
 ```
+> [!NOTE]
+> Using `Fallthrough.Yes` as a return value for a endpoint allows you to avoid stopping the flow even if the output is touched.
 
 ## Websockets
-> [!NOTE]
-> Priority works in the same way as the HTTP endpoints: the first websocket endpoint that touches the connection will handle it
 
 ```d
 // Accept a new connection only if the request path is "/echo"
