@@ -472,7 +472,7 @@ package class Communicator
       if (deleteOnClose)
          fileToDelete = fileName.to!string;
 
-      responseLength = file.size + headers.length;
+      responseLength = cast(size_t)(file.size + headers.length);
 
       sendBuffer.append(headers);
 
