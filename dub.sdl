@@ -1,5 +1,5 @@
 name "serverino"
-description "Small and ready-to-go http server"
+description "Small and ready-to-go http server. Support for websockets included."
 authors "Andrea Fontana"
 copyright "Copyright © 2023-2024, Andrea Fontana"
 license "MIT"
