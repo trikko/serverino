@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/08_cmdline_args
+08_cmdline_args.so
+08_cmdline_args.dylib
+08_cmdline_args.dll
+08_cmdline_args.a
+08_cmdline_args.lib
+08_cmdline_args-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
