@@ -97,6 +97,11 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.toString.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.user.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.worker.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.daemonPID.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isDaemon.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isWebSocket.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isWorker.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/WebSocket.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/WebSocket.isDirty.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/WebSocket.isSendBufferEmpty.html</loc></url>

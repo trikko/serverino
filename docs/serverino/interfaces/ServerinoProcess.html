@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Enum member Request.buildId</title>
+		<title>Struct ServerinoProcess</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,29 +48,65 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Enum member Request.buildId</h1><p>Every time you compile the app this value will change
+				<h1>Struct ServerinoProcess</h1><p>Some useful functions to get information about the current serverino process
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <a href="../../serverino/interfaces/Request.html"><span class="typ">Request</span></a>
-				<br/>
-				<span class="pun">
-					{
-					<br/>
-				</span>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				&nbsp;&nbsp;<span class="kwd">enum</span> <span class="pln">buildId</span>
-				 <span class="pun">=</span> <span class="str">"badbd81b74035e90affd7d5df9da3f25"</span><span class="pun">;</span>
-				<br/>
-				&nbsp;&nbsp;<span class="com">// ...</span>
-				<br/>
-				<span class="pun">}</span>
+				<span class="kwd">struct</span> <span class="typ">ServerinoProcess</span>
+				<span class="pun">;</span>
 						</div>
 					</code>
 				</div>
 				
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/ServerinoProcess.daemonPID.html" class="public">
+									<code>daemonPID</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Returns the PID of the serverino daemon
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/ServerinoProcess.isDaemon.html" class="public">
+									<code>isDaemon</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Returns true if the current process is the serverino daemon
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/ServerinoProcess.isWebSocket.html" class="public">
+									<code>isWebSocket</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Returns true if the current process is a serverino websocket
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/ServerinoProcess.isWorker.html" class="public">
+									<code>isWorker</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Returns true if the current process is a serverino worker
+</td>
+						</tr>
+					</table>
+				</section>
 				
 			</div>
 			<footer>
