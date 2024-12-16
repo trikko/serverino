@@ -1124,15 +1124,23 @@ struct Output
    }
 
    @safe static string toHTTPDate(SysTime t) {
-      static immutable mm = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      static immutable dd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+      string data;
+      data.reserve(32);
+
+      // Get the time in GMT
       SysTime gmt = t.toUTC();
 
-      return format("%s, %02s %s %s %02s:%02s:%02s GMT",
-         dd[gmt.dayOfWeek], gmt.day, mm[gmt.month], gmt.year,
-         gmt.hour, gmt.minute, gmt.second
-      );
+      // Lookup tables for days and months and time
+      enum lookup_dd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      enum lookup_mm = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      enum lookup_60 = ["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"];
+
+      // Format the time in GMT
+      return lookup_dd[gmt.dayOfWeek] ~ ", " ~ lookup_60[gmt.day] ~ " " ~ lookup_mm[gmt.month-1] ~ " " ~ gmt.year.to!string ~ " "
+         ~ lookup_60[gmt.hour] ~ ":"
+         ~ lookup_60[gmt.minute] ~ ":"
+         ~ lookup_60[gmt.second] ~ " GMT";
    }
 
    struct OutputImpl
