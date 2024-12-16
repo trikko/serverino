@@ -601,9 +601,9 @@ struct Request
                            import core.atomic : atomicFetchAdd;
                            import std.path : extension, buildPath;
                            import std.file : tempDir;
+                           import std.datetime : ClockType;
 
-
-                           string now = Clock.currTime.toUnixTime.to!string;
+                           string now = Clock.currTime!(ClockType.coarse).toUnixTime.to!string;
                            string uploadId = "%05d".format(atomicFetchAdd(_uploadId, 1));
                            string path = tempDir.buildPath("upload_%s_%s_%s%s".format(now, myPID, uploadId, extension(fd.filename)));
 
@@ -933,7 +933,10 @@ struct Output
    }
 
    /// Ditto
-   @safe void addHeader(in string key, in Duration dur) { addHeader(key, Clock.currTime + dur); }
+   @safe void addHeader(in string key, in Duration dur) {
+      import std.datetime : ClockType;
+      addHeader(key, Clock.currTime!(ClockType.coarse) + dur);
+   }
 
    /// Ditto
    @safe void addHeader(in string key, in SysTime time) { addHeader(key, toHTTPDate(time)); }
@@ -1184,25 +1187,30 @@ struct Output
 
       }
 
+
       @safe void buildHeaders()
       {
          import std.uri : encodeComponent, encode;
          import std.array : appender;
-
-         _headersBuffer.clear();
-
-         string statusDescription;
-
-         immutable item = _status in StatusCode;
-         if (item != null) statusDescription = *item;
-         else statusDescription = "Unknown";
+         import std.datetime : ClockType;
 
          bool has_content_type = false;
 
-         _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
+         _headersBuffer.clear();
+
+         if (_status == 200) _headersBuffer.append(_httpVersion ~ " 200 OK\r\n");
+         else
+         {
+            string statusDescription;
+            immutable item = _status in StatusCode;
+            if (item != null) statusDescription = *item;
+            else statusDescription = "Unknown";
+
+            _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
+         }
 
          version(SERVERINO_TESTS) { }
-         else _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime) ~ "\r\n");
+         else _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime!(ClockType.coarse)) ~ "\r\n");
 
          // These headers are ignored if we are sending a websocket response
          if (!_websocket)
