@@ -403,7 +403,7 @@ package:
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
       workerEnvironment["SERVERINO_ARGS"] = argsBkp;
 
-      void removeCanary() { remove(canaryFileName); }
+      void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
       void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }
 
       writeCanary();
@@ -792,6 +792,9 @@ package:
 
       // Call the onDaemonStop functions.
       tryUninit!Modules();
+
+      // Delete the canary file.
+      removeCanary();
 
       // Force exit.
       import core.stdc.stdlib : exit;
