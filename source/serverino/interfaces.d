@@ -1811,3 +1811,28 @@ enum OnFileServed
    KeepFile,   /// Keep the file on disk
    DeleteFile  /// Delete the file after sending it
 }
+
+
+/// Some useful functions to get information about the current serverino process
+static struct ServerinoProcess
+{
+   import std.process : environment, thisProcessID;
+
+   public static:
+
+      /// Returns the PID of the serverino daemon
+      int daemonPID() {
+         import std.conv : to;
+         if (ServerinoProcess.isDaemon) return thisProcessID();
+         else return environment.get("SERVERINO_DAEMON").to!int;
+      }
+
+      /// Returns true if the current process is the serverino daemon
+      bool isDaemon() { return environment.get("SERVERINO_DAEMON") is null; }
+
+      /// Returns true if the current process is a serverino websocket
+      bool isWebSocket() { return environment.get("SERVERINO_WEBSOCKET") == "1"; }
+
+      /// Returns true if the current process is a serverino worker
+      bool isWorker() { return !isDaemon() && !isWebSocket(); }
+}
