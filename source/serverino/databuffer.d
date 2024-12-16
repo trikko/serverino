@@ -33,16 +33,15 @@ package struct DataBuffer(T)
 
    public:
    pragma(inline, true):
+
    void append(scope const T[] new_data)
    {
       debug import std.conv;
       debug assert(new_data.length > 0, "DataBuffer.append: new_data.length must be > 0 but is " ~ new_data.length.to!string);
 
-      if (_data.length < _length + new_data.length)
-         _data.length += (new_data.length / (1024*16) + 1) * (1024*16);
-
-      _data[_length.._length+new_data.length] = new_data;
-      _length = _length+new_data.length;
+      reserve(_length + new_data.length);
+      _data[_length.._length+new_data.length] = new_data[0..$];
+      _length += new_data.length;
    }
    void reserve(size_t r, bool allowShrink = false) { if (r > _data.length || allowShrink) _data.length = (r / (1024*16) + 1) * (1024*16); }
    void length(size_t l) { reserve(l); _length = l; }
