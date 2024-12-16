@@ -339,7 +339,7 @@ package:
    bool                    isDynamic         = false;
 
    static WorkerInfo[]     instances;
-   static string           exePath;
+   shared static string    exePath;
 
 }
 
@@ -384,6 +384,8 @@ package:
       immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
       immutable argsBkp = Base64.encode(Runtime.args.join("\0").representation);
 
+      environment["SERVERINO_COMPONENT"] = "D";
+
       version(Posix)
       {
          auto base = baseName(Runtime.args[0]);
@@ -399,9 +401,10 @@ package:
       }
 
       workerEnvironment = environment.toAA();
-      workerEnvironment["SERVERINO_DAEMON"] = daemonPid;
+      workerEnvironment["SERVERINO_DAEMON_PID"] = daemonPid;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
       workerEnvironment["SERVERINO_ARGS"] = argsBkp;
+      workerEnvironment["SERVERINO_COMPONENT"] = "WK";
 
       void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
       void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }

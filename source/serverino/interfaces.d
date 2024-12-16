@@ -1824,15 +1824,18 @@ static struct ServerinoProcess
       int daemonPID() {
          import std.conv : to;
          if (ServerinoProcess.isDaemon) return thisProcessID();
-         else return environment.get("SERVERINO_DAEMON").to!int;
+         else return environment.get("SERVERINO_DAEMON_PID").to!int;
       }
 
       /// Returns true if the current process is the serverino daemon
-      bool isDaemon() { return environment.get("SERVERINO_DAEMON") is null; }
+      bool isDaemon() { return environment.get("SERVERINO_COMPONENT") == "D"; }
 
       /// Returns true if the current process is a serverino websocket
-      bool isWebSocket() { return environment.get("SERVERINO_WEBSOCKET") == "1"; }
+      bool isWebSocket() { return environment.get("SERVERINO_COMPONENT") == "WS"; }
 
       /// Returns true if the current process is a serverino worker
-      bool isWorker() { return !isDaemon() && !isWebSocket(); }
+      bool isWorker() { return environment.get("SERVERINO_COMPONENT") == "WK"; }
+
+      /// Returns true if the current process is a serverino dynamic component (websocket or worker)
+      bool isDynamicComponent() { return isWorker() || isWebSocket(); }
 }

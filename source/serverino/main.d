@@ -78,7 +78,7 @@ class ServerinoLogger : Logger
 
       string prefix;
 
-      if (ServerinoProcess.isDaemon)
+      if (ServerinoProcess.isDynamicComponent == false)
       {
          version(Windows){ prefix = "\x1b[1m*\x1b[0m "; }
          else { prefix = "\x1b[1m*\x1b[0m "; }
@@ -207,9 +207,10 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import serverino.websocket;
    import std.process : environment;
 
-   if (ServerinoProcess.isDaemon) Daemon.wake!Modules(daemonConfig);
-   if (ServerinoProcess.isWebSocket) WebSocketWorker.wake!Modules();
-	else Worker.wake!Modules(workerConfig);
+
+   if (ServerinoProcess.isWorker) Worker.wake!Modules(workerConfig);
+   else if (ServerinoProcess.isWebSocket) WebSocketWorker.wake!Modules();
+   else Daemon.wake!Modules(daemonConfig);
 
    return 0;
 }

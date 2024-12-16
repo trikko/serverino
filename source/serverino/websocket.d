@@ -63,7 +63,7 @@ struct WebSocketWorker
          setProcessName
          (
             [
-               base ~ " / websocket [daemon: " ~ environment.get("SERVERINO_DAEMON") ~ "]",
+               base ~ " / websocket [daemon: " ~ environment.get("SERVERINO_DAEMON_PID") ~ "]",
                base ~ " / websocket",
                base ~ " [WS]"
             ]
@@ -73,7 +73,7 @@ struct WebSocketWorker
       __gshared bool inited = false;
       __gshared ProcessInfo daemonProcess;
 
-      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
+      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON_PID").to!int);
 
       new Thread({
 

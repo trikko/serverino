@@ -57,7 +57,7 @@ struct Worker
       import core.runtime : Runtime;
 
       isDynamic = environment.get("SERVERINO_DYNAMIC_WORKER") == "1";
-      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON").to!int);
+      daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON_PID").to!int);
 
       version(Posix)
       {
@@ -66,7 +66,7 @@ struct Worker
          setProcessName
          (
             [
-               base ~ " / worker [daemon: " ~ environment.get("SERVERINO_DAEMON") ~ "]",
+               base ~ " / worker [daemon: " ~ environment.get("SERVERINO_DAEMON_PID") ~ "]",
                base ~ " / worker",
                base ~ " [WK]"
             ]
@@ -538,7 +538,7 @@ struct Worker
                   import serverino.daemon : Daemon;
                   string[string] env = environment.toAA.dup;
                   env["SERVERINO_SOCKET"]    = uuid;
-                  env["SERVERINO_WEBSOCKET"] = "1";
+                  env["SERVERINO_COMPONENT"] = "WS";
                   env["SERVERINO_REQUEST"] = request._internal.serialize();
 
                   import std.process : pipeProcess, Redirect, Config;
