@@ -104,6 +104,10 @@ template ServerinoMain(Modules...)
 
    int main(string[] args)
    {
+      import std.base64 : Base64;
+      if (environment.get("SERVERINO_DAEMON") !is null)
+         args = (cast(string)Base64.decode(environment.get("SERVERINO_ARGS"))).split("\0");
+
       return mainServerinoLoop(args);
    }
 }

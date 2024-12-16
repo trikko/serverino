@@ -377,9 +377,12 @@ package:
       import std.digest : toHexString;
       import std.ascii : LetterCase;
       import core.runtime : Runtime;
+      import std.base64 : Base64;
+      import std.string : join, representation;
 
       immutable daemonPid = thisProcessID.to!string;
       immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
+      immutable argsBkp = Base64.encode(Runtime.args.join("\0").representation);
 
       version(Posix)
       {
@@ -398,6 +401,7 @@ package:
       workerEnvironment = environment.toAA();
       workerEnvironment["SERVERINO_DAEMON"] = daemonPid;
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
+      workerEnvironment["SERVERINO_ARGS"] = argsBkp;
 
       void removeCanary() { remove(canaryFileName); }
       void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }
