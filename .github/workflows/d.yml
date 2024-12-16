@@ -51,3 +51,4 @@ jobs:
               && dub build --root=examples/05_websocket_echo/
               && dub build --root=examples/06_websocket_noise_stream/
               && dub build --root=examples/07_websocket_callback/
+              && dub build --root=examples/08_cmdline_args/
