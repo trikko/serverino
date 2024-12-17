@@ -1,0 +1,6 @@
+name "test-03"
+authors "Andrea Fontana"
+copyright "Copyright © 2023-2024, Andrea Fontana"
+license "MIT"
+dependency "serverino" path="../../"
+versions "SERVERINO_TESTS"
