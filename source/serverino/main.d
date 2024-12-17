@@ -99,7 +99,7 @@ class ServerinoLogger : Logger
 enum OnMainThread;      /// Let serverino run in the main thread (default)
 enum OnSecondaryThread; /// Let serverino run in a secondary thread
 
-// This is the main entry point for the serverino application
+/// Add this mixin to your module to make it run in the main thread
 template ServerinoMain(Modules...)
 {
    mixin ServerinoLoop!Modules;
@@ -111,6 +111,23 @@ template ServerinoMain(Modules...)
          args = (cast(string)Base64.decode(environment.get("SERVERINO_ARGS"))).split("\0");
 
       return mainServerinoLoop!OnMainThread(args);
+   }
+}
+
+/// Add this mixin to your module to make it run in a secondary thread.
+template ServerinoBackground(Modules...)
+{
+   mixin ServerinoLoop!Modules;
+
+   shared static this()
+   {
+      import core.runtime : Runtime;
+      string[] args = Runtime.args;
+
+      if (environment.get("SERVERINO_ARGS") !is null)
+         args = (cast(string)Base64.decode(environment.get("SERVERINO_ARGS"))).split("\0");
+
+      mainServerinoLoop!OnSecondaryThread(args);
    }
 }
 
