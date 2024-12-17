@@ -42,7 +42,10 @@ jobs:
 
       - name: Run test-02
         run: dub run serverino:test-02
-
+      
+      - name: Run test-03
+        run: dub run serverino:test-03
+        
       - name: Build examples
         run: dub build --build=release --root=examples/01_hello_world/
               && dub build --root=examples/02_priority/
