@@ -94,7 +94,6 @@ class ServerinoLogger : Logger
 
    private static immutable string[LogLevel]   LLSTR;
    private static immutable string             logPrefix;
-   private File outputStream;
 }
 
 enum OnMainThread;      /// Let serverino run in the main thread (default)
@@ -202,12 +201,14 @@ template ServerinoLoop(Modules...)
 
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
-   import std.experimental.logger : sharedLog;
 
-   static if (version_minor > 100)
-      sharedLog = new shared ServerinoLogger(config.daemonConfig.logLevel);
-   else
-      sharedLog = new ServerinoLogger(config.daemonConfig.logLevel);
+   if (config.daemonConfig.overrideLogger)
+   {
+      import std.experimental.logger : sharedLog;
+
+      static if (version_minor > 100) sharedLog = new shared ServerinoLogger(config.daemonConfig.logLevel);
+      else sharedLog = new ServerinoLogger(config.daemonConfig.logLevel);
+   }
 
    if (config.returnCode != 0)
       return config.returnCode;

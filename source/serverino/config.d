@@ -168,6 +168,8 @@ struct ServerinoConfig
 
       sc.disableRemoteIp();
 
+      sc.enableLoggerOverride();
+
       return sc;
    }
 
@@ -216,6 +218,12 @@ struct ServerinoConfig
 
    /// How long the socket will wait for a request after the connection?
    @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.seconds) return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
+
+   /// Enable/Disable std.logger override
+   @safe ref ServerinoConfig enableLoggerOverride(bool enable = true) return { daemonConfig.overrideLogger = enable; return this; }
+
+   /// Ditto
+   @safe ref ServerinoConfig disableLoggerOverride() return { daemonConfig.overrideLogger = false; return this; }
 
    /// Enable/Disable keep-alive for http/1.1
    @safe ref ServerinoConfig enableKeepAlive(bool enable = true, Duration timeout = 3.seconds) return { workerConfig.keepAlive = enable; daemonConfig.keepAliveTimeout = timeout; return this; }
@@ -347,6 +355,6 @@ package struct DaemonConfig
    size_t      maxWorkers;
    int         listenerBacklog;
    bool        withRemoteIp;
-
+   bool        overrideLogger;
    Listener[]  listeners;
 }
