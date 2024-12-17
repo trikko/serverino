@@ -141,6 +141,9 @@ package class WorkerInfo
 
    ~this()
    {
+      if (status != State.STOPPED)
+         setStatus(State.STOPPED);
+
       clear();
    }
 
@@ -378,9 +381,6 @@ static:
 
    /// Resume the daemon.
    void resume() @nogc nothrow { suspended = false; }
-
-   /// Check if the daemon is suspended.
-   bool suspended() @nogc nothrow { return suspended; }
 
    /// Check if the daemon is running.
    bool running() @nogc nothrow { return !suspended && !exitRequested; }
@@ -843,6 +843,7 @@ package:
       }
 
       // Exit requested, shutdown everything.
+      // ----------------------------------
 
       // Close all the listeners.
       foreach(ref listener; config.listeners)
@@ -871,7 +872,6 @@ package:
       // Delete the canary file.
       removeCanary();
 
-      // Force exit.
       import core.stdc.stdlib : exit;
       exit(0);
    }
@@ -907,7 +907,8 @@ package:
 
       int epoll;
    }
-__gshared:
+
+private __gshared:
 
    string[string] workerEnvironment;
 
