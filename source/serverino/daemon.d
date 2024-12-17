@@ -412,7 +412,8 @@ package:
       writeCanary();
       scope(exit) removeCanary();
 
-      info("Daemon started using ", Backend == Backend.EPOLL ? "epoll" : "select", " backend.");
+      import core.thread : Thread;
+      info("Daemon started. [backend=", Backend == Backend.EPOLL ? "epoll" : "select", ";thread=", Thread.getThis().isMainThread ? "main" : "secondary", "]");
       now = CoarseTime.currTime;
 
       version(Posix)
