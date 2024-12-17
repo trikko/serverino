@@ -97,6 +97,9 @@ class ServerinoLogger : Logger
    private File outputStream;
 }
 
+enum OnMainThread;      /// Let serverino run in the main thread (default)
+enum OnSecondaryThread; /// Let serverino run in a secondary thread
+
 // This is the main entry point for the serverino application
 template ServerinoMain(Modules...)
 {
@@ -108,7 +111,7 @@ template ServerinoMain(Modules...)
       if (!ServerinoProcess.isDaemon)
          args = (cast(string)Base64.decode(environment.get("SERVERINO_ARGS"))).split("\0");
 
-      return mainServerinoLoop(args);
+      return mainServerinoLoop!OnMainThread(args);
    }
 }
 
@@ -125,8 +128,11 @@ template ServerinoLoop(Modules...)
    static foreach(m; allModules)
       static assert(__traits(isModule, m), "All ServerinoMain params must be modules");
 
-   int mainServerinoLoop(string[] args)
+   int mainServerinoLoop(RunMode)(string[] args)
    {
+      static if (is (RunMode == OnSecondaryThread)) enum runAsSecondaryThread = true;
+      else static if (is (RunMode == OnMainThread)) enum runAsSecondaryThread = false;
+      else static assert(0, "Invalid run mode. It must be `OnSecondaryThread` or `OnMainThread`");
 
       // Docker container has a too generous limit of open files, it slows down the server
       // NOTE: Workaround for #issue 24524
@@ -179,7 +185,17 @@ template ServerinoLoop(Modules...)
          }
       }
 
-      return wakeServerino!allModules(config);
+      static if (runAsSecondaryThread == false) return wakeServerino!allModules(config);
+      else
+      {
+         import core.thread : Thread;
+         if (ServerinoProcess.isDynamicComponent) return wakeServerino!allModules(config);
+         else
+         {
+            new Thread({ Thread.getThis.isDaemon = true; wakeServerino!allModules(config); }).start();
+            return 0;
+         }
+      }
    }
 }
 
