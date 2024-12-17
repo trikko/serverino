@@ -174,9 +174,17 @@ package class WorkerInfo
       status = s;
       statusChangedAt = now;
 
-      // Automatically reinit the worker if it's stopped and it's not dynamic.
-      if (s == State.STOPPED)
+      if (Daemon.suspended && s == State.STOPPED)
       {
+         // If the daemon is suspended, we kill the workers.
+         log("Killing worker " ~ pi.id.to!string  ~ ". [REASON: suspended]");
+         pi.kill();
+
+         clear();
+      }
+      else if (s == State.STOPPED)
+      {
+         // Automatically reinit the worker if it's stopped and it's not dynamic.
          if (isDynamic) clear();
          else if (!Daemon.exitRequested) reinit(Type.STATIC);
       }
@@ -365,6 +373,18 @@ static:
    /// Shutdown the serverino daemon.
    void shutdown() @nogc nothrow { exitRequested = true; }
 
+   /// Suspend the daemon.
+   void suspend() @nogc nothrow { suspended = true; }
+
+   /// Resume the daemon.
+   void resume() @nogc nothrow { suspended = false; }
+
+   /// Check if the daemon is suspended.
+   bool suspended() @nogc nothrow { return suspended; }
+
+   /// Check if the daemon is running.
+   bool running() @nogc nothrow { return !suspended && !exitRequested; }
+
 package:
 
    void wake(Modules...)(DaemonConfigPtr config)
@@ -494,6 +514,22 @@ package:
          static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
       }
 
+      import core.thread : ThreadBase;
+      ThreadBase mainThread;
+
+      // Search for the main thread.
+      foreach(ref t; Thread.getAll())
+      {
+         if (t.isMainThread)
+         {
+            mainThread = t;
+            break;
+         }
+      }
+
+      assert(mainThread !is null, "Main thread not found");
+      startAgain:
+
       // Create all workers and start the ones that are required.
       foreach(i; 0..config.maxWorkers)
       {
@@ -622,8 +658,10 @@ package:
             // NOTE: Kill communicators that are not alive anymore?
          }
 
-         if (updates < 0 || exitRequested)
+         if (updates < 0 || exitRequested || suspended)
          {
+            if (suspended) break;
+
             // Retry if wait was interrupted by a signal.
             import core.stdc.errno : errno, EINTR;
             if (updates < 0 && errno == EINTR) continue;
@@ -632,8 +670,13 @@ package:
             removeCanary();
             break;
          }
-         else if (updates == 0) continue;
+         else if (updates == 0)
+         {
+            if (!mainThread.isRunning)
+               exitRequested = true;
 
+            continue;
+         }
          // ------------------------
          // Select version main loop
          // ------------------------
@@ -771,6 +814,34 @@ package:
          }
       }
 
+      if (suspended)
+      {
+         // Stop all the workers.
+         foreach(ref worker; WorkerInfo.alive)
+            worker.setStatus(WorkerInfo.State.STOPPED);
+
+         info("Daemon suspended. All workers stopped.");
+
+         // Wait until serverino is resumed or the main thread is stopped.
+         while(suspended && !exitRequested)
+         {
+            if (!mainThread.isRunning)
+            {
+               exitRequested = true;
+               break;
+            }
+
+            Thread.sleep(1.seconds);
+         }
+
+         // If the daemon is resumed, we start again.
+         if(!exitRequested)
+         {
+            log("Daemon resumed.");
+            goto startAgain;
+         }
+      }
+
       // Exit requested, shutdown everything.
 
       // Close all the listeners.
@@ -841,7 +912,8 @@ __gshared:
    string[string] workerEnvironment;
 
    bool exitRequested = false;
-   bool ready = false;
+   bool ready         = false;
+   bool suspended     = false;
 }
 
 
