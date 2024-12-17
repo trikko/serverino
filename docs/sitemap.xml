@@ -20,9 +20,11 @@
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.addListener.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.create.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableKeepAlive.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableLoggerOverride.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableRemoteIp.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableLoggerOverride.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableRemoteIp.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.ListenerProtocol.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setHttpTimeout.html</loc></url>
@@ -100,6 +102,7 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.daemonPID.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isDaemon.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isDynamicComponent.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isWebSocket.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/ServerinoProcess.isWorker.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/WebSocket.html</loc></url>
