@@ -3,6 +3,8 @@ module app;
 import std;
 import serverino;
 
+// This mixin also adds the main() function to the module.
+// If you want to run serverino in a secondary thread, you can use ServerinoBackground and define your own main() function.
 mixin ServerinoMain;
 
 // Just dump the request to the output, it's just an example.
