@@ -1,6 +1,3 @@
-import std.path: buildPath;
-import std.file: getcwd, mkdir, write;
-
 immutable example =
 `module app;
 
@@ -13,19 +10,19 @@ import serverino;
 
 mixin ServerinoMain;
 
-// If you need more than one endpoint, use @endpoint and (optionally) @priority
-// See: https://github.com/trikko/serverino#defining-more-than-one-endpoint
+// Use @endpoint and (optionally) @priority if you need more than one endpoint.
+// More info: https://github.com/trikko/serverino#defining-more-than-one-endpoint
 void example(Request request, Output output)
 {
 	// Probably you want to delete this spam.
-	info("Hello, log! There's a new incoming request. Url: ", request.path);
+	info("Hello, log! There's a new incoming request. URL: ", request.path);
 
+	// Add the formatted HTML representation of the HTTP request to the output.
+	// Useful for debugging. Replace with your own HTML page.
 	output ~= request.dump(true);
 }
 
-/*
- * Default configuration is used if you don't implement this function.
- *	See: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
+/* The default configuration is used if you do not implement this function.
 
 @onServerInit ServerinoConfig configure()
 {
@@ -34,17 +31,43 @@ void example(Request request, Output output)
 		.addListener("0.0.0.0", 8080)
 		.setMaxRequestTime(1.seconds)
 		.setMaxRequestSize(1024*1024); // 1 MB
-		// Many other options are available. Check the docs.
+		// Many other options are available.
+		// See: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
 }
-*/
 
+*/
 `;
 
-void main(string[] args)
+int main(string[] args)
 {
-	string sourceFolder = buildPath(getcwd(), "source");
-	mkdir(sourceFolder);
+	import std;
 
+	auto bold = "\033[1m";
+	auto reset = "\033[0m";
+	auto indent = repeat(" ", 13).join;
+
+	version(Windows)
+	{
+		bold = "";
+		reset = "";
+	}
+
+	writeln();
+
+	string sourceFolder = buildPath(getcwd(), "source");
 	string appFilePath = buildPath(sourceFolder, "app.d");
-	write(appFilePath, example);
+
+	if (exists(sourceFolder))
+	{
+		writeln(bold, "[ERROR]", reset, " A dub package already exists in the directory ", bold, getcwd(), reset, ".");
+		writeln(bold, "[ERROR]", reset, " Please choose an empty directory to initialize your new serverino app.");
+		return -1;
+	}
+
+	mkdir(sourceFolder);
+	std.file.write(appFilePath, example);
+	writeln(bold, indent, "Well done! Run your shiny new serverino app with:\n");
+	writeln(indent, "cd ", getcwd());
+	writeln(indent, "dub", reset, "\n");
+	return 0;
 }
