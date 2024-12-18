@@ -208,7 +208,11 @@ template ServerinoLoop(Modules...)
          if (ServerinoProcess.isDynamicComponent) return wakeServerino!allModules(config);
          else
          {
-            new Thread({ wakeServerino!allModules(config); }).start();
+            new Thread({
+               Thread.getThis().isDaemon = true;
+               wakeServerino!allModules(config);
+            }).start();
+
             return 0;
          }
       }
