@@ -408,7 +408,7 @@ static:
 
 package:
 
-   void wake(Modules...)(DaemonConfigPtr config)
+   void wake(Modules...)(DaemonConfigPtr config, WorkerConfigPtr workerConfig)
    {
       import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
@@ -446,6 +446,15 @@ package:
       workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
       workerEnvironment["SERVERINO_ARGS"] = argsBkp;
       workerEnvironment["SERVERINO_COMPONENT"] = "WK";
+
+      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_REQUEST_TIME"] = workerConfig.maxRequestTime.total!"msecs".to!string;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_HTTP_WAITING"] = workerConfig.maxHttpWaiting.total!"msecs".to!string;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_LIFETIME"] = workerConfig.maxWorkerLifetime.total!"msecs".to!string;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_IDLING"] = workerConfig.maxWorkerIdling.total!"msecs".to!string;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_DYNAMIC_WORKER_IDLING"] = workerConfig.maxDynamicWorkerIdling.total!"msecs".to!string;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_KEEP_ALIVE"] = workerConfig.keepAlive?"1":"0";
+      workerEnvironment["SERVERINO_WORKER_CONFIG_USER"] = workerConfig.user;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_GROUP"] = workerConfig.group;
 
       void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
       void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }

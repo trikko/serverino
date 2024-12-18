@@ -184,19 +184,22 @@ template ServerinoLoop(Modules...)
       ServerinoConfig config = ServerinoConfig.create();
 
       // Call ServerinoConfig func(); or ServerinoConfig func(args);
-      static foreach(m; allModules)
+      if (!ServerinoProcess.isDynamicComponent)
       {
-         static foreach(f; getSymbolsByUDA!(m, onServerInit))
+         static foreach(m; allModules)
          {
-            static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onServerInit but it is not a function");
-            static assert(is(ReturnType!f == ServerinoConfig), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `ServerinoConfig`");
+            static foreach(f; getSymbolsByUDA!(m, onServerInit))
+            {
+               static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onServerInit but it is not a function");
+               static assert(is(ReturnType!f == ServerinoConfig), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `ServerinoConfig`");
 
-            static if (is(Parameters!f == AliasSeq!(string[])))  config = f(args);
-            else static if (is(Parameters!f == AliasSeq!()))  config = f();
-            else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onServerInit but it is not callable");
+               static if (is(Parameters!f == AliasSeq!(string[])))  config = f(args);
+               else static if (is(Parameters!f == AliasSeq!()))  config = f();
+               else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onServerInit but it is not callable");
 
-            static if (!__traits(compiles, hasSetup)) { enum hasSetup; }
-            else static assert(0, "You can't mark more than one function with @onServerInit");
+               static if (!__traits(compiles, hasSetup)) { enum hasSetup; }
+               else static assert(0, "You can't mark more than one function with @onServerInit");
+            }
          }
       }
 
@@ -245,9 +248,9 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    import std.process : environment;
 
 
-   if (ServerinoProcess.isWorker) Worker.wake!Modules(workerConfig);
+   if (ServerinoProcess.isWorker) Worker.wake!Modules();
    else if (ServerinoProcess.isWebSocket) WebSocketWorker.wake!Modules();
-   else Daemon.wake!Modules(daemonConfig);
+   else Daemon.wake!Modules(daemonConfig, workerConfig);
 
    return 0;
 }

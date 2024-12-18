@@ -48,13 +48,27 @@ struct Worker
 {
    static:
 
-   void wake(Modules...)(WorkerConfigPtr config)
+   void wake(Modules...)()
    {
+
       import std.conv : to;
       import std.format : format;
       import std.process : thisProcessID;
       import std.path : baseName;
       import core.runtime : Runtime;
+      import std.datetime : msecs;
+
+      WorkerConfig cfg = WorkerConfig();
+      cfg.maxRequestTime = environment.get("SERVERINO_WORKER_CONFIG_MAX_REQUEST_TIME").to!ulong.msecs;
+      cfg.maxHttpWaiting = environment.get("SERVERINO_WORKER_CONFIG_MAX_HTTP_WAITING").to!ulong.msecs;
+      cfg.maxWorkerLifetime = environment.get("SERVERINO_WORKER_CONFIG_MAX_WORKER_LIFETIME").to!ulong.msecs;
+      cfg.maxWorkerIdling = environment.get("SERVERINO_WORKER_CONFIG_MAX_WORKER_IDLING").to!ulong.msecs;
+      cfg.maxDynamicWorkerIdling = environment.get("SERVERINO_WORKER_CONFIG_MAX_DYNAMIC_WORKER_IDLING").to!ulong.msecs;
+      cfg.keepAlive = environment.get("SERVERINO_WORKER_CONFIG_KEEP_ALIVE") == "1";
+      cfg.user = environment.get("SERVERINO_WORKER_CONFIG_USER");
+      cfg.group = environment.get("SERVERINO_WORKER_CONFIG_GROUP");
+
+      WorkerConfigPtr config = &cfg;
 
       isDynamic = environment.get("SERVERINO_DYNAMIC_WORKER") == "1";
       daemonProcess = new ProcessInfo(environment.get("SERVERINO_DAEMON_PID").to!int);
