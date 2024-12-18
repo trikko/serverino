@@ -66,7 +66,9 @@ package struct WorkerPayload
 		HTTP_RESPONSE_FILE = 1 << 1,
 		HTTP_RESPONSE_FILE_DELETE = 1 << 2,
 		HTTP_KEEP_ALIVE = 1 << 3,
-		WEBSOCKET_UPGRADE = 1 << 4
+		WEBSOCKET_UPGRADE = 1 << 4,
+		DAEMON_SHUTDOWN = 1 << 5,
+		DAEMON_SUSPEND = 1 << 6,
 	}
 
 	ubyte 	flags = 0;

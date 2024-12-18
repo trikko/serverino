@@ -39,6 +39,8 @@ import std.socket;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
+import core.thread : ThreadBase, Thread;
+
 static if (serverino.common.Backend == BackendType.EPOLL) import core.sys.linux.epoll;
 
 
@@ -220,6 +222,9 @@ package class WorkerInfo
             WorkerPayload *wp = cast(WorkerPayload*)buffer.ptr;
             auto data = cast(char[])buffer[WorkerPayload.sizeof..bytes];
 
+            if (wp.flags & WorkerPayload.Flags.DAEMON_SHUTDOWN) Daemon.shutdown();
+            else if (wp.flags & WorkerPayload.Flags.DAEMON_SUSPEND) Daemon.suspend();
+
             version(disable_websockets)
             {
                // Nothing to do here.
@@ -374,7 +379,15 @@ static:
    bool bootCompleted() { return ready; }
 
    /// Shutdown the serverino daemon.
-   void shutdown() @nogc nothrow { exitRequested = true; }
+   void shutdown() {
+      exitRequested = true;
+
+      if (daemonThread is null)
+         return;
+
+      if (Thread.getThis() !is daemonThread)
+         daemonThread.join();
+   }
 
    /// Suspend the daemon.
    void suspend() @nogc nothrow { suspended = true; }
@@ -383,7 +396,15 @@ static:
    void resume() @nogc nothrow { suspended = false; }
 
    /// Check if the daemon is running.
-   bool running() @nogc nothrow { return !suspended && !exitRequested; }
+   bool isRunning() @nogc nothrow
+   {
+      if (daemonThread is null) return true;
+      else return !suspended && !exitRequested;
+   }
+
+   bool isSuspended() @nogc nothrow { return suspended; }
+
+   bool isExiting() @nogc nothrow { return exitRequested; }
 
 package:
 
@@ -432,18 +453,21 @@ package:
       writeCanary();
       scope(exit) removeCanary();
 
-      import core.thread : Thread;
-      info("Daemon started. [backend=", Backend == Backend.EPOLL ? "epoll" : "select", ";thread=", Thread.getThis().isMainThread ? "main" : "secondary", "]");
+      daemonThread = Thread.getThis();
+
+      info("Daemon started. [backend=", Backend == Backend.EPOLL ? "epoll" : "select", ";thread=", daemonThread.isMainThread ? "main" : "secondary", "]");
       now = CoarseTime.currTime;
 
       version(Posix)
       {
-         import core.sys.posix.signal;
-         sigaction_t act = { sa_handler: &serverino_exit_handler };
-	      sigaction(SIGINT, &act, null);
-         sigaction(SIGTERM, &act, null);
+         if (daemonThread.isMainThread)
+         {
+            import core.sys.posix.signal;
+            sigaction_t act = { sa_handler: &serverino_exit_handler };
+            sigaction(SIGINT, &act, null);
+            sigaction(SIGTERM, &act, null);
+         }
       }
-      else version(Windows) scope(exit) tryUninit!Modules();
 
       tryInit!Modules();
 
@@ -514,7 +538,6 @@ package:
          static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
       }
 
-      import core.thread : ThreadBase;
       ThreadBase mainThread;
 
       // Search for the main thread.
@@ -872,8 +895,7 @@ package:
       // Delete the canary file.
       removeCanary();
 
-      import core.stdc.stdlib : exit;
-      exit(0);
+      info("Daemon shutdown completed. Goodbye!");
    }
 
 
@@ -915,6 +937,8 @@ private __gshared:
    bool exitRequested = false;
    bool ready         = false;
    bool suspended     = false;
+
+   ThreadBase daemonThread = null;
 }
 
 

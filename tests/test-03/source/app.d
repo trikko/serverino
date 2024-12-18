@@ -45,7 +45,7 @@ void main()
 {
    import serverino.daemon;
 
-   assert(Daemon.running, "Wrong daemon state.");
+   assert(Daemon.isRunning, "Wrong daemon state.");
    HTTP client = HTTP();
 
    // Set the timeout to 500ms.
@@ -59,12 +59,12 @@ void main()
 
    Daemon.suspend();
    Thread.sleep(1.seconds);
-   assert(!Daemon.running, "Wrong daemon state.");
+   assert(!Daemon.isRunning, "Wrong daemon state.");
    assertThrown(get("http://localhost:8080/2", client));
 
    Daemon.resume();
    Thread.sleep(1.seconds);
-   assert(Daemon.running, "Wrong daemon state.");
+   assert(Daemon.isRunning, "Wrong daemon state.");
    assertNotThrown(get("http://localhost:8080/3", client) == "OK");
 
    Daemon.shutdown();

@@ -689,6 +689,10 @@ struct Worker
                         flags |= WorkerPayload.Flags.HTTP_RESPONSE_FILE_DELETE;
                   }
 
+                  import serverino.daemon : Daemon;
+                  if (Daemon.isExiting) flags |= WorkerPayload.Flags.DAEMON_SHUTDOWN;
+                  else if (Daemon.isSuspended) flags |= WorkerPayload.Flags.DAEMON_SUSPEND;
+
                   return flags;
 
                }
