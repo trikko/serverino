@@ -30,37 +30,31 @@ import tagged;
 
 import std;
 
-mixin ServerinoMain!tagged;
+mixin ServerinoBackground!tagged;
 
-@onDaemonStart void run_tests()
+void main()
 {
+   import core.stdc.stdlib: exit;
    import core.thread;
    import serverino.daemon;
-   import core.stdc.stdlib : exit;
 
-   new Thread({
+   // Is serverino ready?
+   while(!Daemon.bootCompleted)
+      Thread.sleep(10.msecs);
 
-      Thread.getThis().isDaemon = true;
+   // Run the tests
+   try {
+      test();
+   }
+   catch (Throwable t)
+   {
+      writeln("Test failed");
+      writeln(t);
+      exit(-1);
+   }
 
-      // Is serverino ready?
-      while(!Daemon.bootCompleted)
-         Thread.sleep(10.msecs);
-
-      // Run the tests
-      try {
-         test();
-         writeln("All tests passed!");
-      }
-      catch (Throwable t)
-      {
-         writeln("Test failed");
-         writeln(t);
-         exit(-1);
-      }
-
-      Daemon.shutdown();
-
-   }).start();
+   Daemon.shutdown();
+   writeln("All tests passed!");
 }
 
 @endpoint @priority(15000) @route!"/servefile"
