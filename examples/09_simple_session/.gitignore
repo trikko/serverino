@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/09_simple_session
+09_simple_session.so
+09_simple_session.dylib
+09_simple_session.dll
+09_simple_session.a
+09_simple_session.lib
+09_simple_session-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
