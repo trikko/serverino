@@ -692,13 +692,14 @@ void test()
       ubyte[] buffer;
       buffer.length = 129;
 
+      ubyte[] handshakeReply;
       {
          auto ln = sck.receive(buffer);
 
-         auto reply = buffer[0..ln];
+         handshakeReply = buffer[0..ln];
 
-         assert(reply.startsWith("HTTP/1.1 101 Switching Protocols"));
-         assert(reply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
+         assert(handshakeReply.startsWith("HTTP/1.1 101 Switching Protocols"));
+         assert(handshakeReply.canFind("sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
       }
 
       WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
@@ -708,14 +709,26 @@ void test()
 
       buffer.length = 32000;
       ubyte[] reply;
+      ptrdiff_t recv;
 
       while(reply.length < "Hello from client".length + 2 + 4 + 2)
       {
-         auto recv = sck.receive(buffer);
+         recv = sck.receive(buffer);
 
          if(recv <= 0) break;
 
          reply ~= buffer[0..recv];
+      }
+
+      // For debugging error popping up every now and then on macOS
+      if (reply.length < 2)
+      {
+         warning("Recv: ", recv);
+         warning("HandshakeReply [", handshakeReply.length, "]: ", cast(char[])handshakeReply);
+         warning("Reply: [", reply.length, "]: ", cast(char[])reply);
+
+         warning("Socket error: ", sck.getErrorText());
+         warning("Socket alive: ", sck.isAlive);
       }
 
       assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
