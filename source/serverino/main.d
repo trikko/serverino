@@ -206,20 +206,19 @@ template ServerinoLoop(Modules...)
          }
       }
 
-      static if (runAsSecondaryThread == false) return wakeServerino!allModules(config);
+      if (ServerinoProcess.isDynamicComponent || runAsSecondaryThread == false) return wakeServerino!allModules(config);
       else
       {
          import core.thread : Thread;
-         if (ServerinoProcess.isDynamicComponent) return wakeServerino!allModules(config);
-         else
-         {
-            new Thread({
-               Thread.getThis().isDaemon = true;
-               wakeServerino!allModules(config);
-            }).start();
 
-            return 0;
-         }
+         new Thread({
+            auto daemonThread = Thread.getThis();
+            daemonThread.isDaemon = true;
+            daemonThread.name = "serverino-daemon"; // So you can find it in the threads list
+
+            wakeServerino!allModules(config);
+         }).start();
+         return 0;
       }
    }
 }
