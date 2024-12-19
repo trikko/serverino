@@ -10,7 +10,7 @@ serverino
 * 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
 
 ## Quickstart
-Install a [lang compiler](https://dlang.org/), then:
+Install a [dlang compiler](https://dlang.org/), then:
 ```sh
 dub init your_app_name -t serverino
 cd your_app_name
