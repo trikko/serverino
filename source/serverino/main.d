@@ -183,7 +183,7 @@ template ServerinoLoop(Modules...)
       import std.traits : getSymbolsByUDA, isFunction, ReturnType, Parameters;
       ServerinoConfig config = ServerinoConfig.create();
 
-      // BUG: https://github.com/dlang/dmd/issues/20578
+      // NOTE: workaround for issue https://github.com/dlang/dmd/issues/20578
       // This should be `if (!ServerinoProcess.isDynamicComponent) { static foreach(m; allModules) { ... } }`
       if (ServerinoProcess.isDynamicComponent)
          goto issue20578;
