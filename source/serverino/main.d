@@ -229,6 +229,9 @@ template ServerinoLoop(Modules...)
 
 int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
+   // If the return code is not 0 or forceExit is true, serverino will exit immediately.
+   if (config.returnCode != 0 || config.forceExit)
+      return config.returnCode;
 
    if (config.daemonConfig.overrideLogger)
    {
@@ -237,9 +240,6 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
       static if (version_minor > 100) sharedLog = new shared ServerinoLogger(config.daemonConfig.logLevel);
       else sharedLog = new ServerinoLogger(config.daemonConfig.logLevel);
    }
-
-   if (config.returnCode != 0)
-      return config.returnCode;
 
    config.validate();
 

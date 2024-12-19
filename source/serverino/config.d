@@ -173,23 +173,29 @@ struct ServerinoConfig
       return sc;
    }
 
-   /// Min log level to display. Default == LogLevel.all
+   /// Sets the minimum log level to display. The default is LogLevel.all.
    @safe ref ServerinoConfig setLogLevel(LogLevel level = LogLevel.all) return { daemonConfig.logLevel = level; return this; }
 
-   /// Every value != 0 is used to terminate server immediatly.
-   @safe ref ServerinoConfig setReturnCode(int retCode = 0) return { returnCode = retCode; return this; }
-   /// Max number of workers
+   /// Any non-zero value will cause the server to terminate immediately. If forceExit is true, the server will terminate even if retCode is 0.
+   @safe ref ServerinoConfig setReturnCode(int retCode = 0, bool forceExit = false) return
+   {
+      this.forceExit = forceExit;
+      this.returnCode = retCode;
+      return this;
+   }
+
+   /// Sets the maximum number of worker threads.
    @safe ref ServerinoConfig setMaxWorkers(size_t val = 5) return { daemonConfig.maxWorkers = val; return this; }
-   /// Min number of workers
+   /// Sets the minimum number of worker threads.
    @safe ref ServerinoConfig setMinWorkers(size_t val = 5) return  { daemonConfig.minWorkers = val; return this; }
 
    /// Same as setMaxWorkers(v); setMinWorkers(v);
    @safe ref ServerinoConfig setWorkers(size_t val) return { setMinWorkers(val); setMaxWorkers(val); return this; }
 
-   /// Max time a worker can live. After this time, worker is terminated.
+   /// Sets the maximum lifetime for a worker. After this duration, the worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerLifetime(Duration dur = 6.hours) return  { workerConfig.maxWorkerLifetime = dur; return this; }
 
-   /// Max time a worker can be idle. After this time, worker is terminated.
+   /// Sets the maximum idle time for a worker. After this duration, the worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.hours) return  { workerConfig.maxWorkerIdling = dur; return this; }
 
    /***
@@ -198,13 +204,13 @@ struct ServerinoConfig
    ***/
    @safe ref ServerinoConfig setMaxDynamicWorkerIdling(Duration dur = 10.seconds) return  { workerConfig.maxDynamicWorkerIdling = dur; return this; }
 
-   /// Max number of pending connections
+   /// Sets the maximum number of pending connections in the listener's backlog.
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
 
-   /// Max time a request can take. After this time, worker is terminated.
+   /// Sets the maximum duration a request can take. After this time, the worker handling the request is terminated.
    @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.seconds) return  { workerConfig.maxRequestTime = dur; return this; }
 
-   /// Max size of a request. If a request is bigger than this value, error 413 is returned.
+   /// Sets the maximum allowable size for a request. Requests exceeding this size will return a 413 error.
    @safe ref ServerinoConfig setMaxRequestSize(size_t bytes = 1024*1024*10) return     { daemonConfig.maxRequestSize = bytes;  return this;}
 
    version(Windows) { }
@@ -216,10 +222,10 @@ struct ServerinoConfig
    @safe ref ServerinoConfig setWorkerGroup(string s = string.init) return { workerConfig.group = s; return this;}
    }
 
-   /// How long the socket will wait for a request after the connection?
+   /// Sets the maximum duration the socket will wait for a request after the connection.
    @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.seconds) return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
 
-   /// Enable/Disable std.logger override
+   /// Enables or disables the override of std.logger.
    @safe ref ServerinoConfig enableLoggerOverride(bool enable = true) return { daemonConfig.overrideLogger = enable; return this; }
 
    /// Ditto
@@ -284,7 +290,8 @@ struct ServerinoConfig
    DaemonConfig       daemonConfig;
    WorkerConfig       workerConfig;
 
-   int returnCode;
+   int   returnCode;
+   bool  forceExit;
 }
 
 // To avoid errors/mistakes copying data around
