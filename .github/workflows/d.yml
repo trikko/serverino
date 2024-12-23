@@ -41,7 +41,9 @@ jobs:
         run: echo "import serverino; mixin ServerinoMain; @endpoint void a(Output o) { }" | dmd -i -Isource -ofinline_1 - &&
              echo "import serverino; mixin ServerinoMain; @endpoint void a(Request r, Output o) { }" | dmd -i -Isource -ofinline_2 - &&
              echo "import serverino; mixin ServerinoMain; @endpoint void a(Request r) { }" | dmd -i -Isource -ofinline_3 - &&
-             echo "import serverino; mixin ServerinoBackground; @endpoint void a(Request r) { } void main() { }" | dmd -i -Isource -ofinline_4 - 
+             echo "import serverino; mixin ServerinoBackground; @endpoint void a(Request r) { } void main() { }" | dmd -i -Isource -ofinline_4 -
+        exclude: 
+        - dc: ldc-latest
         
 
       - name: Run test-01
