@@ -107,6 +107,9 @@ template ServerinoMain(Modules...)
    int main(string[] args)
    {
       import std.base64 : Base64;
+      import std.process : environment;
+      import std.string : split;
+
       if (environment.get("SERVERINO_ARGS") !is null)
          args = (cast(string)Base64.decode(environment.get("SERVERINO_ARGS"))).split("\0");
       return mainServerinoLoop!OnMainThread(args);
@@ -121,6 +124,11 @@ template ServerinoBackground(Modules...)
    shared static this()
    {
       import core.runtime : Runtime;
+
+      import std.base64 : Base64;
+      import std.process : environment;
+      import std.string : split;
+
       string[] args = Runtime.args;
 
       if (environment.get("SERVERINO_ARGS") !is null)
