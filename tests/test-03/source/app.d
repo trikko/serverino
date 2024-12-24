@@ -39,6 +39,17 @@ void test(Request request, Output output)
    output ~= "OK";
 
    log("Request received: ", request.path);
+
+   if (request.path == "/exception")
+      throw new Exception("Test exception");
+}
+
+@onWorkerException
+bool onException(Request request, Output output, Exception exception)
+{
+   output.status = 200;
+   output ~= "Exception catched";
+   return true;
 }
 
 void main()
@@ -65,7 +76,8 @@ void main()
    Daemon.resume();
    Thread.sleep(1.seconds);
    assert(Daemon.isRunning, "Wrong daemon state.");
-   assertNotThrown(get("http://localhost:8080/3", client) == "OK");
+
+   assertNotThrown(get("http://localhost:8080/exception", client) == "Exception catched");
 
    Daemon.shutdown();
 
