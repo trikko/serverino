@@ -352,28 +352,22 @@ struct Worker
                if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
                {
                   debug warning("HTTP method unknown: ", method);
-                  valid = false;
+                  output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
+                  output._internal._sendBody = false;
+                  output.status = 400;
+                  return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                }
-            }
-
-            if (!valid)
-            {
-               output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
-               output._internal._sendBody = false;
-               output.status = 400;
-               return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
             headersLines.popFront;
 
             foreach(const ref l; headersLines)
             {
-               auto firstColon = l.indexOf(':');
-               if (firstColon > 0)
+               enum CONTENT_LENGTH = "content-length:".length;
 
-               if(l[0..firstColon] == "content-length")
+               if (l.length > CONTENT_LENGTH && l[0..CONTENT_LENGTH] == "content-length:")
                {
-                  contentLength = l[firstColon+1..$].to!size_t;
+                  contentLength = l[CONTENT_LENGTH..$].to!size_t;
                   hasContentLength = true;
                   break;
                }
