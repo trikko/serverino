@@ -34,19 +34,24 @@ package struct DataBuffer(T)
    public:
    pragma(inline, true):
 
-   void append(scope const T[] new_data)
+   void append(scope const T[] new_data) @trusted
    {
       debug import std.conv;
       debug assert(new_data.length > 0, "DataBuffer.append: new_data.length must be > 0 but is " ~ new_data.length.to!string);
 
       reserve(_length + new_data.length);
-      _data[_length.._length+new_data.length] = new_data[0..$];
+      _data[_length.._length+new_data.length] = cast(T[])new_data[0..$];
       _length += new_data.length;
    }
    void reserve(size_t r, bool allowShrink = false) { if (r > _data.length || allowShrink) _data.length = (r / (1024*16) + 1) * (1024*16); }
    void length(size_t l) { reserve(l); _length = l; }
 
-   void append(scope const T new_data) { append((&new_data)[0..1]); }
+   void append(scope const T new_data) {
+      reserve(_length + 1);
+      _data[_length] = cast(T)new_data;
+      _length++;
+   }
+
    auto capacity() { return _data.length; }
    void clear() { _length = 0; }
    auto array() { return _data[0.._length]; }

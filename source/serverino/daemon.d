@@ -140,7 +140,7 @@ package class WorkerInfo
       }
       else static if (serverino.common.Backend == BackendType.KQUEUE) {
          import serverino.daemon : Daemon;
-         Daemon.changeList ~= kevent(accepted.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this);
+         Daemon.changeList.append(kevent(accepted.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this));
       }
 
       setStatus(WorkerInfo.State.IDLING);
@@ -166,6 +166,11 @@ package class WorkerInfo
          {
             import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(unixSocket);
+         }
+         else static if (serverino.common.Backend == BackendType.KQUEUE)
+         {
+            import serverino.daemon : Daemon;
+            Daemon.changeList.append(kevent(unixSocket.handle, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)this));
          }
 
          unixSocket.shutdown(SocketShutdown.BOTH);
@@ -491,6 +496,7 @@ package:
          kq = kqueue();
          if (kq == -1)  throw new Exception("Failed to create kqueue");
          eventList.length = 1024;
+         changeList.reserve(1024);
       }
 
       // Starting all the listeners.
@@ -555,8 +561,10 @@ package:
             exit(EXIT_FAILURE);
          }
 
-         static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
-         else static if (serverino.common.Backend == BackendType.KQUEUE) changeList ~= kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener);
+         static if (serverino.common.Backend == BackendType.EPOLL)
+            epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
+         else static if (serverino.common.Backend == BackendType.KQUEUE)
+         changeList.append(kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener));
       }
 
       ThreadBase mainThread;
@@ -642,7 +650,7 @@ package:
             debug import std.stdio : writeln;
 
             auto timeout = timespec(1, 0);
-            int updates = kevent_f(kq, changeList.ptr, cast(int)changeList.length, eventList.ptr, cast(int)eventList.length, &timeout);
+            int updates = kevent_f(kq, changeList.array.ptr, cast(int)changeList.length, eventList.ptr, cast(int)eventList.length, &timeout);
             changeList.length = 0;
          }
 
@@ -963,8 +971,6 @@ package:
       // Delete the canary file.
       removeCanary();
 
-      static if (serverino.common.Backend == BackendType.KQUEUE) closeKQueue(kq);
-
       info("Daemon shutdown completed. Goodbye!");
    }
 
@@ -1000,9 +1006,12 @@ package:
       int epoll;
    }
    else static if (serverino.common.Backend == BackendType.KQUEUE) {
-      int kq; // File descriptor per kqueue
-      kevent[] changeList;
-      kevent[] eventList;
+
+      import serverino.databuffer;
+
+      int kq;
+      DataBuffer!kevent changeList;
+      kevent[]          eventList;
    }
 
 private __gshared:

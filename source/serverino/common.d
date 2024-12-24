@@ -91,9 +91,6 @@ static if (Backend == BackendType.KQUEUE)
 
 			int kqueue();
 
-			pragma(mangle, "close")
-			int closeKQueue(int fd);
-
 			pragma(mangle, "kevent")
 			int kevent_f(
 				int 	kq,
