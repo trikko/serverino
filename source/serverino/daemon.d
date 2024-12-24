@@ -170,7 +170,8 @@ package class WorkerInfo
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            Daemon.changeList.append(kevent(unixSocket.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, null));
+            auto kv = kevent(unixSocket.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*) this);
+            kevent_f(Daemon.kq, &kv, 1, null, 0, null);
          }
 
          unixSocket.shutdown(SocketShutdown.BOTH);

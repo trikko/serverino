@@ -143,7 +143,8 @@ package class Communicator
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            Daemon.changeList.append(kevent(clientSkt.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, null));
+            auto kv = kevent(clientSkt.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*) this);
+            kevent_f(Daemon.kq, &kv, 1, null, 0, null);
          }
 
          // Remove the communicator from the list of alives
