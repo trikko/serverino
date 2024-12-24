@@ -963,7 +963,7 @@ package:
       // Delete the canary file.
       removeCanary();
 
-      //static if (serverino.common.Backend == BackendType.KQUEUE) close(kq);
+      static if (serverino.common.Backend == BackendType.KQUEUE) closeKQueue(kq);
 
       info("Daemon shutdown completed. Goodbye!");
    }
