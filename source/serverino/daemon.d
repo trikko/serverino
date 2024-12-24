@@ -170,7 +170,7 @@ package class WorkerInfo
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            Daemon.changeList.append(kevent(unixSocket.handle, EVFILT_READ, EV_DELETE, 0, 0, cast(void*)this));
+            Daemon.changeList.append(kevent(unixSocket.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, null));
          }
 
          unixSocket.shutdown(SocketShutdown.BOTH);
@@ -564,7 +564,7 @@ package:
          static if (serverino.common.Backend == BackendType.EPOLL)
             epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-         changeList.append(kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener));
+            changeList.append(kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener));
       }
 
       ThreadBase mainThread;
@@ -851,6 +851,9 @@ package:
 
             foreach(ref kevent e; eventList[0..updates])
             {
+               if (e.udata is null)
+                  continue;
+
                Object o = cast(Object)(cast(void*) e.udata);
 
                Communicator communicator = cast(Communicator)(o);
