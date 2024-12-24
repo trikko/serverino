@@ -35,7 +35,7 @@ import std.experimental.logger : log, info, warning;
 import std.process : ProcessPipes;
 
 import std.format : format;
-import std.socket;
+import std.socket : Socket, UnixAddress, SocketType, AddressFamily, SocketShutdown, TcpSocket, SocketOption, SocketOptionLevel, SocketException;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 

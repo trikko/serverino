@@ -29,8 +29,7 @@ import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now;
 import serverino.config : DaemonConfigPtr;
-import std.socket;
-
+import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown;
 import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;
@@ -576,7 +575,7 @@ package class Communicator
             requestToProcess = tmp.next;
          }
 
-	      status = State.READING_HEADERS;
+         status = State.READING_HEADERS;
       }
 
       ProtoRequest request = requestToProcess;
