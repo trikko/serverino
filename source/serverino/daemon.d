@@ -138,6 +138,10 @@ package class WorkerInfo
          import core.sys.linux.epoll : EPOLLIN;
          Daemon.epollAddSocket(accepted, EPOLLIN, cast(void*) this);
       }
+      else static if (serverino.common.Backend == BackendType.KQUEUE) {
+         import serverino.daemon : Daemon;
+         Daemon.changeList ~= kevent(accepted.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this);
+      }
 
       setStatus(WorkerInfo.State.IDLING);
    }
@@ -465,7 +469,7 @@ package:
 
       daemonThread = Thread.getThis();
 
-      info("Daemon started. [backend=", Backend == Backend.EPOLL ? "epoll" : "select", ";thread=", daemonThread.isMainThread ? "main" : "secondary", "]");
+      info("Daemon started. [backend=", cast(string)(Backend), ";thread=", daemonThread.isMainThread ? "main" : "secondary", "]");
       now = CoarseTime.currTime;
 
       version(Posix)
@@ -482,6 +486,12 @@ package:
       tryInit!Modules();
 
       static if (serverino.common.Backend == BackendType.EPOLL) epoll = epoll_create1(0);
+      else static if (serverino.common.Backend == BackendType.KQUEUE)
+      {
+         kq = kqueue();
+         if (kq == -1)  throw new Exception("Failed to create kqueue");
+         eventList.length = 1024;
+      }
 
       // Starting all the listeners.
       foreach(ref listener; config.listeners)
@@ -546,6 +556,12 @@ package:
          }
 
          static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
+         else static if (serverino.common.Backend == BackendType.KQUEUE)
+         {
+            kevent evt;
+            EV_SET(evt, listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener);
+            kevent_f(kq, &evt, 1, null, 0, null);
+         }
       }
 
       ThreadBase mainThread;
@@ -624,6 +640,17 @@ package:
             enum MAX_EPOLL_EVENTS = 1500;
             epoll_event[MAX_EPOLL_EVENTS] events = void;
             long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, 1000);
+         }
+         else static if (serverino.common.Backend == BackendType.KQUEUE) {
+
+            import core.stdc.stdlib : exit;
+            debug import std.stdio : writeln;
+
+            auto timeout = timespec(1, 0);
+            int updates = kevent_f(kq, changeList.ptr, cast(int)changeList.length, eventList.ptr, cast(int)eventList.length, &timeout);
+            if (updates == -1) throw new Exception("kevent error");
+
+            changeList.length = 0;
          }
 
          now = CoarseTime.currTime;
@@ -815,6 +842,44 @@ package:
             }
          }
 
+         // ------------------------
+         // Kqueue version main loop
+         // ------------------------
+
+         else static if (serverino.common.Backend == BackendType.KQUEUE) {
+
+            foreach(ref kevent e; eventList[0..updates])
+            {
+               Object o = cast(Object)(cast(void*) e.udata);
+
+               Communicator communicator = cast(Communicator)(o);
+               if (communicator !is null)
+               {
+                  if (communicator.clientSkt !is null && (e.filter == EVFILT_READ))
+                     communicator.onReadAvailable();
+
+                     if (communicator.clientSkt !is null && (e.filter == EVFILT_WRITE))
+                        communicator.onWriteAvailable();
+
+                  continue;
+               }
+
+               WorkerInfo worker = cast(WorkerInfo)(o);
+               if (worker !is null)
+               {
+                  worker.onReadAvailable();
+                  continue;
+               }
+
+               Listener listener = cast(Listener)(o);
+               if (listener !is null)
+               {
+                  listener.onConnectionAvailable();
+                  continue;
+               }
+            }
+         }
+
          // Check if we have some free workers and some waiting communicators.
          if (Communicator.execWaitingListFront !is null)
          {
@@ -905,6 +970,8 @@ package:
       // Delete the canary file.
       removeCanary();
 
+      //static if (serverino.common.Backend == BackendType.KQUEUE) close(kq);
+
       info("Daemon shutdown completed. Goodbye!");
    }
 
@@ -938,6 +1005,11 @@ package:
       }
 
       int epoll;
+   }
+   else static if (serverino.common.Backend == BackendType.KQUEUE) {
+      int kq; // File descriptor per kqueue
+      kevent[] changeList;
+      kevent[] eventList;
    }
 
 private __gshared:

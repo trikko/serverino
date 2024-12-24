@@ -30,15 +30,20 @@ import std.datetime : MonoTimeImpl, ClockType;
 // Serverino can be built using two different backends: select or epoll
 public enum BackendType
 {
-   SELECT,
-   EPOLL
+   SELECT = "select",
+   EPOLL = "epoll",
+	KQUEUE = "kqueue"
 }
 
 // The backend is selected using the version directive or by checking the OS
 version(use_select) { enum Backend = BackendType.SELECT; }
 else version(use_epoll) { enum Backend = BackendType.EPOLL; }
+else version(use_kqueue) { enum Backend = BackendType.KQUEUE; }
 else {
    version(linux) enum Backend = BackendType.EPOLL;
+	else version(BSD) enum Backend = BackendType.EPOLL;
+	else version(OSX) enum Backend = BackendType.EPOLL;
+	else version(Windows) enum Backend = BackendType.SELECT;
    else enum Backend = BackendType.SELECT;
 }
 
@@ -46,6 +51,67 @@ static if(Backend == BackendType.EPOLL)
 {
 	version(linux) { }
 	else static assert(false, "epoll backend is only available on Linux");
+}
+
+static if (Backend == BackendType.KQUEUE)
+{
+	version(linux) enum IS_KQUEUE_AVAILABLE = true;
+	else version(BSD) enum IS_KQUEUE_AVAILABLE = true;
+	else version(OSX) enum IS_KQUEUE_AVAILABLE = true;
+	else enum IS_KQUEUE_AVAILABLE = false;
+
+	static if (IS_KQUEUE_AVAILABLE)
+	{
+		struct timespec {
+			long tv_sec;  // seconds
+			long tv_nsec; // nanoseconds
+		}
+
+		extern(C)
+		{
+			alias uintptr_t = size_t;
+			alias intptr_t = ptrdiff_t;
+
+			struct kevent {
+				uintptr_t ident;
+				short filter;
+				ushort flags;
+				uint fflags;
+				intptr_t data;
+				void* udata;
+			}
+
+			enum EVFILT_READ = -1;
+			enum EVFILT_WRITE = -2;
+
+			enum EV_ADD = 0x0001;
+			enum EV_DELETE = 0x0002;
+			enum EV_ENABLE = 0x0004;
+			enum EV_DISABLE = 0x0008;
+
+			void EV_SET(ref kevent kevp, uintptr_t ident, short filter, ushort flags, uint fflags, intptr_t data, void* udata) {
+				kevp.ident = ident;
+				kevp.filter = filter;
+				kevp.flags = flags;
+				kevp.fflags = fflags;
+				kevp.data = data;
+				kevp.udata = udata;
+			}
+
+			int kqueue();
+
+			pragma(mangle, "kevent")
+			int kevent_f(
+				int 	kq,
+				const kevent* changelist,
+				int nchanges,
+				kevent* eventlist,
+				int nevents,
+				const timespec* timeout
+			);
+		}
+	}
+	else static assert(false, "kqueue backend is only available on Linux and BSD");
 }
 
 // The time type used in the serverino library

@@ -140,6 +140,10 @@ package class Communicator
             import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(clientSkt);
          }
+         else static if (serverino.common.Backend == BackendType.KQUEUE) {
+            import serverino.daemon : Daemon;
+            Daemon.changeList ~= kevent(clientSkt.handle, EVFILT_READ, EV_DELETE, 0, 0, cast(void*) this);
+         }
 
          // Remove the communicator from the list of alives
          if (prev !is null) prev.next = next;
@@ -185,6 +189,9 @@ package class Communicator
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN;
             Daemon.epollAddSocket(s, EPOLLIN, cast(void*) this);
+         } else static if (serverino.common.Backend == BackendType.KQUEUE) {
+            import serverino.daemon : Daemon;
+            Daemon.changeList ~= kevent(s.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this);
          }
       }
       else assert(false);
