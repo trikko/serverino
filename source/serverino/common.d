@@ -41,8 +41,8 @@ else version(use_epoll) { enum Backend = BackendType.EPOLL; }
 else version(use_kqueue) { enum Backend = BackendType.KQUEUE; }
 else {
    version(linux) enum Backend = BackendType.EPOLL;
-	else version(BSD) enum Backend = BackendType.EPOLL;
-	else version(OSX) enum Backend = BackendType.EPOLL;
+	else version(BSD) enum Backend = BackendType.SELECT;
+	else version(OSX) enum Backend = BackendType.SELECT;
 	else version(Windows) enum Backend = BackendType.SELECT;
    else enum Backend = BackendType.SELECT;
 }
