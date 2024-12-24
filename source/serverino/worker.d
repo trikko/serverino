@@ -31,7 +31,7 @@ import serverino.interfaces;
 import std.experimental.logger : log, warning, fatal, critical;
 import std.process : environment;
 import std.stdio : FILE;
-import std.socket : Socket, AddressFamily, SocketType, SocketOption, SocketOptionLevel, UnixAddress, SocketShutdown;
+import std.socket : Socket, AddressFamily, SocketType, SocketOption, SocketOptionLevel, SocketShutdown;
 import std.datetime : seconds;
 import std.string : toStringz, indexOf, strip, toLower;
 import std.algorithm : splitter, startsWith, map;
@@ -43,6 +43,7 @@ import core.atomic : cas, atomicLoad, atomicStore;
 extern(C) int dup2(int a, int b);
 extern(C) int fileno(FILE *stream);
 
+version(Posix) import std.socket : UnixAddress;
 
 struct Worker
 {
