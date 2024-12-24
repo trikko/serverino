@@ -556,12 +556,7 @@ package:
          }
 
          static if (serverino.common.Backend == BackendType.EPOLL) epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
-         else static if (serverino.common.Backend == BackendType.KQUEUE)
-         {
-            kevent evt;
-            EV_SET(evt, listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener);
-            kevent_f(kq, &evt, 1, null, 0, null);
-         }
+         else static if (serverino.common.Backend == BackendType.KQUEUE) changeList ~= kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener);
       }
 
       ThreadBase mainThread;
@@ -648,8 +643,6 @@ package:
 
             auto timeout = timespec(1, 0);
             int updates = kevent_f(kq, changeList.ptr, cast(int)changeList.length, eventList.ptr, cast(int)eventList.length, &timeout);
-            if (updates == -1) throw new Exception("kevent error");
-
             changeList.length = 0;
          }
 
@@ -858,8 +851,8 @@ package:
                   if (communicator.clientSkt !is null && (e.filter == EVFILT_READ))
                      communicator.onReadAvailable();
 
-                     if (communicator.clientSkt !is null && (e.filter == EVFILT_WRITE))
-                        communicator.onWriteAvailable();
+                  if (communicator.clientSkt !is null && (e.filter == EVFILT_WRITE))
+                     communicator.onWriteAvailable();
 
                   continue;
                }

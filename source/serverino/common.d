@@ -89,15 +89,6 @@ static if (Backend == BackendType.KQUEUE)
 			enum EV_ENABLE = 0x0004;
 			enum EV_DISABLE = 0x0008;
 
-			void EV_SET(ref kevent kevp, uintptr_t ident, short filter, ushort flags, uint fflags, intptr_t data, void* udata) {
-				kevp.ident = ident;
-				kevp.filter = filter;
-				kevp.flags = flags;
-				kevp.fflags = fflags;
-				kevp.data = data;
-				kevp.udata = udata;
-			}
-
 			int kqueue();
 
 			pragma(mangle, "kevent")
