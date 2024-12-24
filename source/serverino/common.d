@@ -414,7 +414,7 @@ version(Posix)
 
 version(Posix) package void setProcessName(string[] names)
 {
-	import core.thread;
+	import core.thread : Thread;
 
 	// We don't want to set the name of the process if we are running in a thread
 	if (!Thread.getThis().isMainThread)
