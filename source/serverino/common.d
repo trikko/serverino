@@ -103,17 +103,33 @@ static if (Backend == BackendType.KQUEUE)
 			enum EVFILT_SYSCOUNT = 11;
 
 
-			int kqueue();
+			version(linux)
+			{
+				int function() kqueue;
 
-			pragma(mangle, "kevent")
-			int kevent_f(
-				int 	kq,
-				const kevent* changelist,
-				int nchanges,
-				kevent* eventlist,
-				int nevents,
-				const timespec* timeout
-			);
+				int function(
+					int 	kq,
+					const kevent* changelist,
+					int nchanges,
+					kevent* eventlist,
+					int nevents,
+					const timespec* timeout
+				) kevent_f;
+			}
+			else
+			{
+				int kqueue();
+
+				pragma(mangle, "kevent")
+				int kevent_f(
+					int 	kq,
+					const kevent* changelist,
+					int nchanges,
+					kevent* eventlist,
+					int nevents,
+					const timespec* timeout
+				);
+			}
 		}
 	}
 	else static assert(false, "kqueue backend is only available on Linux and BSD");
@@ -546,3 +562,38 @@ version(Posix) package void setProcessName(string[] names)
 }
 
 package immutable static DEFAULT_BUFFER_SIZE = 32*1024;
+
+
+version(Posix)
+{
+	static if (Backend == BackendType.KQUEUE)
+	{
+
+		void* kqueue_handle = null;
+
+		shared static this()
+		{
+			import core.sys.posix.dlfcn;
+
+			extern (C) int dll();
+
+			kqueue_handle = dlopen("libkqueue.so", RTLD_LAZY);
+			if (!kqueue_handle)
+			{
+				assert(false, "Failed to load libkqueue.so");
+			}
+
+			kqueue = cast(typeof(kqueue))dlsym(kqueue_handle, "kqueue");
+			kevent_f = cast(typeof(kevent_f))dlsym(kqueue_handle, "kevent");
+
+			assert(kqueue && kevent_f, "Failed to load kqueue or kevent functions");
+		}
+
+		shared static ~this()
+		{
+			import core.sys.posix.dlfcn;
+			dlclose(kqueue_handle);
+		}
+	}
+}
+
