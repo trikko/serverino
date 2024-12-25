@@ -81,13 +81,27 @@ static if (Backend == BackendType.KQUEUE)
 				void* udata;
 			}
 
-			enum EVFILT_READ = -1;
-			enum EVFILT_WRITE = -2;
-
 			enum EV_ADD = 0x0001;
 			enum EV_DELETE = 0x0002;
 			enum EV_ENABLE = 0x0004;
 			enum EV_DISABLE = 0x0008;
+			enum EV_ONESHOT = 0x0010;
+			enum EV_CLEAR = 0x0020;
+			enum EV_EOF = 0x0080;
+			enum EV_ERROR = 0x4000;
+
+			enum EVFILT_READ = -1;
+			enum EVFILT_WRITE = -2;
+			enum EVFILT_AIO = -3;
+			enum EVFILT_VNODE = -4;
+			enum EVFILT_PROC = -5;
+			enum EVFILT_SIGNAL = -6;
+			enum EVFILT_TIMER = -7;
+			enum EVFILT_MACHPORT = -8;
+			enum EVFILT_FS = -9;
+			enum EVFILT_USER = -10;
+			enum EVFILT_SYSCOUNT = 11;
+
 
 			int kqueue();
 
