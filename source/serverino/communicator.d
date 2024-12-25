@@ -29,7 +29,7 @@ import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now;
 import serverino.config : DaemonConfigPtr;
-import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown;
+import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown, socket_t;
 import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;
@@ -138,13 +138,20 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
-            Daemon.epollRemoveSocket(clientSkt);
+            Daemon.epollRemoveSocket(clientSktHandle);
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            auto kv = kevent(clientSkt.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*) this);
-            kevent_f(Daemon.kq, &kv, 1, null, 0, null);
+
+            auto change = &Daemon.changeList[Daemon.changes];
+            change.ident = clientSktHandle;
+            change.filter = EVFILT_READ | EVFILT_WRITE;
+            change.flags = EV_DELETE | EV_DISABLE;
+            change.fflags = 0;
+            change.data = 0;
+            change.udata = null;
+            Daemon.changes++;
          }
 
          // Remove the communicator from the list of alives
@@ -160,6 +167,7 @@ package class Communicator
          deads = this;
 
          this.clientSkt = null;
+         clientSktHandle = socket_t.max;
       }
    }
 
@@ -185,17 +193,25 @@ package class Communicator
          s.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
          s.blocking = false;
          this.clientSkt = s;
+         this.clientSktHandle = s.handle;
 
          static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN;
-            Daemon.epollAddSocket(s, EPOLLIN, cast(void*) this);
+            Daemon.epollAddSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            Daemon.changeList.append(kevent(s.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this));
+            auto change = &Daemon.changeList[Daemon.changes];
+            change.ident = clientSktHandle;
+            change.filter = EVFILT_READ;
+            change.flags = EV_ADD | EV_ENABLE;
+            change.fflags = 0;
+            change.data = 0;
+            change.udata = cast(void*) this;
+            Daemon.changes++;
          }
       }
       else assert(false);
@@ -268,7 +284,7 @@ package class Communicator
          {
             import serverino.daemon : Daemon;
             import core.sys.linux.epoll : EPOLLIN;
-            Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
+            Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          }
 
          hasBuffer = false;
@@ -278,7 +294,14 @@ package class Communicator
          if (clientSkt !is null && hasBuffer)
          {
             import serverino.daemon : Daemon;
-            Daemon.changeList.append(kevent(clientSkt.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this));
+            auto change = &Daemon.changeList[Daemon.changes];
+            change.ident = clientSktHandle;
+            change.filter = EVFILT_READ;
+            change.flags = EV_ADD | EV_ENABLE;
+            change.fflags = 0;
+            change.data = 0;
+            change.udata = cast(void*) this;
+            Daemon.changes++;
          }
 
          hasBuffer = false;
@@ -424,7 +447,7 @@ package class Communicator
                      hasBuffer = false;
                      import serverino.daemon : Daemon;
                      import core.sys.linux.epoll : EPOLLIN;
-                     Daemon.epollEditSocket(clientSkt, EPOLLIN, cast(void*) this);
+                     Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
                   }
 
                static if (serverino.common.Backend == BackendType.KQUEUE)
@@ -432,7 +455,14 @@ package class Communicator
                   {
                      hasBuffer = false;
                      import serverino.daemon : Daemon;
-                     Daemon.changeList.append(kevent(clientSkt.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this));
+                     auto change = &Daemon.changeList[Daemon.changes];
+                     change.ident = clientSktHandle;
+                     change.filter = EVFILT_READ;
+                     change.flags = EV_ADD | EV_ENABLE;
+                     change.fflags = 0;
+                     change.data = 0;
+                     change.udata = cast(void*) this;
+                     Daemon.changes++;
                   }
 
                bufferSent = 0;
@@ -509,13 +539,20 @@ package class Communicator
          hasBuffer = true;
          import serverino.daemon : Daemon;
          import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
-         Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
+         Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
       }
       else static if(serverino.common.Backend == BackendType.KQUEUE)
       {
          hasBuffer = true;
          import serverino.daemon : Daemon;
-         Daemon.changeList.append(kevent(clientSkt.handle, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, cast(void*) this));
+         auto change = &Daemon.changeList[Daemon.changes];
+         change.ident = clientSktHandle;
+         change.filter = EVFILT_READ | EVFILT_WRITE;
+         change.flags = EV_ADD | EV_ENABLE;
+         change.fflags = 0;
+         change.data = 0;
+         change.udata = cast(void*) this;
+         Daemon.changes++;
       }
 
    }
@@ -545,13 +582,20 @@ package class Communicator
                   hasBuffer = true;
                   import serverino.daemon : Daemon;
                   import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
-                  Daemon.epollEditSocket(clientSkt, EPOLLIN | EPOLLOUT, cast(void*) this);
+                  Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
                }
                else static if(serverino.common.Backend == BackendType.KQUEUE)
                {
                   hasBuffer = true;
                   import serverino.daemon : Daemon;
-                  Daemon.changeList.append(kevent(clientSkt.handle, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, cast(void*) this));
+                  auto change = &Daemon.changeList[Daemon.changes];
+                  change.ident = clientSktHandle;
+                  change.filter = EVFILT_READ | EVFILT_WRITE;
+                  change.flags = EV_ADD | EV_ENABLE;
+                  change.fflags = 0;
+                  change.data = 0;
+                  change.udata = cast(void*) this;
+                  Daemon.changes++;
                }
             }
 
@@ -1017,7 +1061,9 @@ package class Communicator
    size_t            responseSent;
    size_t            responseLength;
    size_t            id;
+
    Socket            clientSkt;
+   socket_t          clientSktHandle = socket_t.max;  // For KQUEUE and EPOLL, we need to keep the socket handle
 
    ProtoRequest      requestToProcess;
    WorkerInfo        worker;

@@ -35,7 +35,7 @@ import std.experimental.logger : log, info, warning;
 import std.process : ProcessPipes;
 
 import std.format : format;
-import std.socket : Socket, SocketSet, SocketType, AddressFamily, SocketShutdown, TcpSocket, SocketOption, SocketOptionLevel, SocketException;
+import std.socket : Socket, SocketSet, SocketType, AddressFamily, SocketShutdown, TcpSocket, SocketOption, SocketOptionLevel, SocketException, socket_t;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
@@ -127,6 +127,7 @@ package class WorkerInfo
       Socket accepted = s.accept();
       this.pi = new ProcessInfo(pipes.pid.processID);
       this.unixSocket = accepted;
+      this.unixSocketHandle = accepted.handle;
 
       // Wait for the worker to wake up.
       ubyte[1] data;
@@ -136,11 +137,18 @@ package class WorkerInfo
       {
          import serverino.daemon : Daemon;
          import core.sys.linux.epoll : EPOLLIN;
-         Daemon.epollAddSocket(accepted, EPOLLIN, cast(void*) this);
+         Daemon.epollAddSocket(unixSocketHandle, EPOLLIN, cast(void*) this);
       }
       else static if (serverino.common.Backend == BackendType.KQUEUE) {
          import serverino.daemon : Daemon;
-         Daemon.changeList.append(kevent(accepted.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*) this));
+         auto change = &Daemon.changeList[Daemon.changes];
+         change.ident = unixSocketHandle;
+         change.filter = EVFILT_READ;
+         change.flags = EV_ADD | EV_ENABLE;
+         change.fflags = 0;
+         change.data = 0;
+         change.udata = cast(void*) this;
+         Daemon.changes++;
       }
 
       setStatus(WorkerInfo.State.IDLING);
@@ -165,13 +173,18 @@ package class WorkerInfo
          static if (serverino.common.Backend == BackendType.EPOLL)
          {
             import serverino.daemon : Daemon;
-            Daemon.epollRemoveSocket(unixSocket);
+            Daemon.epollRemoveSocket(unixSocketHandle);
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            auto kv = kevent(unixSocket.handle, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, cast(void*) this);
-            kevent_f(Daemon.kq, &kv, 1, null, 0, null);
+            auto change = &Daemon.changeList[Daemon.changes];
+            change.ident = unixSocketHandle;
+            change.filter = EVFILT_READ | EVFILT_WRITE;
+            change.flags = EV_DELETE | EV_DISABLE;
+            change.data = 0;
+            change.udata = null;
+            Daemon.changes++;
          }
 
          unixSocket.shutdown(SocketShutdown.BOTH);
@@ -361,6 +374,8 @@ package:
 
    State                   status            = State.STOPPED;
    Socket                  unixSocket        = null;
+   socket_t                unixSocketHandle  = socket_t.max;
+
    Communicator            communicator      = null;
    bool                    reloadRequested   = false;
    bool                    isDynamic         = false;
@@ -497,7 +512,8 @@ package:
          kq = kqueue();
          if (kq == -1)  throw new Exception("Failed to create kqueue");
          eventList.length = 1024;
-         changeList.reserve(1024);
+         changeList.length = 1024;
+         changes = 0;
       }
 
       // Starting all the listeners.
@@ -563,9 +579,17 @@ package:
          }
 
          static if (serverino.common.Backend == BackendType.EPOLL)
-            epollAddSocket(listener.socket, EPOLLIN, cast(void*)listener);
+            epollAddSocket(listener.socket.handle, EPOLLIN, cast(void*)listener);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-            changeList.append(kevent(listener.socket.handle, EVFILT_READ, EV_ADD, 0, 0, cast(void*)listener));
+         {
+            auto change = &Daemon.changeList[Daemon.changes];
+            change.ident = listener.socket.handle;
+            change.filter = EVFILT_READ;
+            change.flags = EV_ADD | EV_ENABLE;
+            change.data = 0;
+            change.udata = cast(void*)listener;
+            Daemon.changes++;
+         }
       }
 
       ThreadBase mainThread;
@@ -650,9 +674,11 @@ package:
             import core.stdc.stdlib : exit;
             debug import std.stdio : writeln;
 
+
+
             auto timeout = timespec(1, 0);
-            int updates = kevent_f(kq, changeList.array.ptr, cast(int)changeList.length, eventList.ptr, cast(int)eventList.length, &timeout);
-            changeList.length = 0;
+            int updates = kevent_f(kq, changeList.ptr, cast(int)changes, eventList.ptr, cast(int)eventList.length, &timeout);
+            changes = 0;
          }
 
          now = CoarseTime.currTime;
@@ -852,8 +878,6 @@ package:
 
             foreach(ref kevent e; eventList[0..updates])
             {
-               if (e.udata is null)
-                  continue;
 
                Object o = cast(Object)(cast(void*) e.udata);
 
@@ -981,29 +1005,30 @@ package:
 
    static if (serverino.common.Backend == BackendType.EPOLL)
    {
+      import std.socket : socket_t;
 
-      void epollAddSocket(Socket s, int events, void* ptr)
+      void epollAddSocket(socket_t s, int events, void* ptr)
       {
          epoll_event evt;
          evt.events = events;
          evt.data.ptr = ptr;
 
-         auto res = epoll_ctl(epoll, EPOLL_CTL_ADD, s.handle, &evt);
+         auto res = epoll_ctl(epoll, EPOLL_CTL_ADD, s, &evt);
          assert(res == 0);
       }
 
-      void epollRemoveSocket(Socket s)
+      void epollRemoveSocket(socket_t s)
       {
-         epoll_ctl(epoll, EPOLL_CTL_DEL, s.handle, null);
+         epoll_ctl(epoll, EPOLL_CTL_DEL, s, null);
       }
 
-      void epollEditSocket(Socket s, int events, void* ptr)
+      void epollEditSocket(socket_t s, int events, void* ptr)
       {
          epoll_event evt;
          evt.events = events;
          evt.data.ptr = ptr;
 
-         auto res = epoll_ctl(epoll, EPOLL_CTL_MOD, s.handle, &evt);
+         auto res = epoll_ctl(epoll, EPOLL_CTL_MOD, s, &evt);
          assert(res == 0);
       }
 
@@ -1014,8 +1039,9 @@ package:
       import serverino.databuffer;
 
       int kq;
-      DataBuffer!kevent changeList;
-      kevent[]          eventList;
+      size_t      changes = 0;
+      kevent[]    changeList;
+      kevent[]    eventList;
    }
 
 private __gshared:
