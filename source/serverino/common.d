@@ -575,18 +575,16 @@ version(Posix)
 		{
 			import core.sys.posix.dlfcn;
 
-			extern (C) int dll();
-
 			kqueue_handle = dlopen("libkqueue.so", RTLD_LAZY);
+
 			if (!kqueue_handle)
-			{
-				assert(false, "Failed to load libkqueue.so");
-			}
+				assert(false, "Failed to load libkqueue.so. Please install the libkqueue library or use one of the other backends (select or epoll)");
 
 			kqueue = cast(typeof(kqueue))dlsym(kqueue_handle, "kqueue");
 			kevent_f = cast(typeof(kevent_f))dlsym(kqueue_handle, "kevent");
 
-			assert(kqueue && kevent_f, "Failed to load kqueue or kevent functions");
+			if(!kqueue || !kevent_f)
+				assert(false, "Failed to load kqueue or kevent functions");
 		}
 
 		shared static ~this()
