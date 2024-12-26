@@ -99,6 +99,9 @@ struct Worker
       channel = new Socket(AddressFamily.UNIX, SocketType.STREAM);
       channel.connect(socketAddress);
       channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, 1.seconds);
+      channel.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDBUF, 64*1024);
+      channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVBUF, 64*1024);
+      channel.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVLOWAT, 1);
 
       ubyte[1] ack = ['\0'];
       channel.send(ack);
