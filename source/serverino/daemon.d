@@ -131,7 +131,10 @@ package class WorkerInfo
 
       accepted.setOption(SocketOptionLevel.SOCKET, SocketOption.SNDBUF, 64*1024);
       accepted.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVBUF, 64*1024);
-      accepted.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVLOWAT, 1);
+
+      version(Windows) { }
+      else accepted.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVLOWAT, 1);
+
 
       // Wait for the worker to wake up.
       ubyte[1] data;
