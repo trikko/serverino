@@ -105,6 +105,9 @@ static if (Backend == BackendType.KQUEUE)
 
 			version(linux)
 			{
+				// On linux kqueue is loaded as a shared library
+				// so we need to use dlsym to get the function pointers
+
 				int function() kqueue;
 
 				int function(
@@ -118,6 +121,8 @@ static if (Backend == BackendType.KQUEUE)
 			}
 			else
 			{
+				// On BSD kqueue is a system call
+
 				int kqueue();
 
 				pragma(mangle, "kevent")
@@ -564,11 +569,11 @@ version(Posix) package void setProcessName(string[] names)
 package immutable static DEFAULT_BUFFER_SIZE = 32*1024;
 
 
-version(Posix)
+// Load the kqueue shared library on linux
+version(linux)
 {
 	static if (Backend == BackendType.KQUEUE)
 	{
-
 		void* kqueue_handle = null;
 
 		shared static this()

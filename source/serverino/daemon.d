@@ -141,14 +141,7 @@ package class WorkerInfo
       }
       else static if (serverino.common.Backend == BackendType.KQUEUE) {
          import serverino.daemon : Daemon;
-         auto change = &Daemon.changeList[Daemon.changes];
-         change.ident = unixSocketHandle;
-         change.filter = EVFILT_READ;
-         change.flags = EV_ADD | EV_ENABLE;
-         change.fflags = 0;
-         change.data = 0;
-         change.udata = cast(void*) this;
-         Daemon.changes++;
+         Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
       }
 
       setStatus(WorkerInfo.State.IDLING);
@@ -178,13 +171,7 @@ package class WorkerInfo
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            auto change = &Daemon.changeList[Daemon.changes];
-            change.ident = unixSocketHandle;
-            change.filter = EVFILT_READ | EVFILT_WRITE;
-            change.flags = EV_DELETE | EV_DISABLE;
-            change.data = 0;
-            change.udata = null;
-            Daemon.changes++;
+            Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
          }
 
          unixSocket.shutdown(SocketShutdown.BOTH);
@@ -511,8 +498,7 @@ package:
       {
          kq = kqueue();
          if (kq == -1)  throw new Exception("Failed to create kqueue");
-         eventList.length = 1024;
-         changeList.length = 1024;
+         changeList.length = 2048;
          changes = 0;
       }
 
@@ -582,13 +568,7 @@ package:
             epollAddSocket(listener.socket.handle, EPOLLIN, cast(void*)listener);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
-            auto change = &Daemon.changeList[Daemon.changes];
-            change.ident = listener.socket.handle;
-            change.filter = EVFILT_READ;
-            change.flags = EV_ADD | EV_ENABLE;
-            change.data = 0;
-            change.udata = cast(void*)listener;
-            Daemon.changes++;
+            Daemon.addKqueueChange(listener.socket.handle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*)listener);
          }
       }
 
@@ -674,10 +654,10 @@ package:
             import core.stdc.stdlib : exit;
             debug import std.stdio : writeln;
 
-
-
+            enum MAX_KQUEUE_EVENTS = 1500;
+            kevent[MAX_KQUEUE_EVENTS] eventList = void;
             auto timeout = timespec(1, 0);
-            int updates = kevent_f(kq, changeList.ptr, cast(int)changes, eventList.ptr, cast(int)eventList.length, &timeout);
+            int updates = kevent_f(kq, changeList.ptr, cast(int)changes, eventList.ptr, cast(int)MAX_KQUEUE_EVENTS, &timeout);
             changes = 0;
          }
 
@@ -1038,10 +1018,26 @@ package:
 
       import serverino.databuffer;
 
+      void addKqueueChange(socket_t s, int filter, int flags, void* udata)
+      {
+         auto change = &changeList[changes];
+         change.ident = s;
+         change.filter = cast(ushort) filter;
+         change.flags = cast(ushort) flags;
+         change.udata = udata;
+
+         changes++;
+
+         if (changes >= changeList.length)
+         {
+            kevent_f(kq, changeList.ptr, cast(int)changes, null, 0, null);
+            changes = 0;
+         }
+      }
+
       int kq;
       size_t      changes = 0;
       kevent[]    changeList;
-      kevent[]    eventList;
    }
 
 private __gshared:

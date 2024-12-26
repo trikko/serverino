@@ -143,15 +143,7 @@ package class Communicator
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-
-            auto change = &Daemon.changeList[Daemon.changes];
-            change.ident = clientSktHandle;
-            change.filter = EVFILT_READ | EVFILT_WRITE;
-            change.flags = EV_DELETE | EV_DISABLE;
-            change.fflags = 0;
-            change.data = 0;
-            change.udata = null;
-            Daemon.changes++;
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
          }
 
          // Remove the communicator from the list of alives
@@ -204,14 +196,7 @@ package class Communicator
          else static if (serverino.common.Backend == BackendType.KQUEUE)
          {
             import serverino.daemon : Daemon;
-            auto change = &Daemon.changeList[Daemon.changes];
-            change.ident = clientSktHandle;
-            change.filter = EVFILT_READ;
-            change.flags = EV_ADD | EV_ENABLE;
-            change.fflags = 0;
-            change.data = 0;
-            change.udata = cast(void*) this;
-            Daemon.changes++;
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
          }
       }
       else assert(false);
@@ -294,14 +279,7 @@ package class Communicator
          if (clientSkt !is null && hasBuffer)
          {
             import serverino.daemon : Daemon;
-            auto change = &Daemon.changeList[Daemon.changes];
-            change.ident = clientSktHandle;
-            change.filter = EVFILT_READ;
-            change.flags = EV_ADD | EV_ENABLE;
-            change.fflags = 0;
-            change.data = 0;
-            change.udata = cast(void*) this;
-            Daemon.changes++;
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
          }
 
          hasBuffer = false;
@@ -455,14 +433,7 @@ package class Communicator
                   {
                      hasBuffer = false;
                      import serverino.daemon : Daemon;
-                     auto change = &Daemon.changeList[Daemon.changes];
-                     change.ident = clientSktHandle;
-                     change.filter = EVFILT_READ;
-                     change.flags = EV_ADD | EV_ENABLE;
-                     change.fflags = 0;
-                     change.data = 0;
-                     change.udata = cast(void*) this;
-                     Daemon.changes++;
+                     Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
                   }
 
                bufferSent = 0;
@@ -545,14 +516,7 @@ package class Communicator
       {
          hasBuffer = true;
          import serverino.daemon : Daemon;
-         auto change = &Daemon.changeList[Daemon.changes];
-         change.ident = clientSktHandle;
-         change.filter = EVFILT_READ | EVFILT_WRITE;
-         change.flags = EV_ADD | EV_ENABLE;
-         change.fflags = 0;
-         change.data = 0;
-         change.udata = cast(void*) this;
-         Daemon.changes++;
+         Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
       }
 
    }
@@ -588,14 +552,7 @@ package class Communicator
                {
                   hasBuffer = true;
                   import serverino.daemon : Daemon;
-                  auto change = &Daemon.changeList[Daemon.changes];
-                  change.ident = clientSktHandle;
-                  change.filter = EVFILT_READ | EVFILT_WRITE;
-                  change.flags = EV_ADD | EV_ENABLE;
-                  change.fflags = 0;
-                  change.data = 0;
-                  change.udata = cast(void*) this;
-                  Daemon.changes++;
+                  Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
                }
             }
 
