@@ -27,7 +27,7 @@ module serverino.communicator;
 
 import serverino.common;
 import serverino.databuffer;
-import serverino.daemon : WorkerInfo, now;
+import serverino.daemon : WorkerInfo, now, Daemon;
 import serverino.config : DaemonConfigPtr;
 import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown, socket_t;
 import std.string: join;
@@ -36,6 +36,12 @@ import std.conv : text, to;
 import std.experimental.logger : log, info, warning;
 import std.stdio : File;
 import std.file : getSize;
+
+static if (serverino.common.Backend == BackendType.EPOLL)
+{
+   import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
+}
+
 
 extern(C) long syscall(long number, ...);
 
@@ -136,15 +142,9 @@ package class Communicator
       if (this.clientSkt !is null)
       {
          static if (serverino.common.Backend == BackendType.EPOLL)
-         {
-            import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(clientSktHandle);
-         }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-         {
-            import serverino.daemon : Daemon;
             Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
-         }
 
          // Remove the communicator from the list of alives
          if (prev !is null) prev.next = next;
@@ -188,16 +188,9 @@ package class Communicator
          this.clientSktHandle = s.handle;
 
          static if (serverino.common.Backend == BackendType.EPOLL)
-         {
-            import serverino.daemon : Daemon;
-            import core.sys.linux.epoll : EPOLLIN;
             Daemon.epollAddSocket(clientSktHandle, EPOLLIN, cast(void*) this);
-         }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-         {
-            import serverino.daemon : Daemon;
             Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
-         }
       }
       else assert(false);
    }
@@ -263,27 +256,15 @@ package class Communicator
    // If this communicator has a worker assigned, unset it
    void unsetWorker()
    {
-      static if(serverino.common.Backend == BackendType.EPOLL)
+      if (clientSkt !is null && hasBuffer)
       {
-         if (clientSkt !is null && hasBuffer)
-         {
-            import serverino.daemon : Daemon;
-            import core.sys.linux.epoll : EPOLLIN;
+         static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
-         }
-
-         hasBuffer = false;
+         else static if (serverino.common.Backend == BackendType.KQUEUE)
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, null);
       }
-      else static if(serverino.common.Backend == BackendType.KQUEUE)
-      {
-         if (clientSkt !is null && hasBuffer)
-         {
-            import serverino.daemon : Daemon;
-            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
-         }
 
-         hasBuffer = false;
-      }
+      hasBuffer = false;
 
       if (this.worker !is null && this.worker.communicator is this)
       {
@@ -419,22 +400,16 @@ package class Communicator
 
             if(bufferSent == sendBuffer.length)
             {
-               static if (serverino.common.Backend == BackendType.EPOLL)
-                  if(hasBuffer)
-                  {
-                     hasBuffer = false;
-                     import serverino.daemon : Daemon;
-                     import core.sys.linux.epoll : EPOLLIN;
-                     Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
-                  }
 
-               static if (serverino.common.Backend == BackendType.KQUEUE)
-                  if(hasBuffer)
-                  {
-                     hasBuffer = false;
-                     import serverino.daemon : Daemon;
+               if(hasBuffer)
+               {
+                  hasBuffer = false;
+
+                  static if (serverino.common.Backend == BackendType.EPOLL)
+                     Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
+                  else static if (serverino.common.Backend == BackendType.KQUEUE)
                      Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
-                  }
+               }
 
                bufferSent = 0;
                sendBuffer.clear();
@@ -505,19 +480,12 @@ package class Communicator
 
       sendBuffer.append(headers);
 
+      hasBuffer = true;
+
       static if(serverino.common.Backend == BackendType.EPOLL)
-      {
-         hasBuffer = true;
-         import serverino.daemon : Daemon;
-         import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
          Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
-      }
       else static if(serverino.common.Backend == BackendType.KQUEUE)
-      {
-         hasBuffer = true;
-         import serverino.daemon : Daemon;
          Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
-      }
 
    }
 
@@ -541,19 +509,11 @@ package class Communicator
             {
                sendBuffer.append(data[sent..data.length]);
 
+               hasBuffer = true;
                static if(serverino.common.Backend == BackendType.EPOLL)
-               {
-                  hasBuffer = true;
-                  import serverino.daemon : Daemon;
-                  import core.sys.linux.epoll : EPOLLIN, EPOLLOUT;
                   Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
-               }
                else static if(serverino.common.Backend == BackendType.KQUEUE)
-               {
-                  hasBuffer = true;
-                  import serverino.daemon : Daemon;
                   Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
-               }
             }
 
             // If the response is completed, unset the worker
@@ -1004,10 +964,7 @@ package class Communicator
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
-   static if(serverino.common.Backend == BackendType.EPOLL || serverino.common.Backend == BackendType.KQUEUE)
-   {
-      bool           hasBuffer = false;
-   }
+   bool              hasBuffer = false; // Used only on EPOLL and KQUEUE
 
    bool              requestDataReceived;
    bool              isKeepAlive;

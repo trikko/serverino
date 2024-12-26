@@ -134,15 +134,9 @@ package class WorkerInfo
       accepted.receive(data);
 
       static if (serverino.common.Backend == BackendType.EPOLL)
-      {
-         import serverino.daemon : Daemon;
-         import core.sys.linux.epoll : EPOLLIN;
          Daemon.epollAddSocket(unixSocketHandle, EPOLLIN, cast(void*) this);
-      }
-      else static if (serverino.common.Backend == BackendType.KQUEUE) {
-         import serverino.daemon : Daemon;
+      else static if (serverino.common.Backend == BackendType.KQUEUE)
          Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
-      }
 
       setStatus(WorkerInfo.State.IDLING);
    }
@@ -164,15 +158,9 @@ package class WorkerInfo
       if (this.unixSocket)
       {
          static if (serverino.common.Backend == BackendType.EPOLL)
-         {
-            import serverino.daemon : Daemon;
             Daemon.epollRemoveSocket(unixSocketHandle);
-         }
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-         {
-            import serverino.daemon : Daemon;
             Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
-         }
 
          unixSocket.shutdown(SocketShutdown.BOTH);
          unixSocket.close();
@@ -567,9 +555,7 @@ package:
          static if (serverino.common.Backend == BackendType.EPOLL)
             epollAddSocket(listener.socket.handle, EPOLLIN, cast(void*)listener);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-         {
             Daemon.addKqueueChange(listener.socket.handle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*)listener);
-         }
       }
 
       ThreadBase mainThread;
@@ -650,9 +636,6 @@ package:
             long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, 1000);
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE) {
-
-            import core.stdc.stdlib : exit;
-            debug import std.stdio : writeln;
 
             enum MAX_KQUEUE_EVENTS = 1500;
             kevent[MAX_KQUEUE_EVENTS] eventList = void;
