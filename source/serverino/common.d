@@ -81,26 +81,26 @@ static if (Backend == BackendType.KQUEUE)
 				void* udata;
 			}
 
-			enum EV_ADD = 0x0001;
-			enum EV_DELETE = 0x0002;
-			enum EV_ENABLE = 0x0004;
-			enum EV_DISABLE = 0x0008;
-			enum EV_ONESHOT = 0x0010;
-			enum EV_CLEAR = 0x0020;
-			enum EV_EOF = 0x0080;
-			enum EV_ERROR = 0x4000;
+			enum EV_ADD = cast(ushort)0x0001;
+			enum EV_DELETE = cast(ushort)0x0002;
+			enum EV_ENABLE = cast(ushort)0x0004;
+			enum EV_DISABLE = cast(ushort)0x0008;
+			enum EV_ONESHOT = cast(ushort)0x0010;
+			enum EV_CLEAR = cast(ushort)0x0020;
+			enum EV_EOF = cast(ushort)0x0080;
+			enum EV_ERROR = cast(ushort)0x4000;
 
-			enum EVFILT_READ = -1;
-			enum EVFILT_WRITE = -2;
-			enum EVFILT_AIO = -3;
-			enum EVFILT_VNODE = -4;
-			enum EVFILT_PROC = -5;
-			enum EVFILT_SIGNAL = -6;
-			enum EVFILT_TIMER = -7;
-			enum EVFILT_MACHPORT = -8;
-			enum EVFILT_FS = -9;
-			enum EVFILT_USER = -10;
-			enum EVFILT_SYSCOUNT = 11;
+			enum EVFILT_READ = cast(short)-1;
+			enum EVFILT_WRITE = cast(short)-2;
+			enum EVFILT_AIO = cast(short)-3;
+			enum EVFILT_VNODE = cast(short)-4;
+			enum EVFILT_PROC = cast(short)-5;
+			enum EVFILT_SIGNAL = cast(short)-6;
+			enum EVFILT_TIMER = cast(short)-7;
+			enum EVFILT_MACHPORT = cast(short)-8;
+			enum EVFILT_FS = cast(short)-9;
+			enum EVFILT_USER = cast(short)-10;
+			enum EVFILT_SYSCOUNT = cast(short)11;
 
 
 			version(linux)
@@ -108,9 +108,9 @@ static if (Backend == BackendType.KQUEUE)
 				// On linux kqueue is loaded as a shared library
 				// so we need to use dlsym to get the function pointers
 
-				int function() kqueue;
+				__gshared int function() kqueue;
 
-				int function(
+				__gshared int function(
 					int 	kq,
 					const kevent* changelist,
 					int nchanges,
@@ -574,7 +574,7 @@ version(linux)
 {
 	static if (Backend == BackendType.KQUEUE)
 	{
-		void* kqueue_handle = null;
+		__gshared void* kqueue_handle = null;
 
 		shared static this()
 		{

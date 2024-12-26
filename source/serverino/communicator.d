@@ -190,7 +190,7 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollAddSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
       }
       else assert(false);
    }
@@ -261,7 +261,7 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, null);
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
       }
 
       hasBuffer = false;
@@ -487,6 +487,7 @@ package class Communicator
       else static if(serverino.common.Backend == BackendType.KQUEUE)
          Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
 
+      onWriteAvailable();
    }
 
    // Try to write the data to the client socket, it buffers the data if the socket is not ready

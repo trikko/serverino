@@ -160,7 +160,7 @@ package class WorkerInfo
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollRemoveSocket(unixSocketHandle);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-            Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+            Daemon.addKqueueChange(unixSocketHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
 
          unixSocket.shutdown(SocketShutdown.BOTH);
          unixSocket.close();
@@ -485,7 +485,12 @@ package:
       else static if (serverino.common.Backend == BackendType.KQUEUE)
       {
          kq = kqueue();
-         if (kq == -1)  throw new Exception("Failed to create kqueue");
+         if (kq == -1)
+         {
+            import std.experimental.logger : critical;
+            critical("Failed to create kqueue. Is kqueue available?");
+            assert(false, "Failed to create kqueue. Is kqueue available?");
+         }
          changeList.length = 2048;
          changes = 0;
       }
@@ -1001,12 +1006,12 @@ package:
 
       import serverino.databuffer;
 
-      void addKqueueChange(socket_t s, int filter, int flags, void* udata)
+      void addKqueueChange(socket_t s, short filter, ushort flags, void* udata)
       {
          auto change = &changeList[changes];
          change.ident = s;
-         change.filter = cast(ushort) filter;
-         change.flags = cast(ushort) flags;
+         change.filter = filter;
+         change.flags = flags;
          change.udata = udata;
 
          changes++;
@@ -1018,9 +1023,12 @@ package:
          }
       }
 
-      int kq;
-      size_t      changes = 0;
-      kevent[]    changeList;
+      private __gshared
+      {
+         int kq;
+         size_t      changes = 0;
+         kevent[]    changeList;
+      }
    }
 
 private __gshared:
