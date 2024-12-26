@@ -144,7 +144,10 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollRemoveSocket(clientSktHandle);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
-            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+         {
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+         }
 
          // Remove the communicator from the list of alives
          if (prev !is null) prev.next = next;
@@ -190,7 +193,10 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollAddSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
+         {
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, cast(void*) this);
             Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
+         }
       }
       else assert(false);
    }
@@ -261,7 +267,10 @@ package class Communicator
          static if (serverino.common.Backend == BackendType.EPOLL)
             Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
+         {
+            Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, cast(void*) this);
             Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
+         }
       }
 
       hasBuffer = false;
@@ -352,6 +361,9 @@ package class Communicator
                   reset();
                   return;
                }
+
+               warning("BLOCKED buffer");
+               return;
             }
             else
             {
@@ -408,7 +420,10 @@ package class Communicator
                   static if (serverino.common.Backend == BackendType.EPOLL)
                      Daemon.epollEditSocket(clientSktHandle, EPOLLIN, cast(void*) this);
                   else static if (serverino.common.Backend == BackendType.KQUEUE)
+                  {
+                     Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, cast(void*) this);
                      Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
+                  }
                }
 
                bufferSent = 0;
@@ -485,7 +500,10 @@ package class Communicator
       static if(serverino.common.Backend == BackendType.EPOLL)
          Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
       else static if(serverino.common.Backend == BackendType.KQUEUE)
-         Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+      {
+         Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, cast(void*) this);
+         Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+      }
 
       onWriteAvailable();
    }
@@ -514,7 +532,10 @@ package class Communicator
                static if(serverino.common.Backend == BackendType.EPOLL)
                   Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
                else static if(serverino.common.Backend == BackendType.KQUEUE)
-                  Daemon.addKqueueChange(clientSktHandle, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+               {
+                  Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, cast(void*) this);
+                  Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+               }
             }
 
             // If the response is completed, unset the worker
