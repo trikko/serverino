@@ -13,6 +13,21 @@ configuration "disable_websockets" {
     versions "disable_websockets"
 }
 
+configuration "kqueue_backend" {
+    targetType "library"
+    versions "use_kqueue"
+}
+
+configuration "epoll_backend" {
+    targetType "library"
+    versions "use_epoll"
+}
+
+configuration "select_backend" {
+    targetType "library"
+    versions "use_select"
+}
+
 sourcePaths "source"
 
 subPackage "./init-exec"
