@@ -1097,7 +1097,7 @@ struct Output
    * --------------------
    */
    void opAssign(in bool v) {
-      _internal._sendBody = v;
+      _internal._zeroBody = !v;
    }
 
    /// Write data to output. You can write as many times as you want.
@@ -1161,7 +1161,8 @@ struct Output
       string          _sendFile;
       Socket          _channel;
       bool            _flushed;
-      bool            _sendBody;
+      bool            _zeroBody;
+      bool            _doNotSendBody;  // Send real content-length header also if !_zeroBody is false (HEAD request)
       bool            _websocket;
       bool            _deleteOnClose;
 
@@ -1224,22 +1225,19 @@ struct Output
                size_t fs = _sendFile.getSize().to!size_t;
                _headersBuffer.append("content-length: " ~ fs.to!string ~ "\r\n");
             }
-            else if (!_sendBody) _headersBuffer.append("content-length: 0\r\n");
+            else if (_zeroBody) _headersBuffer.append("content-length: 0\r\n");
             else _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
          }
 
          // send user-defined headers
          foreach(const ref header;_headers)
          {
-            if (!_sendBody && header.key == "content-length")
-               continue;
-
             _headersBuffer.append(header.key ~ ": " ~ header.value ~ "\r\n");
             if (header.key == "content-type") has_content_type = true;
          }
 
          // Default content-type is text/html if not defined by user
-         if (!has_content_type && _sendBody)
+         if (!has_content_type && !_zeroBody)
             _headersBuffer.append("content-type: text/html;charset=utf-8\r\n");
 
          // If required, I add headers to write cookies
@@ -1288,7 +1286,8 @@ struct Output
          _flushed = false;
          _headersBuffer.clear();
          _sendBuffer.clear();
-         _sendBody = true;
+         _zeroBody = false;
+         _doNotSendBody = false;
          _websocket = false;
          _sendFile = null;
          _deleteOnClose = false;

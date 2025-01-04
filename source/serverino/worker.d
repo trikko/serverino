@@ -308,7 +308,7 @@ struct Worker
 
       scope(exit) {
          output._internal.buildHeaders();
-         if (!output._internal._sendBody)
+         if (output._internal._zeroBody || output._internal._doNotSendBody)
             output._internal._sendBuffer.clear();
       }
 
@@ -359,7 +359,7 @@ struct Worker
                {
                   debug warning("HTTP method unknown: ", method);
                   output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
-                  output._internal._sendBody = false;
+                  output._internal._zeroBody = true;
                   output.status = 400;
                   return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                }
@@ -487,17 +487,16 @@ struct Worker
             request._internal._rawQueryString = cast(string)path[queryStart..queryLen];
             request._internal._method         = cast(string)method;
 
-            output._internal._sendBody = (!["CONNECT", "HEAD", "TRACE"].assumeSorted.contains(request._internal._method));
+            if (request._internal._method == "HEAD") output._internal._doNotSendBody = true;
 
             import std.uri : URIException;
             try { request._internal.process(); }
             catch (URIException e)
             {
                output.status = 400;
-               output._internal._sendBody = false;
+               output._internal._zeroBody = true;
                return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
-
 
             import std.algorithm : canFind;
 
@@ -514,7 +513,7 @@ struct Worker
                if (!accepted)
                {
                   output.status = 426;
-                  output._internal._sendBody = false;
+                  output._internal._zeroBody = true;
                   return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                }
 
@@ -528,7 +527,7 @@ struct Worker
                   if (request.header.read("sec-websocket-version").indexOf("13") < 0)
                   {
                      output.status = 400;
-                     output._internal._sendBody = false;
+                     output._internal._zeroBody = true;
                      output.addHeader("Sec-WebSocket-Version", "13");
                      return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                   }
@@ -598,7 +597,7 @@ struct Worker
                   if (!done)
                   {
                      output.status = 500;
-                     output._internal._sendBody = false;
+                     output._internal._zeroBody = true;
                      return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                   }
 
@@ -613,7 +612,7 @@ struct Worker
                   output.addHeader("X-Serverino-WebSocket", uuid);   // Send the address to the communicator
                   output.addHeader("X-Serverino-WebSocket-Pid", pipes.pid.processID.to!string);
 
-                  output._internal._sendBody = false;
+                  output._internal._zeroBody = true;
                   output._internal._websocket = true;
 
                   return WorkerPayload.Flags.WEBSOCKET_UPGRADE;
@@ -642,14 +641,25 @@ struct Worker
             {
                try
                {
+                  Exception exception = null;
+
                   {
                      scope(exit) atomicStore(processedStartedAt, CoarseTime.zero);
 
                      atomicStore(processedStartedAt, CoarseTime.currTime);
 
                      try { callHandlers!Modules(request, output); }
-                     catch (Exception e) {
+                     catch (Exception e) { exception = e; }
 
+                     switch(request._internal._method)
+                     {
+                        case "CONNECT": case "TRACE":  output._internal._zeroBody = true; break;
+                        case "HEAD": output._internal._doNotSendBody = true; break;
+                        default: break;
+                     }
+
+                     if (exception !is null)
+                     {
                         // If an exception is thrown, we try to call the exception handler if any.
                         bool handled = false;
 
@@ -665,7 +675,7 @@ struct Worker
                               static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerException but it is not a function");
                               static assert(is(ReturnType!f == bool), "`" ~ __traits(identifier, f) ~ "` is " ~ ReturnType!f.toString ~ " but should be `bool`");
 
-                              static if (is(Parameters!f == AliasSeq!(Request, Output, Exception))) handled = f(request, output, e);
+                              static if (is(Parameters!f == AliasSeq!(Request, Output, Exception))) handled = f(request, output, exception);
                               else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerException but it is not callable");
 
                               static if (!__traits(compiles, hasExceptionHandler)) { enum hasExceptionHandler; }
@@ -674,14 +684,14 @@ struct Worker
                         }
 
                         // Rethrow if no handler found or handler returned false
-                        if (!handled) throw e;
+                        if (!handled) throw exception;
                      }
                   }
 
                   if (!output._internal._dirty)
                   {
                      output.status = 404;
-                     output._internal._sendBody = false;
+                     output._internal._zeroBody = true;
                   }
 
                   WorkerPayload.Flags flags = (output._internal._keepAlive?WorkerPayload.Flags.HTTP_KEEP_ALIVE:WorkerPayload.Flags.init);
@@ -736,7 +746,7 @@ struct Worker
                debug warning("Parsing error: ", request._internal._parsingStatus);
 
                output.status = 400;
-               output._internal._sendBody = false;
+               output._internal._zeroBody = true;
                return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
             }
 
@@ -745,13 +755,13 @@ struct Worker
       catch(UTFException e)
       {
          output.status = 400;
-         output._internal._sendBody = false;
+         output._internal._zeroBody = true;
          debug warning("UTFException: ", e.toString);
       }
       catch(Exception e) {
 
          output.status = 500;
-         output._internal._sendBody = false;
+         output._internal._zeroBody = true;
          debug critical("Unhandled exception: ", e.toString);
       }
 

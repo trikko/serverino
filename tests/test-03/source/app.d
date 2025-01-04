@@ -32,6 +32,23 @@ import core.thread;
 
 mixin ServerinoBackground;
 
+@endpoint @route!"/head-test"
+void head_test(Request request, Output output)
+{
+   output.status = 200;
+   output ~= "OK";
+}
+
+
+@endpoint @route!"/head-mute-test"
+void head_mute_test(Request request, Output output)
+{
+   output.status = 200;
+   output ~= "OK";
+   output = false;
+}
+
+
 @endpoint
 void test(Request request, Output output)
 {
@@ -78,6 +95,72 @@ void main()
    assert(Daemon.isRunning, "Wrong daemon state.");
 
    assertNotThrown(get("http://localhost:8080/exception", client) == "Exception catched");
+
+
+
+   {
+      string content;
+
+      HTTP req = HTTP();
+      req.connectTimeout = 500.msecs;
+      req.operationTimeout = 500.msecs;
+      req.dataTimeout = 500.msecs;
+      req.method = HTTP.Method.head;
+      req.url = "http://localhost:8080/head-test";
+      req.onReceiveHeader = (key, value) { assert(key != "content-length" || value == "2"); };
+      req.onReceive = (data) { content ~= cast(string)data; return data.length; };
+      req.perform();
+
+      assert(content != "OK");
+   }
+
+   {
+      string content;
+
+      HTTP req = HTTP();
+      req.connectTimeout = 500.msecs;
+      req.operationTimeout = 500.msecs;
+      req.dataTimeout = 500.msecs;
+      req.method = HTTP.Method.get;
+      req.url = "http://localhost:8080/head-test";
+      req.onReceiveHeader = (key, value) { assert(key != "content-length" || value == "2"); };
+      req.onReceive = (data) { content ~= cast(string)data; return data.length; };
+      req.perform();
+
+      assert(content == "OK");
+   }
+
+   {
+      string content;
+
+      HTTP req = HTTP();
+      req.connectTimeout = 500.msecs;
+      req.operationTimeout = 500.msecs;
+      req.dataTimeout = 500.msecs;
+      req.method = HTTP.Method.head;
+      req.url = "http://localhost:8080/head-mute-test";
+      req.onReceiveHeader = (key, value) { assert(key != "content-length" || value == "0"); };
+      req.onReceive = (data) { content ~= cast(string)data; return data.length; };
+      req.perform();
+
+      assert(content != "OK");
+   }
+
+   {
+      string content;
+
+      HTTP req = HTTP();
+      req.connectTimeout = 500.msecs;
+      req.operationTimeout = 500.msecs;
+      req.dataTimeout = 500.msecs;
+      req.method = HTTP.Method.get;
+      req.url = "http://localhost:8080/head-mute-test";
+      req.onReceiveHeader = (key, value) { assert(key != "content-length" || value == "0"); };
+      req.onReceive = (data) { content ~= cast(string)data; return data.length; };
+      req.perform();
+
+      assert(content == string.init);
+   }
 
    Daemon.shutdown();
 

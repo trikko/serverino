@@ -584,11 +584,13 @@ Content-Type: application/json\r
       auto http = HTTP("http://127.0.0.1:8080/headers-editing");
       http.onReceiveHeader((key, value) {
          if (key.toLower == "content-type") assert(value == "text/plain");
-         if (key.toLower == "content-length") assert(value == "0");
+         if (key.toLower == "content-length") assert(value == "0", "content-length is " ~ value);
       });
 
       http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
       http.perform();
+
+      writeln(content);
 
       assert(content.length == 0);
       assert(http.statusLine.code == 200);
