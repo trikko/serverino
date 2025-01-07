@@ -30,6 +30,7 @@ import std.conv : to;
 import std.string : format, representation, indexOf, toLower, strip;
 import std.range : empty;
 import std.algorithm : map, canFind, splitter, startsWith;
+import std.range : assumeSorted;
 import core.thread : Thread;
 import std.datetime : SysTime, Clock, seconds, Duration;
 import std.experimental.logger : log, warning;
@@ -921,7 +922,7 @@ struct Output
    {
       string k = key.toLower;
 
-      debug if (["content-length", "date", "status", "transfer-encoding"].canFind(k))
+      if (["content-length", "date", "status", "transfer-encoding"].assumeSorted.contains(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
@@ -940,6 +941,9 @@ struct Output
 
    /// Ditto
    @safe void addHeader(in string key, in SysTime time) { addHeader(key, toHTTPDate(time)); }
+
+   /// Clear all headers.
+   @safe void clearHeaders() { _internal._headers.length = 0; }
 
    /** Serve a file from disk. If you want to delete the file after serving it, use `serveFile!(OnFileServed.deleteFile)`.
     * ---
@@ -1100,6 +1104,17 @@ struct Output
       _internal._zeroBody = !v;
    }
 
+   /**
+   * Clear the output buffer.
+   * --------------------
+   * output ~= "<html><body>Hello world</body></html>"; // Output is a simple webpage
+   * output = null; // Now output is null
+   * --------------------
+   */
+   void opAssign(in typeof(null) v) {
+      clear();
+   }
+
    /// Write data to output. You can write as many times as you want.
    @safe void write(string data = string.init) { write(data.representation); }
 
@@ -1109,6 +1124,10 @@ struct Output
       _internal._dirty = true;
       sendData(data);
    }
+
+   /// Clear the output buffer.
+   @safe void clear() { _internal._sendBuffer.clear(); }
+
 
    struct KeyValue
 	{
@@ -1449,10 +1468,8 @@ class WebSocket
 
       _isDirty = true;
 
-      ubyte[] buffer;
+      ubyte[] buffer = new ubyte[2 + 8 + 4 + message.payload.length];
       ubyte[4] mask = void;
-
-      buffer.length = 2 + 8 + 4 + message.payload.length;
 
       ushort header = 0;
 

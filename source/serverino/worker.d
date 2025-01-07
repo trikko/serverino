@@ -461,17 +461,17 @@ struct Worker
                   .splitter('/')
                   .retro
                   .map!(
-                        (x)
+                     (x)
+                     {
+                        if (x == "..") skips++;
+                        else if(x != ".")
                         {
-                           if (x == "..") skips++;
-                           else if(x != ".")
-                           {
-                              if (skips == 0) return tuple(x, true);
-                              else skips--;
-                           }
-
-                           return tuple(x, false);
+                           if (skips == 0) return tuple(x, true);
+                           else skips--;
                         }
+
+                        return tuple(x, false);
+                     }
                   )
                   .filter!(x => x[1] == true)
                   .map!(x => x[0])

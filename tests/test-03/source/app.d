@@ -48,6 +48,15 @@ void head_mute_test(Request request, Output output)
    output = false;
 }
 
+@endpoint @route!"/clear-test"
+void clear_test(Request request, Output output)
+{
+   output.status = 200;
+   output ~= "This is a test"; // This will be deleted
+   output = null; // Deletes the buffer
+   output ~= "This should be sent";
+}
+
 
 @endpoint
 void test(Request request, Output output)
@@ -160,6 +169,21 @@ void main()
       req.perform();
 
       assert(content == string.init);
+   }
+
+   {
+      string content;
+
+      HTTP req = HTTP();
+      req.connectTimeout = 500.msecs;
+      req.operationTimeout = 500.msecs;
+      req.dataTimeout = 500.msecs;
+      req.method = HTTP.Method.get;
+      req.url = "http://localhost:8080/clear-test";
+      req.onReceive = (data) { content ~= cast(string)data; return data.length; };
+      req.perform();
+
+      assert(content == "This should be sent");
    }
 
    Daemon.shutdown();
