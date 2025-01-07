@@ -1,0 +1,14 @@
+name "serverino-diet-ng"
+dependency "diet-ng" version="~>1.8.2"
+dependency "serverino" path="../.."
+configuration "application" {
+    targetType "executable"
+}
+configuration "dietLive" {
+    targetType "executable"
+    versions "DietUseLive"
+}
+configuration "dietCache" {
+    targetType "executable"
+    versions "DietUseCache"
+}

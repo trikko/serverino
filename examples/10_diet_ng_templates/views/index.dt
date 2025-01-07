@@ -1,0 +1,20 @@
+doctype 5
+html
+	head
+		title Hello, World
+	body
+		h1 Hello, World
+
+		p Showing #{iterations} iterations:
+
+		h2 Contents
+		ul
+			- foreach (i; 0 .. iterations)
+				li: a(href="\#iteration-#{i+1}") Iteration #{i+1}
+
+		- foreach (i; 0 .. iterations)
+			h2(id="iteration-#{i+1}") Iteration #{i+1}
+
+			p This is one of the iterations.
+			- if (i+1 < iterations)
+				p You can also go to the #[a(href="\#iteration-#{i+2}") next one].
