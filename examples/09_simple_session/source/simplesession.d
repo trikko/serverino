@@ -14,8 +14,7 @@ struct SimpleSession
    // This can be used to generate a session ID for a new session in a real application
    static string safeSessionID(uint length = 32)
    {
-      ubyte[] value;
-      value.length = length;
+      ubyte[] value = new ubyte[length];
 
       // Random bytes
       version(Windows)
