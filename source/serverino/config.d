@@ -170,6 +170,7 @@ struct ServerinoConfig
 
       sc.enableLoggerOverride();
 
+      sc.disableServerSignature();
       return sc;
    }
 
@@ -245,6 +246,12 @@ struct ServerinoConfig
 
    ///
    @safe ref ServerinoConfig disableRemoteIp() return { return enableRemoteIp(false); }
+
+   /// Enable/Disable serverino signature
+   @safe ref ServerinoConfig enableServerSignature(bool enable = true) return { workerConfig.serverSignature = enable; return this; }
+
+   /// Ditto
+   @safe ref ServerinoConfig disableServerSignature() return { return enableServerSignature(false); }
 
    /// Add a new listener.
    @safe ref ServerinoConfig addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port) return
@@ -349,6 +356,8 @@ package struct WorkerConfig
    bool        keepAlive;
    string      user;
    string      group;
+
+   bool        serverSignature;
 
 }
 

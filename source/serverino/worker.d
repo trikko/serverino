@@ -68,6 +68,7 @@ struct Worker
       cfg.keepAlive = environment.get("SERVERINO_WORKER_CONFIG_KEEP_ALIVE") == "1";
       cfg.user = environment.get("SERVERINO_WORKER_CONFIG_USER");
       cfg.group = environment.get("SERVERINO_WORKER_CONFIG_GROUP");
+      cfg.serverSignature = environment.get("SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE") == "1";
 
       WorkerConfigPtr config = &cfg;
 
@@ -223,47 +224,31 @@ struct Worker
 
          while(sizeRead == false || size > data.length)
          {
-            recv = -1;
-            while(recv == -1)
+            while(true)
             {
                recv = channel.receive(buffer);
-               import core.stdc.stdlib : exit;
 
+               // Ok, data received
+               if (recv >= 0) break;
+
+               // Recv timeout, check if we need to kill the worker
                if (recv == -1)
                {
-
                   immutable tm = CoarseTime.currTime;
-                  if (tm - idlingAt > config.maxWorkerIdling)
-                  {
-                     log("Killing worker. [REASON: maxWorkerIdling]");
-                     tryUninit!Modules();
-                     channel.close();
-                     exit(0);
-                  }
-                  else if (tm - startedAt > config.maxWorkerLifetime)
-                  {
-                     log("Killing worker. [REASON: maxWorkerLifetime]");
-                     tryUninit!Modules();
-                     channel.close();
-                     exit(0);
-                  }
-                  else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling)
-                  {
-                     log("Killing worker. [REASON: cooling down]");
-                     tryUninit!Modules();
-                     channel.close();
-                     exit(0);
-                  }
 
-                  continue;
+                  if (tm - idlingAt > config.maxWorkerIdling) log("Killing worker. [REASON: maxWorkerIdling]");
+                  else if (tm - startedAt > config.maxWorkerLifetime) log("Killing worker. [REASON: maxWorkerLifetime]");
+                  else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling) log("Killing worker. [REASON: cooling down]");
+                  else continue; // Nothing received, but still waiting for data
                }
-               else if (recv < 0)
-               {
-                  tryUninit!Modules();
-                  log("Killing worker. [REASON: socket error]");
-                  channel.close();
-                  exit(cast(int)recv);
-               }
+
+               // Socket error
+               else if (recv < 0) log("Killing worker. [REASON: socket error]");
+
+               // Exit the worker
+               tryUninit!Modules();
+               channel.close();
+               exit(0);
             }
 
             if (recv == 0) break;
@@ -279,11 +264,10 @@ struct Worker
 
          if(data.array.length == 0)
          {
-            tryUninit!Modules();
-
             if (daemonProcess.isTerminated()) log("Killing worker. [REASON: daemon is not running]");
             else log("Killing worker. [REASON: socket closed?]");
 
+            tryUninit!Modules();
             channel.close();
             exit(0);
          }
@@ -407,6 +391,7 @@ struct Worker
             request._internal._rawRequestLine = cast(string)requestLine;
 
             output._internal._httpVersion = request._internal._httpVersion;
+            output._internal._signature = config.serverSignature;
 
             bool insidePath = true;
             size_t pathLen = 0;

@@ -463,6 +463,7 @@ package:
       workerEnvironment["SERVERINO_WORKER_CONFIG_KEEP_ALIVE"] = workerConfig.keepAlive?"1":"0";
       workerEnvironment["SERVERINO_WORKER_CONFIG_USER"] = workerConfig.user;
       workerEnvironment["SERVERINO_WORKER_CONFIG_GROUP"] = workerConfig.group;
+      workerEnvironment["SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE"] = workerConfig.serverSignature?"1":"0";
 
       void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
       void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }

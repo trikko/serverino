@@ -435,15 +435,15 @@ struct Request
          import std.algorithm : splitter;
          import std.string : split, strip;
          import std.process : thisProcessID;
+         import std.range : dropOne;
 
          static string myPID;
          if (myPID.length == 0) myPID = thisProcessID().to!string;
 
-         foreach(ref h; _rawHeaders.splitter("\r\n"))
+         foreach(ref h; _rawHeaders.splitter("\r\n").dropOne)
          {
-            auto first = h.indexOf(":");
-            if (first < 0) continue;
-            _header[h[0..first]] = h[first+1..$];
+            auto colon = h.indexOf(":");
+            _header[h[0..colon]] = h[colon+1..$];
          }
 
          _worker = myPID;
@@ -911,7 +911,7 @@ struct Output
 
    /++
    + Add a http header.
-   + You can't set `content-length`, `date`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
+   + You can't set `content-length`, `date`, `server`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
@@ -922,10 +922,11 @@ struct Output
    {
       string k = key.toLower;
 
-      if (["content-length", "date", "status", "transfer-encoding"].assumeSorted.contains(k))
+      if (["content-length", "date", "server", "status", "transfer-encoding"].assumeSorted.contains(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
+         else if (k == "server") warning("Use `config.enableServerSignature(true)` instead");
          return;
       }
 
@@ -1184,6 +1185,7 @@ struct Output
       bool            _doNotSendBody;  // Send real content-length header also if !_zeroBody is false (HEAD request)
       bool            _websocket;
       bool            _deleteOnClose;
+      bool            _signature;
 
 
       private static immutable string[ushort] StatusCode;
@@ -1246,6 +1248,12 @@ struct Output
             }
             else if (_zeroBody) _headersBuffer.append("content-length: 0\r\n");
             else _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
+
+            if (_signature)
+            {
+               static immutable serverino_signature_header = "server: serverino/" ~ SERVERINO_MAJOR.to!string ~ "." ~ SERVERINO_MINOR.to!string ~ "\r\n";
+               _headersBuffer.append(serverino_signature_header);
+            }
          }
 
          // send user-defined headers
