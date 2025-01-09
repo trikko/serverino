@@ -483,7 +483,7 @@ package class Communicator
 
       if (!file.isOpen)
       {
-         clientSkt.send("HTTP/1.0 404 Not Found\r\n");
+         clientSkt.send("HTTP/1.0 404 Not Found\r\n\r\n");
          reset();
          return;
       }
@@ -640,7 +640,7 @@ package class Communicator
                {
                   if (headersEnd > config.maxRequestSize)
                   {
-                     clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                     clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n\r\n");
                      reset();
                      return;
                   }
@@ -667,7 +667,7 @@ package class Communicator
                   if (firstLine < 18)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Request line too short.");
                      reset();
                      return;
@@ -701,7 +701,7 @@ package class Communicator
                   if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Http version unknown.");
                      reset();
                      return;
@@ -710,7 +710,7 @@ package class Communicator
                   if (popped != 3 || !fields.empty)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Malformed request line.");
                      reset();
                      return;
@@ -719,7 +719,7 @@ package class Communicator
                   if (request.path[0] != '/')
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Absolute uri?");
                      reset();
                      return;
@@ -810,7 +810,7 @@ package class Communicator
 
                   if (request.isValid == false)
                   {
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n");
+                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Malformed request.");
                      reset();
                      return;
@@ -830,7 +830,7 @@ package class Communicator
                   {
                      if (request.headersLength + request.contentLength  > config.maxRequestSize)
                      {
-                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n");
+                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n\r\n");
                         reset();
                         return;
                      }

@@ -710,7 +710,7 @@ package:
                         if (communicator.requestDataReceived)
                         {
                            debug warning("Connection closed. [REASON: http timeout]");
-                           communicator.clientSkt.send("HTTP/1.0 408 Request Timeout\r\n");
+                           communicator.clientSkt.send("HTTP/1.0 408 Request Timeout\r\n\r\n");
                         }
                         communicator.reset();
                      }
