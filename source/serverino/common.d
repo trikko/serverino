@@ -144,9 +144,9 @@ static if (Backend == BackendType.KQUEUE)
 alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 // Serverino version
-public static int SERVERINO_MAJOR = 0;
-public static int SERVERINO_MINOR = 7;
-public static int SERVERINO_REVISION = 14;
+public enum SERVERINO_MAJOR = 0;
+public enum SERVERINO_MINOR = 7;
+public enum SERVERINO_REVISION = 15;
 
 // Struct WorkerPayload is used to pass data from the worker to the daemon
 // It is prepended to the actual response payload
