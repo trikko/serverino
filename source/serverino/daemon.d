@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023-2024 Andrea Fontana
+Copyright (c) 2023-2025 Andrea Fontana
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023-2024 Andrea Fontana
+Copyright (c) 2023-2025 Andrea Fontana
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -747,9 +747,9 @@ package class Communicator
                      char[] value = cast(char[])row[headerColon+1..$].strip!(x =>x==' '|| x=='\t');
 
                      // Fast way to lowercase the key. Check if it is ASCII only.
-                     foreach(idx, ref k; key)
+                     foreach(ref k; key)
                      {
-                        if (k > 0xF9)
+                        if (k >= 0x7F)
                         {
                            request.isValid = false;
                            return (char[]).init;
@@ -758,9 +758,9 @@ package class Communicator
                         k |= 32;
                      }
 
-                     foreach(idx, ref k; value)
+                     foreach(ref k; value)
                      {
-                        if (k > 0xF9)
+                        if (k >= 0x7F)
                         {
                            request.isValid = false;
                            return (char[]).init;
