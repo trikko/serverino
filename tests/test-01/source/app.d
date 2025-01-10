@@ -461,7 +461,8 @@ Content-Disposition: form-data; name=\"field1\"\r
       socket.close();
 
       auto responseLines = (cast(string)(buffer[0..r])).split("\r\n");
-      assert(responseLines[0] == "HTTP/1.0 400 Bad Request");
+      assert(responseLines[0] == "HTTP/1.0 200 OK");
+      assert(responseLines[$-1] == "application/octet-stream");
    }
 
    {

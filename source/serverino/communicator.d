@@ -767,7 +767,7 @@ package class Communicator
                         }
                      }
 
-                     if (key.length == 0 || value.length == 0)
+                     if (key.length == 0)
                      {
                         request.isValid = false;
                         return (char[]).init;

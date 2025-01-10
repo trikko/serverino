@@ -449,6 +449,12 @@ struct Request
          _worker = myPID;
 
          if ("host" in _header) _host = _header["host"];
+         else if (_httpVersion == HttpVersion.HTTP11)
+         {
+            // Host header is required in HTTP/1.1
+            _parsingStatus = ParsingStatus.InvalidRequest;
+            return;
+         }
 
          // Read get params
          if (!_rawQueryString.empty)
