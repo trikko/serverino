@@ -497,7 +497,7 @@ struct Worker
                // Check if user accepted the upgrade in the @onWebSocketUpgrade handler
                if (!accepted)
                {
-                  output.status = 426;
+                  output.status = 403;
                   output._internal._zeroBody = true;
                   return WorkerPayload.Flags.HTTP_RESPONSE_INLINE;
                }
