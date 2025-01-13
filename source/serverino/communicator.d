@@ -633,17 +633,12 @@ package class Communicator
             // We are still waiting for the headers to be completed
             if (status == State.READING_HEADERS)
             {
+               enum MAX_HEADERS_SIZE = 16*1024; // This should be enough for the headers
                auto headersEnd = bufferRead.indexOf("\r\n\r\n");
 
                // Are the headers completed?
-               if (headersEnd >= 0)
+               if (headersEnd >= 0 && headersEnd < MAX_HEADERS_SIZE)
                {
-                  if (headersEnd > config.maxRequestSize)
-                  {
-                     clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n\r\n");
-                     reset();
-                     return;
-                  }
 
                   import std.algorithm : splitter, map, joiner;
 
@@ -858,6 +853,13 @@ package class Communicator
                      else status = State.READY;
 
                   }
+               }
+               // Max 16k of headers
+               else if (bufferRead.length >= MAX_HEADERS_SIZE)
+               {
+                  clientSkt.send("HTTP/1.0 431 Request Header Fields Too Large\r\n\r\n");
+                  reset();
+                  return;
                }
                else leftover = bufferRead.dup;
 
