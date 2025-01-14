@@ -635,7 +635,7 @@ void test()
 
       auto ln = sck.receive(buffer);
       auto reply = buffer[0..ln];
-      assert(reply.startsWith("HTTP/1.1 426 Upgrade Required"), reply);
+      assert(reply.startsWith("HTTP/1.1 403 Forbidden"), reply);
    }
 
    {
