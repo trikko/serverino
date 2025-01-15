@@ -314,7 +314,7 @@ struct Worker
 
 
          headers = cast(char[]) data;
-         auto headersEnd = headers.indexOf("\r\n\r\n");
+         auto headersEnd = headers.indexOfSeparator;
 
          bool valid = true;
 
@@ -326,7 +326,7 @@ struct Worker
             headers.length = headersEnd;
             data = data[headersEnd+4..$];
 
-            auto headersLines = headers.splitter("\r\n");
+            auto headersLines = headers.newlineSplitter;
 
             requestLine = headersLines.front;
 

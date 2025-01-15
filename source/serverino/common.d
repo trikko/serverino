@@ -600,3 +600,109 @@ version(linux)
 	}
 }
 
+pragma(inline, true)
+ptrdiff_t indexOfSeparator(const char[] s)
+{
+	if (s.length < 4) return -1;
+
+	for(size_t index = 3; index < s.length; index += 4)
+	{
+		if (s[index] > 13) continue;
+
+		switch(s[index])
+		{
+			case '\n':
+
+				if (s[index-3..index] == "\r\n\r") { return index-3; }
+				else if (index + 2 < s.length && s[index + 1] == '\r' && s[index + 2] == '\n' && s[index - 1] == '\r') { return index-1; }
+				break;
+
+			case '\r':
+
+				if (s[index-2..index] == "\r\n" && index + 1 < s.length && s[index+1] == '\n') { return index-2; }
+				else if (index+3 < s.length && s[index+3] == '\n' && s[index+1..index+3] == "\n\r") { return index; }
+				break;
+
+			default:
+		}
+	}
+
+	return -1;
+}
+
+pragma(inline, true)
+ptrdiff_t indexOfNewline(const char[] s)
+{
+	if (s.length < 2) return -1;
+
+	for(size_t index = 1; index < s.length; index += 2)
+	{
+		if (s[index] > 13) continue;
+
+		if (s[index] == '\n' && s[index-1] == '\r') return index-1;
+		else if (s[index] == '\r' && index+1 < s.length && s[index+1] == '\n') return index;
+	}
+
+	return -1;
+}
+
+pragma(inline, true)
+auto newlineSplitter(T)(T data)
+{
+
+	import std.traits : isSomeString;
+
+	struct NewlineSplitter(T) if (isSomeString!T)
+	{
+		private:
+		T input;
+		T current;
+
+		size_t currentPos		= 0;
+		bool complete 			= false;
+		bool last 				= false;
+
+		public:
+		pragma(inline, true):
+
+		@disable this();
+
+		this(T input)
+		{
+			this.input = input;
+			if (input.length == 0) last = true;
+			popFront();
+		}
+
+		auto front() @property { return current; }
+
+		bool empty() const @property { return complete; }
+
+		void popFront()
+		{
+			if (last)
+			{
+				current = input[0..0];
+				complete = true;
+				return;
+			}
+
+			auto remainder = input[currentPos..$];
+			auto idx = indexOfNewline(remainder);
+
+			if (idx == -1)
+			{
+				current = remainder;
+				currentPos = input.length;
+				last = true;
+			}
+			else
+			{
+				current = remainder[0..idx];
+				currentPos += idx + 2;
+			}
+		}
+	}
+
+	return NewlineSplitter!T(data);
+}

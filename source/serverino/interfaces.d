@@ -440,7 +440,7 @@ struct Request
          static string myPID;
          if (myPID.length == 0) myPID = thisProcessID().to!string;
 
-         foreach(ref h; _rawHeaders.splitter("\r\n").dropOne)
+         foreach(ref h; _rawHeaders.newlineSplitter.dropOne)
          {
             auto colon = h.indexOf(":");
             _header[h[0..colon]] = h[colon+1..$];
@@ -501,7 +501,7 @@ struct Request
                   // Sometimes they write it on the first line.
                   if (boundary.empty)
                   {
-                     auto lines = _data.splitter("\r\n").filter!(x => !x.empty).takeOne;
+                     auto lines = _data.newlineSplitter.filter!(x => !x.empty).takeOne;
 
                      if (!lines.empty)
                      {

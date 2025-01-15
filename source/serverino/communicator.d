@@ -474,7 +474,7 @@ package class Communicator
       }
 
       // Get the file name from the data, after the http headers
-      auto headers = data[0..data.indexOf("\r\n\r\n") + 4];
+      auto headers = data[0..data.indexOfSeparator + 4];
       auto fileName = data[headers.length..$].strip;
 
       // Open the file
@@ -634,7 +634,8 @@ package class Communicator
             if (status == State.READING_HEADERS)
             {
                enum MAX_HEADERS_SIZE = 16*1024; // This should be enough for the headers
-               auto headersEnd = bufferRead.indexOf("\r\n\r\n");
+
+               auto headersEnd = bufferRead.indexOfSeparator;
 
                // Are the headers completed?
                if (headersEnd >= 0 && headersEnd < MAX_HEADERS_SIZE)
@@ -650,7 +651,7 @@ package class Communicator
                   bufferRead.length = 0;
                   request.isValid = true;
 
-                  auto firstLine = request.data.indexOf("\r\n");
+                  auto firstLine = request.data.indexOfNewline;
 
                   // HACK: A single line (http 1.0?) request.
                   if (firstLine < 0)
@@ -722,7 +723,7 @@ package class Communicator
 
                   // Parse headers for 100-continue, content-length and connection
                   auto hdrs = request.data[firstLine+2..$]
-                  .splitter("\r\n")
+                  .newlineSplitter
                   .map!((in char[] row)
                   {
                      if (!request.isValid)
