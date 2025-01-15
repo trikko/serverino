@@ -140,7 +140,8 @@ struct Worker
          auto ui = getpwuid(getuid());
          auto gr = getgrgid(getgid());
 
-         if (ui.pw_uid == 0) critical("Worker running as root. Is this intended? Set user/group from config to run worker as unprivileged user.");
+         if (ui is null || gr is null) log("Worker started. (user=? group=?)");
+         else if (ui.pw_uid == 0) critical("Worker running as root. Is this intended? Set user/group from config to run worker as unprivileged user.");
          else log("Worker started. (user=", ui.pw_name[0..ui.pw_name.strlen], " group=", gr.gr_name[0..gr.gr_name.strlen], ")");
 
       }
