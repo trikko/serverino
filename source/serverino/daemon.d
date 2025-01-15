@@ -532,16 +532,18 @@ package:
 
             version(Posix)
             {
-               import std.process : executeShell;
+               import std.process : execute;
                import std.string : replace, split, chomp;
                import std.file : exists, readText;
+               import std.string : startsWith;
 
-               auto pid = executeShell("fuser " ~ listener.address.toPortString ~ "/tcp").output
+               string port = listener.address.toPortString ~ "/tcp";
+               auto pid = execute(["/usr/bin/fuser", port]).output
                   .chomp
                   .replace(' ', '\n')
                   .split('\n');
 
-               if (pid.length > 1 && pid[$-1].length > 0)
+               if (pid.length > 1 && pid[$-1].length > 0 && pid[0].startsWith(port))
                {
                   string cmdLine = "?";
 
