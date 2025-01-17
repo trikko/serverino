@@ -541,7 +541,6 @@ struct Worker
                   env["SERVERINO_REQUEST"] = request._internal.serialize();
 
                   import std.process : pipeProcess, Redirect, Config;
-                  import std.file : thisExePath;
                   import core.thread : Thread;
 
                   import std.range : repeat;
@@ -1010,7 +1009,7 @@ struct Worker
       }
    }
 
-   private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
+   private shared static this() { exePath = thisExePathWithFallback(); }
    private static string exePath;
 
    __gshared:

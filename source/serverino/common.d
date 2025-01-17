@@ -706,3 +706,30 @@ auto newlineSplitter(T)(T data)
 
 	return NewlineSplitter!T(data);
 }
+
+string thisExePathWithFallback()
+{
+	try
+	{
+		import std.file : thisExePath;
+		return thisExePath();
+	}
+	catch(Exception e)
+	{
+		// This could happen if /proc/self/exe is not available
+		import std.file : getcwd;
+		import core.runtime : Runtime;
+		import std.path : buildNormalizedPath;
+		import std.conv : to;
+
+		auto path = Runtime.cArgs.argv[0].to!string;
+
+		if (path.length > 0)
+		{
+			if (path[0] == '/') return path;
+			else if (path[0] == '.') return buildNormalizedPath(getcwd(), path);
+		}
+
+		throw new Exception("Can't get executable path");
+	}
+}

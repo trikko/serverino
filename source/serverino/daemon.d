@@ -345,7 +345,7 @@ package class WorkerInfo
    pragma(inline, true)
    static auto ref dead() { return WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.STOPPED); }
 
-   private shared static this() { import std.file : thisExePath; exePath = thisExePath(); }
+   private shared static this() { exePath = thisExePathWithFallback(); }
 
 package:
 
