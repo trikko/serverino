@@ -537,20 +537,24 @@ package:
                import std.file : exists, readText;
                import std.string : startsWith;
 
-               string port = listener.address.toPortString ~ "/tcp";
-               auto pid = execute(["/usr/bin/fuser", port]).output
-                  .chomp
-                  .replace(' ', '\n')
-                  .split('\n');
+               // Try to find the PID of the process using fuser
+               if (exists("/usr/bin/fuser")) {
 
-               if (pid.length > 1 && pid[$-1].length > 0 && pid[0].startsWith(port))
-               {
-                  string cmdLine = "?";
+                  string port = listener.address.toPortString ~ "/tcp";
+                  auto pid = execute(["/usr/bin/fuser", port]).output
+                     .chomp
+                     .replace(' ', '\n')
+                     .split('\n');
 
-                  if (exists("/proc/" ~ pid[$-1] ~ "/cmdline"))
-                     cmdLine = readText("/proc/" ~ pid[$-1] ~ "/cmdline");
+                  if (pid.length > 1 && pid[$-1].length > 0 && pid[0].startsWith(port))
+                  {
+                     string cmdLine = "?";
 
-                  msg = "Can't listen on %s. This address is already in use by `%s` (PID: %s).".format(listener.address.toString, cmdLine, pid[$-1]);
+                     if (exists("/proc/" ~ pid[$-1] ~ "/cmdline"))
+                        cmdLine = readText("/proc/" ~ pid[$-1] ~ "/cmdline");
+
+                     msg = "Can't listen on %s. This address is already in use by `%s` (PID: %s).".format(listener.address.toString, cmdLine, pid[$-1]);
+                  }
                }
             }
 
