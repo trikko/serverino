@@ -669,7 +669,19 @@ void test()
       {
          auto recv = sck.receive(buffer);
 
-         if(recv <= 0) break;
+         if(recv <= 0)
+         {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR)
+               {
+                  warning("EINTR");
+                  continue;
+               }
+            }
+            break;
+         }
 
          reply ~= buffer[0..recv];
       }
@@ -715,7 +727,19 @@ void test()
       {
          recv = sck.receive(buffer);
 
-         if(recv <= 0) break;
+         if(recv <= 0)
+         {
+            version(Posix)
+            {
+               import core.stdc.errno : errno, EINTR;
+               if (errno == EINTR)
+               {
+                  warning("EINTR");
+                  continue;
+               }
+            }
+            break;
+         }
 
          reply ~= buffer[0..recv];
       }
