@@ -1088,7 +1088,8 @@ struct Output
    @safe @property void status(ushort status)
    {
       _internal._dirty = true;
-     _internal._status = status;
+      _internal._status = status;
+      assert(status >= 100 && status <= 599, "Invalid status set"); 
    }
 
    /**
