@@ -747,10 +747,7 @@ void test()
       // For debugging error popping up every now and then on macOS
       if (reply.length < 2)
       {
-         warning("Recv: ", recv);
-         warning("HandshakeReply [", handshakeReply.length, "]: ", cast(char[])handshakeReply);
-         warning("Reply: [", reply.length, "]: ", cast(char[])reply);
-
+         warning("Recv: ", recv, " errno: ", errno);
          warning("Socket error: ", sck.getErrorText());
          warning("Socket alive: ", sck.isAlive);
       }
