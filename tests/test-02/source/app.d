@@ -737,6 +737,7 @@ void test()
                   warning("EINTR");
                   continue;
                }
+               else warning("errno: ", errno);
             }
             break;
          }
@@ -747,7 +748,7 @@ void test()
       // For debugging error popping up every now and then on macOS
       if (reply.length < 2)
       {
-         warning("Recv: ", recv, " errno: ", errno);
+         warning("Recv: ", recv);
          warning("Socket error: ", sck.getErrorText());
          warning("Socket alive: ", sck.isAlive);
       }
