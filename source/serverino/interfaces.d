@@ -1086,10 +1086,10 @@ struct Output
 
    /// Set response status. 200 by default.
    @safe @property void status(ushort status)
-   {
+   in { assert(status >= 100 && status <= 599, "Invalid status set"); }
+   do {
       _internal._dirty = true;
       _internal._status = status;
-      assert(status >= 100 && status <= 599, "Invalid status set"); 
    }
 
    /**
