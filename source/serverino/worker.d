@@ -58,6 +58,7 @@ struct Worker
       import std.path : baseName;
       import core.runtime : Runtime;
       import std.datetime : msecs;
+      import std.experimental.logger : LogLevel, Logger, sharedLog;
 
       WorkerConfig cfg = WorkerConfig();
       cfg.maxRequestTime = environment.get("SERVERINO_WORKER_CONFIG_MAX_REQUEST_TIME").to!ulong.msecs;
@@ -69,6 +70,8 @@ struct Worker
       cfg.user = environment.get("SERVERINO_WORKER_CONFIG_USER");
       cfg.group = environment.get("SERVERINO_WORKER_CONFIG_GROUP");
       cfg.serverSignature = environment.get("SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE") == "1";
+
+      (cast(Logger)sharedLog).logLevel = environment.get("SERVERINO_WORKER_CONFIG_LOG_LEVEL").to!LogLevel;
 
       WorkerConfigPtr config = &cfg;
 

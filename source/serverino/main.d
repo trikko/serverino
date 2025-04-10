@@ -246,7 +246,14 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
       else sharedLog = new ServerinoLogger(config.daemonConfig.logLevel);
    }
 
-   config.validate();
+   try {
+      config.validate();
+   }
+   catch (Exception e) {
+      import std.experimental.logger : error;
+      error(e.msg);
+      return 1;
+   }
 
    DaemonConfigPtr daemonConfig = &config.daemonConfig;
    WorkerConfigPtr workerConfig = &config.workerConfig;

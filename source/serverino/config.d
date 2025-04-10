@@ -259,8 +259,13 @@ struct ServerinoConfig
       enum LISTEN_IPV4 = (p == ListenerProtocol.IPV4 || p == ListenerProtocol.BOTH);
       enum LISTEN_IPV6 = (p == ListenerProtocol.IPV6 || p == ListenerProtocol.BOTH);
 
-      static if(LISTEN_IPV4) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new InternetAddress(address, port));
-      static if(LISTEN_IPV6) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new Internet6Address(address, port));
+      try {
+         static if(LISTEN_IPV4) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new InternetAddress(address, port));
+         static if(LISTEN_IPV6) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new Internet6Address(address, port));
+      } catch (Exception e) {
+         import std.format : format;
+         failedListeners ~=  format(`"%s:%d" (%s)`, address, port, e.msg);
+      }
 
       return this;
    }
@@ -277,6 +282,7 @@ struct ServerinoConfig
 
    void validate()
    {
+      import std.string : join;
 
       if (daemonConfig.minWorkers > 1024)
          throw new Exception("Configuration error. Must be 0 <= minWorkers <= 1024");
@@ -290,12 +296,17 @@ struct ServerinoConfig
       if (daemonConfig.maxWorkers == 0 || daemonConfig.maxWorkers > 1024)
          throw new Exception("Configuration error. Must be 1 <= maxWorkers <= 1024");
 
+      if (failedListeners.length > 0)
+         throw new Exception("Configuration error. Cannot listen on " ~ failedListeners.join(", "));
+
       if (daemonConfig.listeners.length == 0)
          addListener("0.0.0.0", 8080);
    }
 
    DaemonConfig       daemonConfig;
    WorkerConfig       workerConfig;
+
+   string[] failedListeners;
 
    int   returnCode;
    bool  forceExit;

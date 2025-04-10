@@ -362,7 +362,7 @@ package class Communicator
                   return;
                }
 
-               warning("BLOCKED buffer");
+               debug warning("Blocked buffer");
                return;
             }
             else
