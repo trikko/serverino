@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-13, macos-14, windows-latest, ubuntu-24.04-arm]
-        dc: [ldc-latest, dmd-latest]
+        dc: [ldc-latest, dmd-2.110.0]
         exclude:
         - os: ubuntu-24.04-arm
           dc: dmd-latest
