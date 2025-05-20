@@ -185,10 +185,11 @@ struct ServerinoConfig
       return this;
    }
 
-   /// Sets the maximum number of worker threads.
+   /// Sets the maximum number of worker processes.
    @safe ref ServerinoConfig setMaxWorkers(size_t val = 5) return { daemonConfig.maxWorkers = val; return this; }
-   /// Sets the minimum number of worker threads.
-   @safe ref ServerinoConfig setMinWorkers(size_t val = 5) return  { daemonConfig.minWorkers = val; return this; }
+
+   /// Sets the minimum number of worker processes.
+   @safe ref ServerinoConfig setMinWorkers(size_t val = 1) return  { daemonConfig.minWorkers = val; return this; }
 
    /// Same as setMaxWorkers(v); setMinWorkers(v);
    @safe ref ServerinoConfig setWorkers(size_t val) return { setMinWorkers(val); setMaxWorkers(val); return this; }
@@ -203,7 +204,7 @@ struct ServerinoConfig
       Max time a dynamic worker can be idle. After this time, worker is terminated.
       This is used only if the number of workers is greater than minWorkers.
    ***/
-   @safe ref ServerinoConfig setMaxDynamicWorkerIdling(Duration dur = 10.seconds) return  { workerConfig.maxDynamicWorkerIdling = dur; return this; }
+   @safe ref ServerinoConfig setMaxDynamicWorkerIdling(Duration dur = 15.seconds) return  { workerConfig.maxDynamicWorkerIdling = dur; return this; }
 
    /// Sets the maximum number of pending connections in the listener's backlog.
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
