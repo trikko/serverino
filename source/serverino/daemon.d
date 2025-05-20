@@ -212,7 +212,7 @@ package class WorkerInfo
    {
       if (communicator is null)
       {
-         debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (null communicator).");
+         debug log("Worker #" ~ pi.id.to!string  ~ " stopped.");
          pi.kill();
          setStatus(WorkerInfo.State.STOPPED);
          return;
@@ -696,7 +696,7 @@ package:
                {
                   if (!worker.unixSocket.isAlive)
                   {
-                     log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
+                     warning("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: invalid state]");
                      worker.pi.kill();
                      worker.setStatus(WorkerInfo.State.STOPPED);
                   }

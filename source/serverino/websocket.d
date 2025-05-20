@@ -91,7 +91,7 @@ struct WebSocketWorker
 
          if (!inited)
          {
-            log("Killing websocket. [REASON: not inited, timeout]");
+            warning("Killing websocket. [REASON: not inited, timeout]");
             exit(0);
          }
 
@@ -104,12 +104,12 @@ struct WebSocketWorker
 
             if (!daemonProcess.isRunning)
             {
-               log("Killing websocket. [REASON: daemon is not running]");
+               log("Shutting down websocket. [REASON: daemon is not running]");
                exit(0);
             }
          }
 
-         log("Killing websocket. [REASON: " ~ WebSocket.killReason ~ "]");
+         log("Shutting down websocket. [REASON: " ~ WebSocket.killReason ~ "]");
 
          exit(0);
 

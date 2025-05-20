@@ -191,7 +191,7 @@ struct Worker
             Thread.sleep(1.seconds);
          }
 
-         log("Killing worker. [REASON: request timeout]");
+         warning("Killing worker. [REASON: request timeout]");
 
          if (cas(&justSent, false, true))
          {
@@ -246,14 +246,14 @@ struct Worker
                {
                   immutable tm = CoarseTime.currTime;
 
-                  if (tm - idlingAt > config.maxWorkerIdling) log("Killing worker. [REASON: maxWorkerIdling]");
-                  else if (tm - startedAt > config.maxWorkerLifetime) log("Killing worker. [REASON: maxWorkerLifetime]");
-                  else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling) log("Killing worker. [REASON: cooling down]");
+                  if (tm - idlingAt > config.maxWorkerIdling) log("Shutting down worker. [REASON: maxWorkerIdling]");
+                  else if (tm - startedAt > config.maxWorkerLifetime) log("Shutting down worker. [REASON: maxWorkerLifetime]");
+                  else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling) log("Shutting down worker. [REASON: cooling down]");
                   else continue; // Nothing received, but still waiting for data
                }
 
                // Socket error
-               else if (recv < 0) log("Killing worker. [REASON: socket error]");
+               else if (recv < 0) warning("Killing worker. [REASON: socket error]");
 
                // Exit the worker
                tryUninit!Modules();
