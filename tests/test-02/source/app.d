@@ -679,6 +679,7 @@ void test()
                   warning("EINTR");
                   continue;
                }
+               else warning("errno: ", errno);
             }
             break;
          }
