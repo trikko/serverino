@@ -913,7 +913,10 @@ struct Output
 	public:
 
    /// Override timeout for this request
-   @safe void setTimeout(Duration max) {  _internal._timeout = max; }
+   @safe void setMaxRequestTime(Duration max) {  _internal._maxRequestTime = max; }
+
+   deprecated("Use .setMaxRequestTime(Duration dur) instead")
+   alias setTimeout = setMaxRequestTime;
 
    /++
    + Add a http header.
@@ -1180,7 +1183,7 @@ struct Output
       bool            _keepAlive;
       string          _httpVersion;
       ushort          _status;
-      Duration        _timeout;
+      Duration        _maxRequestTime;
       bool            _dirty;
       DataBuffer!char _sendBuffer;
       DataBuffer!char _headersBuffer;
@@ -1310,7 +1313,7 @@ struct Output
       void clear()
       {
          // HACK
-         _timeout = 0.seconds;
+         _maxRequestTime = 0.seconds;
          _httpVersion = HttpVersion.HTTP10;
          _dirty = false;
          _status = 200;

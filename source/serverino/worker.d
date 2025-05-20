@@ -179,8 +179,14 @@ struct Worker
 
             CoarseTime st = atomicLoad(processedStartedAt);
 
-            if (!(st == CoarseTime.zero || CoarseTime.currTime - st < config.maxRequestTime))
-               break;
+            if (st != CoarseTime.zero)
+            {
+               auto timeout = output._internal._maxRequestTime;
+               if (timeout == 0.seconds) timeout = config.maxRequestTime;
+
+               if (timeout > 0.seconds && CoarseTime.currTime - st > timeout)
+                  break;
+            }
 
             Thread.sleep(1.seconds);
          }
