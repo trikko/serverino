@@ -31,8 +31,8 @@ void example(Request request, Output output)
 		.addListener("0.0.0.0", 8080)
 		.setMaxRequestTime(1.seconds)
 		.setMaxRequestSize(1024*1024); // 1 MB
-		// Many other options are available.
-		// See: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
+		// To set a fixed number of workers, use .setWorkers(10)
+		// Many other options are available: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
 }
 
 */
