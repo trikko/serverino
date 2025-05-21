@@ -65,3 +65,6 @@ jobs:
               && dub build --root=examples/06_websocket_noise_stream/
               && dub build --root=examples/07_websocket_callback/
               && dub build --root=examples/08_cmdline_args/
+              && dub build --root=examples/09_simple_session/
+              && dub build --root=examples/10_diet_ng_templates/
+              && dub build --root=examples/11_elemi_integration/

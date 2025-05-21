@@ -1,0 +1,11 @@
+{
+	"authors": [
+		"Andrea Fontana"
+	],
+	"dependencies": {
+		"elemi": "~>1.4.2",
+		"serverino": "~>0.7.16"
+	},
+	"license": "proprietary",
+	"name": "11_elemi_integration"
+}

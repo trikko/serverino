@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/11_elemi_integration
+11_elemi_integration.so
+11_elemi_integration.dylib
+11_elemi_integration.dll
+11_elemi_integration.a
+11_elemi_integration.lib
+11_elemi_integration-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
