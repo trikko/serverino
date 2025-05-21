@@ -28,7 +28,7 @@ void catchAll(Request request, Output output)
                 html.img.attr("src", "https://placehold.co/400x100?text=YOUR+LOGO&font=roboto") ~ null;
 
                 // The title and some text
-                html.h1 ~ i"Page: $(request.path)".text;
+                html.h1 ~ i"Path: $(request.path)".text;
                 html.p ~ i"Method: $(request.method)".text;
                 html.p ~ i"Query Params: $(request.get)".text;
             };
