@@ -28,10 +28,12 @@ void catchAll(Request request, Output output)
 {
 	return ServerinoConfig
 		.create()
-		.addListener("0.0.0.0", 8080)
-		.setMaxRequestTime(1.seconds)
-		.setMaxRequestSize(1024*1024); // 1 MB
-		// To set a fixed number of workers, use .setWorkers(10)
+		.addListener("0.0.0.0", 8080);
+
+		// You can set many other options here. For example:
+		// .setMaxRequestTime(1.seconds)
+		// .setMaxRequestSize(1024*1024); // 1 MB
+		// .setWorkers(10); // To set a fixed number of workers.
 		// Many other options are available: https://trikko.github.io/serverino/serverino/config/ServerinoConfig.html
 }
 
