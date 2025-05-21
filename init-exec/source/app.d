@@ -12,7 +12,7 @@ mixin ServerinoMain;
 
 // Use @endpoint and (optionally) @priority if you need more than one endpoint.
 // More info: https://github.com/trikko/serverino#defining-more-than-one-endpoint
-void example(Request request, Output output)
+void catchAll(Request request, Output output)
 {
 	// Probably you want to delete this spam.
 	info("Hello, log! There's a new incoming request. URL: ", request.path);
