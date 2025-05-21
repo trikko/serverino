@@ -912,7 +912,8 @@ struct Output
 
 	public:
 
-   /// Override timeout for this request
+
+   /// Override ServerinoConfig.setMaxRequestTime(Duration dur) for this request
    @safe void setMaxRequestTime(Duration max) {  _internal._maxRequestTime = max; }
 
    deprecated("Use .setMaxRequestTime(Duration dur) instead")
