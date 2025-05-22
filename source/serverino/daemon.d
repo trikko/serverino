@@ -375,6 +375,11 @@ version(Posix)
       if (Daemon.exitRequested) exit(-1);
       else Daemon.exitRequested = true;
    }
+
+   extern(C) void serverino_reload_handler(int num) nothrow @nogc @system
+   {
+      Daemon.reloadRequested = true;
+   }
 }
 
 // The Daemon class is the core of serverino.
@@ -430,7 +435,6 @@ package:
       import std.string : join, representation;
 
       immutable daemonPid = thisProcessID.to!string;
-      immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
       immutable argsBkp = Base64.encode(Runtime.args.join("\0").representation);
 
       environment["SERVERINO_COMPONENT"] = "D";
@@ -466,11 +470,23 @@ package:
       workerEnvironment["SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE"] = workerConfig.serverSignature?"1":"0";
       workerEnvironment["SERVERINO_WORKER_CONFIG_LOG_LEVEL"] = config.logLevel.to!string;
 
-      void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
-      void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }
+      version(Posix) {
+         // On Posix we don't need to create a canary file.
+         // Simply use the SIGUSR1 signal to reload the workers.
+         void removeCanary() { }
+         void writeCanary() { }
+      }
+      else
+      {
+         // On Windows we need to create a canary file.
+         // You can delete the file to reload the workers.
+         immutable canaryFileName = tempDir.buildPath("serverino-" ~ daemonPid ~ "-" ~ sha256Of(daemonPid).toHexString!(LetterCase.lower) ~ ".canary");
+         void removeCanary() { if (exists(canaryFileName)) remove(canaryFileName); }
+         void writeCanary() { File(canaryFileName, "w").write("delete this file to reload serverino workers (process id: " ~ daemonPid ~ ")\n"); }
 
-      writeCanary();
-      scope(exit) removeCanary();
+         writeCanary();
+         scope(exit) removeCanary();
+      }
 
       daemonThread = Thread.getThis();
 
@@ -485,6 +501,9 @@ package:
             sigaction_t act = { sa_handler: &serverino_exit_handler };
             sigaction(SIGINT, &act, null);
             sigaction(SIGTERM, &act, null);
+
+            sigaction_t act_reload = { sa_handler: &serverino_reload_handler };
+            sigaction(SIGUSR1, &act_reload, null);
          }
       }
 
@@ -674,9 +693,16 @@ package:
             {
                lastCheck = now;
 
+               version(Posix) { }
+               else {
+                  if (!exists(canaryFileName))
+                     Daemon.reloadRequested = true;
+               }
+
                // If a reload is requested we restart all the workers (not the running ones)
-               if (!exists(canaryFileName))
+               if (Daemon.reloadRequested)
                {
+                  Daemon.reloadRequested = false;
                   foreach(ref worker; WorkerInfo.instances)
                   {
                      if (worker.status != WorkerInfo.State.PROCESSING)
@@ -1051,6 +1077,7 @@ private __gshared:
    string[string] workerEnvironment;
 
    bool exitRequested = false;
+   bool reloadRequested = false;
    bool ready         = false;
    bool suspended     = false;
 
