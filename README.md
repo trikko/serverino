@@ -5,7 +5,7 @@ serverino
 ###### [quickstart](#quickstart) – [minimal example](#a-simple-webserver-in-just-three-lines) – [wiki](https://github.com/trikko/serverino/wiki/) - [more examples](https://github.com/trikko/serverino/tree/master/examples/) - [docs]( #documentation-you-need) – [shielding serverino using proxy](#shielding-the-whole-thing)
 ---
 * 🚀 **Quick build & start**: *build & run your server in seconds.*
-* 🙌 **Zero dependencies**: *serverino doesn’t rely on any external library.*
+* 🙌 **Zero dependencies**: *serverino doesn't rely on any external library.*
 * 💪 **High performance**: *capable of managing tens of thousands of connections per second.*
 * 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
 
@@ -124,6 +124,12 @@ void requestLog(Request request)
 	// When the function returns, the WebSocket connection is closed
 }
 ```
+
+## Restarting workers without downtime
+> [!TIP]
+> Serverino workers can be restarted on demand without causing downtime:
+> * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <pid>`
+> * On Windows: delete the canary file in the temp folder named `serverino-pid-sha256(pid).canary`
 
 ## Shielding the whole thing
 > [!CAUTION]
