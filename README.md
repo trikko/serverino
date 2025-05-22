@@ -128,6 +128,8 @@ void requestLog(Request request)
 ```
 
 ## Restarting workers without downtime
+> [!CAUTION]
+> Hot-reloading only affects the worker processes, not the main daemon process. If you modify code in the main daemon process, those changes will not be applied until you fully restart the server. Only changes to endpoint handlers and worker-specific code will be picked up by the hot-reload mechanism.
 
 Serverino workers can be restarted on demand without causing downtime.
  * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <pid>`
@@ -135,8 +137,6 @@ Serverino workers can be restarted on demand without causing downtime.
 
 This allows you to recompile your workers and perform hot-reloading of your application code without any service interruption or dropped connections.
 
-> [!CAUTION]
-> Hot-reloading only affects the worker processes, not the main daemon process. If you modify code in the main daemon process, those changes will not be applied until you fully restart the server. Only changes to endpoint handlers and worker-specific code will be picked up by the hot-reload mechanism.
 
 ## Shielding the whole thing
 > [!CAUTION]
