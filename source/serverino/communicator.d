@@ -73,7 +73,7 @@ package class ProtoRequest
       s ~= text("VALID: ", isValid, "\n");
       s ~= text("VER: ", httpVersion, "\n");
       s ~= text("METHOD: ", method, "\n");
-      s ~= text("PATH: ", path, "\n");
+      s ~= text("URI: ", uri, "\n");
       s ~= text("BODY: ", contentLength, "\n");
       s ~= text("HEADERS:", "\n");
       s ~= (data[uint.sizeof..headersLength]);
@@ -91,7 +91,7 @@ package class ProtoRequest
    size_t   headersLength;
 
    char[]   method;              // HTTP method
-   char[]   path;                // Request path
+   char[]   uri;                 // Request URI
 
    char[]   data = [0,0,0,0];    // Request data (first 4 bytes will be set to the length of the data)
    ProtoRequest next = null;     // Next request in the queue
@@ -681,7 +681,7 @@ package class Communicator
 
                   if (!fields.empty)
                   {
-                     request.path = fields.front;
+                     request.uri = fields.front;
                      fields.popFront;
                      popped++;
                   }
@@ -712,7 +712,7 @@ package class Communicator
                      return;
                   }
 
-                  if (request.path[0] != '/')
+                  if (request.uri[0] != '/')
                   {
                      request.isValid = false;
                      clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
@@ -844,6 +844,7 @@ package class Communicator
                   {
                      // No body, we can process the request
 
+                     log("Request", request.toString);
                      requestDataReceived = false; // Request completed, we can reset the timeout
                      hasMoreDataToParse = leftover.length > 0;
 
