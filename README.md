@@ -9,6 +9,7 @@ serverino
 * 💪 **High performance**: *capable of managing tens of thousands of connections per second.*
 * 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
 
+
 ## Quickstart
 Install a [dlang compiler](https://dlang.org/), then:
 ```sh
@@ -126,10 +127,15 @@ void requestLog(Request request)
 ```
 
 ## Restarting workers without downtime
-> [!TIP]
-> Serverino workers can be restarted on demand without causing downtime:
-> * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <pid>`
-> * On Windows: delete the canary file in the temp folder named `serverino-pid-sha256(pid).canary`
+
+Serverino workers can be restarted on demand without causing downtime.
+ * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <pid>`
+ * On Windows: delete the canary file in the temp folder named `serverino-pid-sha256(pid).canary`
+
+This allows you to recompile your workers and perform hot-reloading of your application code without any service interruption or dropped connections.
+
+> [!CAUTION]
+> Hot-reloading only affects the worker processes, not the main daemon process. If you modify code in the main daemon process, those changes will not be applied until you fully restart the server. Only changes to endpoint handlers and worker-specific code will be picked up by the hot-reload mechanism.
 
 ## Shielding the whole thing
 > [!CAUTION]
