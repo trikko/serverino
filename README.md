@@ -8,6 +8,7 @@ serverino
 * 🙌 **Zero dependencies**: *serverino doesn't rely on any external library.*
 * 💪 **High performance**: *capable of managing tens of thousands of connections per second.*
 * 🌐 **Cross-platform**: *every release is tested on Linux, Windows, and MacOS.*
+* 🔄 **Hot-reload**: *restart workers without downtime or dropped connections. [(how?)](#restarting-workers-without-downtime)*
 
 
 ## Quickstart
@@ -130,7 +131,7 @@ void requestLog(Request request)
 
 Serverino workers can be restarted on demand without causing downtime.
  * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <pid>`
- * On Windows: delete the canary file in the temp folder named `serverino-pid-sha256(pid).canary`
+ * On Windows: delete the canary file in the temp folder named `serverino-pid-<sha256 of pid>.canary`
 
 This allows you to recompile your workers and perform hot-reloading of your application code without any service interruption or dropped connections.
 
