@@ -1009,8 +1009,13 @@ package:
       removeCanary();
 
       info("Daemon shutdown completed. Goodbye!");
-   }
 
+      // Flush the output buffers.
+      import std.stdio : stdout, stderr;
+      stdout.flush();
+      stderr.flush();
+
+   }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
    {
