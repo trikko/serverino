@@ -62,7 +62,19 @@ package struct DataBuffer(T)
       _data[_length.._length+new_data.length] = cast(T[])new_data[0..$];
       _length += new_data.length;
    }
-   void reserve(size_t r, bool allowShrink = false) { if (r > _data.length || allowShrink) _data.length = (r / (1024*16) + 1) * (1024*16); }
+
+   void reserve(size_t r, bool allowShrink = false)
+   {
+      if (!(r > _data.length || allowShrink)) return;
+
+      size_t newCap;
+      if (r < 1024) newCap = r < 64 ? 64 : r * 2;
+      else if (r < 16*1024) newCap = r + r / 2;
+      else newCap = ((r / (16*1024)) + 1) * (16*1024);
+
+      _data.length = r;
+   }
+
    void length(size_t l) { reserve(l); _length = l; }
 
    void append(scope const T new_data) {
