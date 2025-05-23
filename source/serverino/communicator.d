@@ -633,15 +633,14 @@ package class Communicator
             // We are still waiting for the headers to be completed
             if (status == State.READING_HEADERS)
             {
-               enum MAX_HEADERS_SIZE = 16*1024; // This should be enough for the headers
 
                auto headersEnd = bufferRead.indexOfSeparator;
+
+               enum MAX_HEADERS_SIZE = 16*1024; // This should be enough for the headers
 
                // Are the headers completed?
                if (headersEnd >= 0 && headersEnd < MAX_HEADERS_SIZE)
                {
-
-                  import std.algorithm : splitter, map, joiner;
 
                   // Extra data after the headers is stored in the leftover buffer
                   request.data ~= bufferRead[0..headersEnd];
@@ -668,6 +667,8 @@ package class Communicator
                      reset();
                      return;
                   }
+
+                  import std.algorithm : splitter;
 
                   auto fields = request.data[uint.sizeof..firstLine].splitter(' ');
                   size_t popped = 0;
@@ -721,20 +722,19 @@ package class Communicator
                      return;
                   }
 
+                  static DataBuffer!char hdrs = DataBuffer!char(MAX_HEADERS_SIZE+2);
+                  hdrs.clear();
+
                   // Parse headers for 100-continue, content-length and connection
-                  auto hdrs = request.data[firstLine+2..$]
-                  .newlineSplitter
-                  .map!((in char[] row)
+                  foreach(ref char[] row; request.data[firstLine+2..$].newlineSplitter)
                   {
-                     if (!request.isValid)
-                        return (char[]).init;
 
                      auto headerColon = row.indexOf(':');
 
                      if (headerColon < 0)
                      {
                         request.isValid = false;
-                        return (char[]).init;
+                        break;
                      }
 
                      // Headers keys are case insensitive, so we lowercase them
@@ -748,7 +748,7 @@ package class Communicator
                         if (k >= 0x7F)
                         {
                            request.isValid = false;
-                           return (char[]).init;
+                           break;
                         }
                         else if (k >= 'A' && k <= 'Z')
                         k |= 32;
@@ -759,14 +759,14 @@ package class Communicator
                         if (k >= 0x7F)
                         {
                            request.isValid = false;
-                           return (char[]).init;
+                           break;
                         }
                      }
 
                      if (key.length == 0)
                      {
                         request.isValid = false;
-                        return (char[]).init;
+                        break;
                      }
 
                      // 100-continue
@@ -782,13 +782,39 @@ package class Communicator
                         else request.connection = ProtoRequest.connection.Unknown;
                      }
                      else
-                     try { if (key == "content-length") request.contentLength = value.to!size_t; }
-                     catch (Exception e) { request.isValid = false; return (char[]).init; }
+                     {
+                        if (key == "content-length")
+                        {
+                           if (value.length == 0)
+                           {
+                              request.isValid = false;
+                              break;
+                           }
 
-                     return key ~ ":" ~ value;
-                  })
-                  .join("\r\n") ~ "\r\n\r\n";
+                           request.contentLength = 0;
+                           foreach (c; value)
+                           {
+                              if (c < '0' || c > '9')
+                              {
+                                 request.isValid = false;
+                                 break;
+                              }
 
+                              if (request.contentLength > (size_t.max - (c - '0')) / 10)
+                              {
+                                 request.isValid = false;
+                                 break;
+                              }
+
+                              request.contentLength = request.contentLength * 10 + (c - '0');
+                           }
+                        }
+                     }
+
+                     hdrs.append(key, [':'], value, ['\r', '\n']);
+                  };
+
+                  hdrs.append(['\r', '\n']);
 
                   request.data.length = firstLine+2 + hdrs.length;
 
@@ -802,7 +828,7 @@ package class Communicator
                      request.data[firstLine+2..firstLine+2+ra.length] = ra;
                   }
 
-                  request.data[firstLine+2+ra.length..$] = hdrs;
+                  request.data[firstLine+2+ra.length..$] = hdrs.array;
 
                   if (request.isValid == false)
                   {

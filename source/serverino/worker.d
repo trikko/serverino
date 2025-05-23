@@ -320,9 +320,6 @@ struct Worker
          char[]			requestLine;
          char[]			headers;
 
-         bool 			   hasContentLength = false;
-
-
          headers = cast(char[]) data;
          auto headersEnd = headers.indexOfSeparator;
 
@@ -367,8 +364,11 @@ struct Worker
 
                if (l.length > CONTENT_LENGTH && l[0..CONTENT_LENGTH] == "content-length:")
                {
-                  contentLength = l[CONTENT_LENGTH..$].to!size_t;
-                  hasContentLength = true;
+                  auto value = l[CONTENT_LENGTH..$];
+
+                  foreach (c; value)
+                     contentLength = contentLength * 10 + (c - '0');
+
                   break;
                }
             }

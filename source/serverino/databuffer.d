@@ -34,10 +34,29 @@ package struct DataBuffer(T)
    public:
    pragma(inline, true):
 
+   void append(E...)(scope const E new_data) @trusted
+   {
+      static foreach(e; E)
+         static if (!is(e : T[]))
+            static assert(false, "DataBuffer.append: `" ~ e.stringof ~ "` is not a `" ~ T[].stringof ~ "`");
+
+      size_t total_length = _length;
+
+      foreach(ref d; new_data)
+         total_length += d.length;
+
+      reserve(total_length);
+
+      foreach(ref d; new_data)
+      {
+         _data[_length.._length+d.length] = cast(T[])d[0..$];
+         _length += d.length;
+      }
+   }
+
    void append(scope const T[] new_data) @trusted
    {
-      debug import std.conv;
-      debug assert(new_data.length > 0, "DataBuffer.append: new_data.length must be > 0 but is " ~ new_data.length.to!string);
+      if (new_data.length == 0) return;
 
       reserve(_length + new_data.length);
       _data[_length.._length+new_data.length] = cast(T[])new_data[0..$];
@@ -56,5 +75,7 @@ package struct DataBuffer(T)
    void clear() { _length = 0; }
    auto array() { return _data[0.._length]; }
    size_t length() { return _length;}
+
+   this(size_t initialCapacity) { reserve(initialCapacity); }
 
 }
