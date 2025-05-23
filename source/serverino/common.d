@@ -601,46 +601,47 @@ version(linux)
 }
 
 pragma(inline, true)
-ptrdiff_t indexOfSeparator(const char[] s)
+ptrdiff_t indexOfSeparator(const char[] s) @nogc nothrow pure
 {
 	if (s.length < 4) return -1;
 
-	for(size_t index = 3; index < s.length; index += 4)
+	size_t index = 0;
+	while (index + 4 <= s.length)
 	{
-		if (s[index] > 13) continue;
+		auto fourth = s[index + 3];
 
-		switch(s[index])
+		if (fourth == '\n')
 		{
-			case '\n':
-
-				if (s[index-3..index] == "\r\n\r") { return index-3; }
-				else if (index + 2 < s.length && s[index + 1] == '\r' && s[index + 2] == '\n' && s[index - 1] == '\r') { return index-1; }
-				break;
-
-			case '\r':
-
-				if (s[index-2..index] == "\r\n" && index + 1 < s.length && s[index+1] == '\n') { return index-2; }
-				else if (index+3 < s.length && s[index+3] == '\n' && s[index+1..index+3] == "\n\r") { return index; }
-				break;
-
-			default:
+			// Controlla se la sequenza è "\r\n\r\n"
+			if (s[index] == '\r' && s[index + 1] == '\n' && s[index + 2] == '\r')
+				return index;
+			index++;
 		}
+		else if (fourth == '\r') index++;
+		else index += 4;
 	}
 
 	return -1;
 }
 
 pragma(inline, true)
-ptrdiff_t indexOfNewline(const char[] s)
+ptrdiff_t indexOfNewline(const char[] s) @nogc nothrow pure
 {
 	if (s.length < 2) return -1;
 
-	for(size_t index = 1; index < s.length; index += 2)
+	size_t index = 0;
+	while (index + 2 <= s.length)
 	{
-		if (s[index] > 13) continue;
+		if (s[index + 1] == '\n')
+		{
+			if (s[index] == '\r')
+				return index;
 
-		if (s[index] == '\n' && s[index-1] == '\r') return index-1;
-		else if (s[index] == '\r' && index+1 < s.length && s[index+1] == '\n') return index;
+			index += 2;
+		}
+		else if (s[index + 1] == '\r') index += 1;
+		else index += 2;
+
 	}
 
 	return -1;
