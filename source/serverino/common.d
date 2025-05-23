@@ -648,13 +648,15 @@ ptrdiff_t indexOfNewline(const char[] s) @nogc nothrow pure
 }
 
 pragma(inline, true)
-auto newlineSplitter(T)(T data)
+auto newlineSplitter(T)(T data) @nogc nothrow pure
 {
 
 	import std.traits : isSomeString;
 
 	struct NewlineSplitter(T) if (isSomeString!T)
 	{
+		@nogc nothrow pure:
+
 		private:
 		T input;
 		T current;
