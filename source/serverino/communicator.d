@@ -843,8 +843,6 @@ package class Communicator
                   else
                   {
                      // No body, we can process the request
-
-                     log("Request", request.toString);
                      requestDataReceived = false; // Request completed, we can reset the timeout
                      hasMoreDataToParse = leftover.length > 0;
 
