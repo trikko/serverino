@@ -812,7 +812,7 @@ package class Communicator
                      }
 
                      hdrs.append(key, [':'], value, ['\r', '\n']);
-                  };
+                  }
 
                   hdrs.append(['\r', '\n']);
 
