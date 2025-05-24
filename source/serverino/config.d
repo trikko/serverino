@@ -171,6 +171,9 @@ struct ServerinoConfig
       sc.enableLoggerOverride();
 
       sc.disableServerSignature();
+
+      sc.disableWorkersAutoReload();
+
       return sc;
    }
 
@@ -199,6 +202,12 @@ struct ServerinoConfig
 
    /// Sets the maximum idle time for a worker. After this duration, the worker is terminated.
    @safe ref ServerinoConfig setMaxWorkerIdling(Duration dur = 1.hours) return  { workerConfig.maxWorkerIdling = dur; return this; }
+
+   /// Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
+   @safe ref ServerinoConfig enableWorkersAutoReload(bool enable = true) return { daemonConfig.autoReload = enable; return this; }
+
+   /// Ditto
+   @safe ref ServerinoConfig disableWorkersAutoReload() return { return enableWorkersAutoReload(false); }
 
    /***
       Max time a dynamic worker can be idle. After this time, worker is terminated.
@@ -384,5 +393,6 @@ package struct DaemonConfig
    int         listenerBacklog;
    bool        withRemoteIp;
    bool        overrideLogger;
+   bool        autoReload;
    Listener[]  listeners;
 }

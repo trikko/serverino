@@ -148,6 +148,39 @@ public enum SERVERINO_MAJOR = 0;
 public enum SERVERINO_MINOR = 7;
 public enum SERVERINO_REVISION = 17;
 
+package string simpleNotSecureCompileTimeHash(string seed = "") @safe nothrow
+{
+	import std.string : representation;
+
+	// Definetely not a secure hash function
+	// Created just to give a unique ID to each build / request
+
+	char[16] h = "SimpleNotSecure!";
+	char[32] h2;
+
+	auto  s = (seed ~ "_" ~  __TIMESTAMP__).representation;
+	static immutable hex = "0123456789abcdef".representation;
+
+	ulong sc = 104_059;
+
+	foreach_reverse(idx, c; s)
+	{
+		sc += 1+(cast(ushort)c);
+		sc *= 79_193;
+		h[15-idx%16] ^= cast(char)(sc%256);
+	}
+
+	foreach(idx, c; h)
+	{
+		sc += 1+(cast(ushort)c);
+		sc *= 96_911;
+		h2[idx] = hex[(sc%256)/16];
+		h2[$-idx-1] = hex[(sc%256)%16];
+	}
+
+	return h2.dup;
+}
+
 // Struct WorkerPayload is used to pass data from the worker to the daemon
 // It is prepended to the actual response payload
 package struct WorkerPayload

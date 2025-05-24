@@ -137,12 +137,10 @@ struct Request
    /// ditto
    @safe string toString()() const
    {
-
       string output;
       output ~= format("Serverino %s.%s.%s\n\n", SERVERINO_MAJOR, SERVERINO_MINOR, SERVERINO_REVISION);
       output ~= format("Worker ID:  %s\n", worker.to!string);
       output ~= format("Request ID: %s\n", id());
-      output ~= format("Build ID:   %s\n", buildId);
 
       output ~= "\n";
       output ~= "Request:\n";
@@ -303,37 +301,6 @@ struct Request
 
    /// The sequence of endpoints called so far
    @safe @nogc @property nothrow public auto route() const { return _internal._route; }
-
-   @safe nothrow static package string simpleNotSecureCompileTimeHash(string seed = "")
-   {
-      // Definetely not a secure hash function
-      // Created just to give a unique ID to each build / request
-
-      char[16] h = "SimpleNotSecure!";
-      char[32] h2;
-
-      auto  s = (seed ~ "_" ~  __TIMESTAMP__).representation;
-      static immutable hex = "0123456789abcdef".representation;
-
-      ulong sc = 104_059;
-
-      foreach_reverse(idx, c; s)
-      {
-         sc += 1+(cast(ushort)c);
-         sc *= 79_193;
-         h[15-idx%16] ^= cast(char)(sc%256);
-      }
-
-      foreach(idx, c; h)
-      {
-         sc += 1+(cast(ushort)c);
-         sc *= 96_911;
-         h2[idx] = hex[(sc%256)/16];
-         h2[$-idx-1]= hex[(sc%256)%16];
-      }
-
-      return h2.dup;
-   }
 
    /// Every time you compile the app this value will change
    enum buildId = simpleNotSecureCompileTimeHash();

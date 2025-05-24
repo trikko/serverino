@@ -389,7 +389,10 @@ struct Daemon
 static:
 
    /// Is serverino ready to accept requests?
-   bool bootCompleted() { return ready; }
+   bool bootCompleted() @safe @nogc nothrow { return ready; }
+
+   /// Reload all workers
+   void reload() @safe @nogc nothrow { reloadRequested = true; }
 
    /// Shutdown the serverino daemon.
    void shutdown() {
@@ -398,15 +401,15 @@ static:
       if (daemonThread is null)
          return;
 
-      if (Thread.getThis() !is daemonThread)
-         daemonThread.join();
+      if (Thread.getThis() !is cast(ThreadBase)daemonThread)
+         (cast(ThreadBase)daemonThread).join();
    }
 
    /// Suspend the daemon.
-   void suspend() @nogc nothrow { suspended = true; }
+   void suspend() @safe @nogc nothrow { suspended = true; }
 
    /// Resume the daemon.
-   void resume() @nogc nothrow { suspended = false; }
+   void resume()  @safe @nogc nothrow { suspended = false; }
 
    /// Check if the daemon is running.
    bool isRunning() @nogc nothrow
@@ -415,10 +418,30 @@ static:
       else return !suspended && !exitRequested;
    }
 
-   bool isSuspended() @nogc nothrow { return suspended; }
+   bool isSuspended() @safe @nogc nothrow { return suspended; }
 
-   bool isExiting() @nogc nothrow { return exitRequested; }
+   bool isExiting() @safe @nogc nothrow { return exitRequested; }
 
+   string buildId() {
+
+      static string id;
+
+      if (id.length == 0)
+      {
+         try {
+            import std.file : getTimes;
+            SysTime ignored, creation;
+            WorkerInfo.exePath.getTimes(ignored, creation);
+            id = simpleNotSecureCompileTimeHash(creation.toISOExtString);
+         }
+         catch (Exception e) {
+            warning("Can't get the current serverino build id.");
+            id = "N/A";
+         }
+      }
+
+      return id;
+   }
 package:
 
    void wake(Modules...)(DaemonConfigPtr config, WorkerConfigPtr workerConfig)
@@ -455,7 +478,7 @@ package:
 
       workerEnvironment = environment.toAA();
       workerEnvironment["SERVERINO_DAEMON_PID"] = daemonPid;
-      workerEnvironment["SERVERINO_BUILD"] = Request.simpleNotSecureCompileTimeHash();
+      workerEnvironment["SERVERINO_BUILD"] = Daemon.buildId();
       workerEnvironment["SERVERINO_ARGS"] = argsBkp;
       workerEnvironment["SERVERINO_COMPONENT"] = "WK";
 
@@ -488,14 +511,42 @@ package:
          scope(exit) removeCanary();
       }
 
-      daemonThread = Thread.getThis();
+      // Reload the workers if the main executable is modified.
+      if (config.autoReload)
+      {
+         new Thread({
 
-      info("Daemon started. [backend=", cast(string)(Backend), ";thread=", daemonThread.isMainThread ? "main" : "secondary", "]");
+            import std.file : getTimes;
+
+            SysTime ignored, creation;
+            WorkerInfo.exePath.getTimes(ignored, creation);
+
+            while(!exitRequested)
+            {
+               Thread.sleep(1.seconds);
+
+               SysTime _, check;
+               WorkerInfo.exePath.getTimes(_, check);
+
+               if (creation != check)
+               {
+                  creation = check;
+                  Daemon.reload();
+               }
+            }
+
+         }).start();
+      }
+
+      cast(ThreadBase)daemonThread = Thread.getThis();
+      bool isMainThread = (cast(ThreadBase)daemonThread).isMainThread;
+
+      info("Daemon started. [backend=", cast(string)(Backend), "; thread=", isMainThread ? "main" : "secondary", "]");
       now = CoarseTime.currTime;
 
       version(Posix)
       {
-         if (daemonThread.isMainThread)
+         if (isMainThread)
          {
             import core.sys.posix.signal;
             sigaction_t act = { sa_handler: &serverino_exit_handler };
@@ -705,13 +756,13 @@ package:
                   Daemon.reloadRequested = false;
                   foreach(ref worker; WorkerInfo.instances)
                   {
-                     if (worker.status != WorkerInfo.State.PROCESSING)
+                     if (worker.status == WorkerInfo.State.PROCESSING) worker.reloadRequested = true;
+                     else if (worker.status == WorkerInfo.State.IDLING)
                      {
                         log("Killing worker " ~ worker.pi.id.to!string  ~ ". [REASON: reloading]");
                         worker.pi.kill();
                         worker.setStatus(WorkerInfo.State.STOPPED);
                      }
-                     else worker.reloadRequested = true;
                   }
 
                   writeCanary();
@@ -1015,6 +1066,8 @@ package:
       stdout.flush();
       stderr.flush();
 
+      import core.thread : thread_joinAll;
+      thread_joinAll();
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
@@ -1077,16 +1130,21 @@ package:
       }
    }
 
-private __gshared:
+   private __gshared
+   {
+      string[string] workerEnvironment;
+   }
 
-   string[string] workerEnvironment;
+   private
+   {
+      static shared bool exitRequested   = false;
+      static shared bool reloadRequested = false;
+      static shared bool ready           = false;
+      static shared bool suspended       = false;
 
-   bool exitRequested = false;
-   bool reloadRequested = false;
-   bool ready         = false;
-   bool suspended     = false;
+      static shared ThreadBase daemonThread = null;
+   }
 
-   ThreadBase daemonThread = null;
 }
 
 
