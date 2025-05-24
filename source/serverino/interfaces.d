@@ -302,9 +302,6 @@ struct Request
    /// The sequence of endpoints called so far
    @safe @nogc @property nothrow public auto route() const { return _internal._route; }
 
-   /// Every time you compile the app this value will change
-   enum buildId = simpleNotSecureCompileTimeHash();
-
 	/// HTTP method
    @safe @property @nogc nothrow public Method method() const
 	{
