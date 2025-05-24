@@ -115,7 +115,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
-							<td>Enable/Disable std.logger override
+							<td>Enables or disables the override of std.logger.
 </td>
 						</tr>
 						<tr>
@@ -126,6 +126,26 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td></td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.disableServerSignature.html" class="public">
+									<code>disableServerSignature</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Enable/Disable serverino signature
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.disableWorkersAutoReload.html" class="public">
+									<code>disableWorkersAutoReload</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
+</td>
 						</tr>
 						<tr>
 							<td>
@@ -144,7 +164,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(enable)</span>
 							</td>
-							<td>Enable/Disable std.logger override
+							<td>Enables or disables the override of std.logger.
 </td>
 						</tr>
 						<tr>
@@ -159,12 +179,32 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableServerSignature.html" class="public">
+									<code>enableServerSignature</code>
+								</a>
+								<span class="tableEntryAnnotation">(enable)</span>
+							</td>
+							<td>Enable/Disable serverino signature
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableWorkersAutoReload.html" class="public">
+									<code>enableWorkersAutoReload</code>
+								</a>
+								<span class="tableEntryAnnotation">(enable)</span>
+							</td>
+							<td>Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/config/ServerinoConfig.setHttpTimeout.html" class="public">
 									<code>setHttpTimeout</code>
 								</a>
 								<span class="tableEntryAnnotation">(dur)</span>
 							</td>
-							<td>How long the socket will wait for a request after the connection?
+							<td>Sets the maximum duration the socket will wait for a request after the connection.
 </td>
 						</tr>
 						<tr>
@@ -174,7 +214,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(val)</span>
 							</td>
-							<td>Max number of pending connections
+							<td>Sets the maximum number of pending connections in the listener's backlog.
 </td>
 						</tr>
 						<tr>
@@ -184,7 +224,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(level)</span>
 							</td>
-							<td>Min log level to display. Default == LogLevel.all
+							<td>Sets the minimum log level to display. The default is LogLevel.all.
 </td>
 						</tr>
 						<tr>
@@ -205,7 +245,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(bytes)</span>
 							</td>
-							<td>Max size of a request. If a request is bigger than this value, error 413 is returned.
+							<td>Sets the maximum allowable size for a request. Requests exceeding this size will return a 413 error.
 </td>
 						</tr>
 						<tr>
@@ -215,7 +255,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(dur)</span>
 							</td>
-							<td>Max time a request can take. After this time, worker is terminated.
+							<td>Sets the maximum duration a request can take. After this time, the worker handling the request is terminated.
 </td>
 						</tr>
 						<tr>
@@ -225,7 +265,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(dur)</span>
 							</td>
-							<td>Max time a worker can be idle. After this time, worker is terminated.
+							<td>Sets the maximum idle time for a worker. After this duration, the worker is terminated.
 </td>
 						</tr>
 						<tr>
@@ -235,7 +275,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(dur)</span>
 							</td>
-							<td>Max time a worker can live. After this time, worker is terminated.
+							<td>Sets the maximum lifetime for a worker. After this duration, the worker is terminated.
 </td>
 						</tr>
 						<tr>
@@ -245,7 +285,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(val)</span>
 							</td>
-							<td>Max number of workers
+							<td>Sets the maximum number of worker processes.
 </td>
 						</tr>
 						<tr>
@@ -255,7 +295,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								</a>
 								<span class="tableEntryAnnotation">(val)</span>
 							</td>
-							<td>Min number of workers
+							<td>Sets the minimum number of worker processes.
 </td>
 						</tr>
 						<tr>
@@ -263,9 +303,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<a href="../../serverino/config/ServerinoConfig.setReturnCode.html" class="public">
 									<code>setReturnCode</code>
 								</a>
-								<span class="tableEntryAnnotation">(retCode)</span>
+								<span class="tableEntryAnnotation">(retCode, forceExit)</span>
 							</td>
-							<td>Every value != 0 is used to terminate server immediatly.
+							<td>Any non-zero value will cause the server to terminate immediately. If forceExit is true, the server will terminate even if retCode is 0.
 </td>
 						</tr>
 						<tr>

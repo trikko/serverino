@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function ServerinoConfig.setMaxWorkers</title>
+		<title>Function Output.setMaxRequestTime</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -28,12 +28,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 				<ul class="tree-view">
 					<li>
-						<div class="module selected">
+						<div class="module ">
 							<a href="../../serverino/config.html">config</a>
 						</div>
 					</li>
 					<li>
-						<div class="module ">
+						<div class="module selected">
 							<a href="../../serverino/interfaces.html">interfaces</a>
 						</div>
 					</li>
@@ -48,17 +48,17 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function ServerinoConfig.setMaxWorkers</h1><p>Sets the maximum number of worker processes.
+				<h1>Function Output.setMaxRequestTime</h1><p>Override ServerinoConfig.setMaxRequestTime(Duration dur) for this request
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">setMaxWorkers</span>
+				<span class="typ">void</span> <span class="pln">setMaxRequestTime</span>
 				<span class="pun">(</span>
 				<br/>
-				&nbsp;&nbsp;<span class="typ">ulong</span> <span class="pln">val</span> <span class="pun">=</span> <span class="lit">5LU</span>
+				&nbsp;&nbsp;<span class="pln">core<wbr/></span><span class="pun">.</span><span class="pln">time<wbr/></span><span class="pun">.</span><span class="typ">Duration</span> <span class="pln">max</span>
 				<br/>
-				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>

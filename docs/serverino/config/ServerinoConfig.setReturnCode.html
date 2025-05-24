@@ -48,7 +48,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function ServerinoConfig.setReturnCode</h1><p>Every value != 0 is used to terminate server immediatly.
+				<h1>Function ServerinoConfig.setReturnCode</h1><p>Any non-zero value will cause the server to terminate immediately. If forceExit is true, the server will terminate even if retCode is 0.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -56,7 +56,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">setReturnCode</span>
 				<span class="pun">(</span>
 				<br/>
-				&nbsp;&nbsp;<span class="typ">int</span> <span class="pln">retCode</span> <span class="pun">=</span> <span class="lit">0</span>
+				&nbsp;&nbsp;<span class="typ">int</span> <span class="pln">retCode</span> <span class="pun">=</span> <span class="lit">0</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">forceExit</span> <span class="pun">=</span> <span class="kwd">false</span>
 				<br/>
 				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
 						</div>

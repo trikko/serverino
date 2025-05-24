@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Output.opAssign</title>
+		<title>Output.opAssign - multiple declarations</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,7 +48,21 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Output.opAssign</h1><p>Mute/unmute output. If false, serverino will not send any data to user.
+				<h1>Output.opAssign - multiple declarations</h1>
+				<nav class="page-nav">
+					<ul>
+						<li>
+							<a href="#0">
+								Function <code>Output.opAssign</code>
+							</a>
+						</li>
+						<li>
+							<a href="#1">
+								Function <code>Output.opAssign</code>
+							</a>
+						</li>
+					</ul>
+				</nav><h2 id="0">Function Output.opAssign</h2><p>Mute/unmute output. If false, serverino will not send any data to user.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -64,6 +78,19 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				</div>
 				<section><pre class="code"><code class="lang-d"><span class="pln">output </span><span class="pun">= </span><span class="kwd">false</span><span class="pun">; </span><span class="com">// Mute the output.
 </span><span class="pln">output </span><span class="pun">~= </span><span class="str">"Hello world"</span><span class="pun">; </span><span class="com">// Serverino will not send this to user.</span></code></pre>
+</section>
+
+				<h2 id="1">Function Output.opAssign</h2><p>Clear the output buffer.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				{null} <span class="pln">opAssign</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><span class="pln">output </span><span class="pun">~= </span><span class="str">"&lt;html&gt;&lt;body&gt;Hello world&lt;/body&gt;&lt;/html&gt;"</span><span class="pun">; </span><span class="com">// Output is a simple webpage
+</span><span class="pln">output </span><span class="pun">= </span><span class="kwd">null</span><span class="pun">; </span><span class="com">// Now output is null</span></code></pre>
 </section>
 
 				

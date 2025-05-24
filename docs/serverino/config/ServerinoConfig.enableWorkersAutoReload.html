@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function ServerinoConfig.setMaxWorkers</title>
+		<title>Function ServerinoConfig.enableWorkersAutoReload</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -48,15 +48,15 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function ServerinoConfig.setMaxWorkers</h1><p>Sets the maximum number of worker processes.
+				<h1>Function ServerinoConfig.enableWorkersAutoReload</h1><p>Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">setMaxWorkers</span>
+				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">enableWorkersAutoReload</span>
 				<span class="pun">(</span>
 				<br/>
-				&nbsp;&nbsp;<span class="typ">ulong</span> <span class="pln">val</span> <span class="pun">=</span> <span class="lit">5LU</span>
+				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">enable</span> <span class="pun">=</span> <span class="kwd">true</span>
 				<br/>
 				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
 						</div>
