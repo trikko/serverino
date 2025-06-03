@@ -1073,8 +1073,8 @@ package:
       stdout.flush();
       stderr.flush();
 
-      import core.thread : thread_joinAll;
-      thread_joinAll();
+      import core.stdc.stdlib : exit;
+      exit(0);
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
