@@ -271,6 +271,14 @@ package class WorkerInfo
                   // Send socket to websocket
                   auto toSend = communicator.clientSkt.release();
 
+                  // We must remove the socket from the epoll/kqueue before sending it to the websocket.
+                  static if (serverino.common.Backend == BackendType.EPOLL) Daemon.epollRemoveSocket(toSend);
+                  else static if (serverino.common.Backend == BackendType.KQUEUE)
+                  {
+                     Daemon.addKqueueChange(toSend, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+                     Daemon.addKqueueChange(toSend, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+                  }
+
                   version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
                   else version(Windows)
                   {
@@ -301,8 +309,7 @@ package class WorkerInfo
                      }
                   }
 
-                  communicator.unsetClientSocket();
-                  communicator.unsetWorker();
+                  communicator.reset();
                   return;
                }
             }
