@@ -1073,8 +1073,11 @@ package:
       stdout.flush();
       stderr.flush();
 
-      import core.stdc.stdlib : exit;
-      exit(0);
+      if (isMainThread)
+      {
+         import core.stdc.stdlib : exit;
+         exit(0);
+      }
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
