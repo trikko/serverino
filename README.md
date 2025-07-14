@@ -140,7 +140,38 @@ This allows you to recompile your workers and perform hot-reloading of your appl
 
 ## Shielding the whole thing
 > [!CAUTION]
->  I recommend securing *serverino* behind a full web server. Below, I provide two examples of how to run *serverino* with *nginx* and *apache*.
+>  I recommend securing *serverino* behind a full web server. Below, I provide three examples of how to run *serverino* with *caddy*, *nginx* and *apache*.
+
+### Using caddy
+Caddy is probably the fastest and easiest solution. It automatically obtains and renews SSL certificates for your domains. Caddy configures HTTPS certificates automatically for you.
+
+Here's a minimal working `Caddyfile` (with https!):
+```
+yourhost.example.com {   
+   reverse_proxy localhost:8080 
+}
+```
+
+Probably you want to forward also some headers (in this example we create a local proxy on port 8081):
+```
+:8081 {   
+   reverse_proxy localhost:8080 {
+      header_up Host {host}
+      header_up X-Real-IP {remote_host}
+   }
+}
+```
+
+You can easily balance the load between multiple serverino instances, Caddy automatically handles round-robin load balancing when you specify multiple backends:
+```
+yourhost.example.com {   
+   reverse_proxy localhost:8080 backend1.example.com:8080 backend2.example.com:8080 {
+      header_up Host {host}
+      header_up X-Real-IP {remote_host}
+   }
+}
+```
+
 
 ### Using nginx
 It's pretty easy. Just add these lines inside your nginx configuration:
