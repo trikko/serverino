@@ -143,7 +143,7 @@ This allows you to recompile your workers and perform hot-reloading of your appl
 >  I recommend securing *serverino* behind a full web server. Below, I provide three examples of how to run *serverino* with *caddy*, *nginx* and *apache*.
 
 ### Using caddy
-Caddy is probably the fastest and easiest solution. It automatically obtains and renews SSL certificates for your domains. Caddy configures HTTPS certificates automatically for you.
+Caddy is probably the fastest and easiest solution. It automatically obtains and renews SSL certificates for your domains.
 
 Here's a minimal working `Caddyfile` (with https!):
 ```
