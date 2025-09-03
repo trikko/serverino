@@ -72,7 +72,7 @@ package struct DataBuffer(T)
       else if (r < 16*1024) newCap = r + r / 2;
       else newCap = ((r / (16*1024)) + 1) * (16*1024);
 
-      _data.length = r;
+      _data.length = newCap;
    }
 
    void length(size_t l) { reserve(l); _length = l; }
