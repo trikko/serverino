@@ -439,7 +439,11 @@ package class Communicator
                         Communicator.pushToWaitingList(this);
 
                   if (!isKeepAlive)
+                  {
+                     // Proactively half-close the write side for connection: close
+                     clientSkt.shutdown(SocketShutdown.SEND);
                      reset();
+                  }
                }
             }
 
@@ -548,7 +552,11 @@ package class Communicator
                   Communicator.pushToWaitingList(this);
 
                if (!isKeepAlive)
+               {
+                  // Proactively half-close the write side for connection: close
+                  clientSkt.shutdown(SocketShutdown.SEND);
                   reset();
+               }
             }
          }
          else
