@@ -1251,7 +1251,20 @@ struct Output
          }
 
          version(SERVERINO_TESTS) { }
-         else _headersBuffer.append("date: " ~ Output.toHTTPDate(Clock.currTime!(ClockType.coarse)) ~ "\r\n");
+         else
+         {
+            import std.datetime : SysTime, seconds, Clock;
+            static SysTime _lastDate;
+            static string _cachedDate;
+
+            auto _now = Clock.currTime!(ClockType.coarse);
+            if (_lastDate == SysTime.init || _now - _lastDate >= 1.seconds)
+            {
+               _cachedDate = Output.toHTTPDate(_now);
+               _lastDate = _now;
+            }
+            _headersBuffer.append("date: " ~ _cachedDate ~ "\r\n");
+         }
 
          // These headers are ignored if we are sending a websocket response
          if (!_websocket)
