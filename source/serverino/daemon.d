@@ -594,9 +594,23 @@ package:
 
          version(Posix) listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
+         // Extra listener tuning on Linux
+         version(linux)
+         {
+            import core.sys.posix.sys.socket : SO_REUSEPORT;
+            listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
+         }
+
          try
          {
             listener.socket.bind(listener.address);
+
+            // Reduce handshake and wakeups on Linux listeners
+            version(linux)
+            {
+               listener.socket.setOption(SocketOptionLevel.TCP, cast(SocketOption)23, config.listenerBacklog);
+               listener.socket.setOption(SocketOptionLevel.TCP, cast(SocketOption)9, true);
+            }
             listener.socket.listen(config.listenerBacklog);
             info("Listening on http://%s/".format(listener.socket.localAddress.toString));
          }
