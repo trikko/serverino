@@ -648,20 +648,22 @@ package:
          // Extra listener tuning for multi-process daemons (POSIX)
          version(Posix)
          {
-            import core.sys.posix.sys.socket : SO_REUSEPORT;
-            // Always enable SO_REUSEPORT with multi-process daemons for load balancing
-            if (config.daemonInstances > 1)
-               listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
-
             // FreeBSD: prefer SO_REUSEPORT_LB if available for better load balancing
             version(FreeBSD)
             {
-               static if (is(typeof({ import core.sys.posix.sys.socket : SO_REUSEPORT_LB; })))
-               {
-                  import core.sys.posix.sys.socket : SO_REUSEPORT_LB;
-                  if (config.daemonInstances > 1)
-                     listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT_LB, true);
-               }
+               import core.sys.freebsd.sys.socket : SO_REUSEPORT_LB;
+
+               if (config.daemonInstances > 1)
+                  listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT_LB, true);
+            }
+            else
+            {
+               import core.sys.posix.sys.socket : SO_REUSEPORT;
+
+               // Always enable SO_REUSEPORT with multi-process daemons for load balancing
+               if (config.daemonInstances > 1)
+                  listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
+
             }
          }
 
