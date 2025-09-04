@@ -32,6 +32,8 @@ import std.stdio : File;
 import std.datetime : Duration, seconds, hours, msecs;
 import std.traits : ReturnType;
 
+import serverino.common : Backend, BackendType;
+
 /++ Used as optional return type for functions with `@endpoint`` UDA attached.
  It is used to override the default behavior of serverino: if an endpoint returns Fallthrough.Yes, the next endpoint is called even if the current one has written to the output.
  ---
@@ -145,6 +147,7 @@ struct ServerinoConfig
 
       sc.setLogLevel();
       sc.setReturnCode();
+      sc.setDaemonThreads();
       sc.setMaxWorkers();
       sc.setMinWorkers();
       sc.setMaxWorkerLifetime();
@@ -188,6 +191,9 @@ struct ServerinoConfig
       return this;
    }
 
+   /// Sets the number of daemon threads (accept/event loops). Default is 1.
+   @safe ref ServerinoConfig setDaemonThreads(size_t val = 1) return { daemonConfig.daemonThreads = val; return this;}
+
    /// Sets the maximum number of worker processes.
    @safe ref ServerinoConfig setMaxWorkers(size_t val = 5) return { daemonConfig.maxWorkers = val; return this; }
 
@@ -224,14 +230,10 @@ struct ServerinoConfig
    /// Sets the maximum allowable size for a request. Requests exceeding this size will return a 413 error.
    @safe ref ServerinoConfig setMaxRequestSize(size_t bytes = 1024*1024*10) return     { daemonConfig.maxRequestSize = bytes;  return this;}
 
-   version(Windows) { }
-   else
-   {
    /// For example: "www-data"
    @safe ref ServerinoConfig setWorkerUser(string s = string.init) return { workerConfig.user = s; return this; }
    /// For example: "www-data"
    @safe ref ServerinoConfig setWorkerGroup(string s = string.init) return { workerConfig.group = s; return this;}
-   }
 
    /// Sets the maximum duration the socket will wait for a request after the connection.
    @safe ref ServerinoConfig setHttpTimeout(Duration dur = 10.seconds) return { daemonConfig.maxHttpWaiting = dur; workerConfig.maxHttpWaiting = dur; return this;}
@@ -305,6 +307,20 @@ struct ServerinoConfig
 
       if (daemonConfig.maxWorkers == 0 || daemonConfig.maxWorkers > 1024)
          throw new Exception("Configuration error. Must be 1 <= maxWorkers <= 1024");
+
+      if (daemonConfig.daemonThreads == 0)
+         throw new Exception("Configuration error. Must be 1 <= daemonThreads");
+
+      static if (Backend != BackendType.EPOLL)
+      {
+         if (daemonConfig.daemonThreads > 1)
+            throw new Exception("Configuration error. daemonThreads > 1 is available only on Linux with epoll backend");
+      }
+
+      version(Windows) {
+         if (workerConfig.user.length > 0 || workerConfig.group.length > 0)
+            throw new Exception("Configuration error. user/group is not available on Windows");
+      }
 
       if (failedListeners.length > 0)
          throw new Exception("Configuration error. Cannot listen on " ~ failedListeners.join(", "));
@@ -388,6 +404,7 @@ package struct DaemonConfig
    size_t      maxRequestSize;
    Duration    maxHttpWaiting;
    Duration    keepAliveTimeout;
+   size_t      daemonThreads;
    size_t      minWorkers;
    size_t      maxWorkers;
    int         listenerBacklog;

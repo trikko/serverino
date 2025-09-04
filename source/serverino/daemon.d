@@ -404,12 +404,11 @@ static:
    /// Shutdown the serverino daemon.
    void shutdown() {
       exitRequested = true;
-
-      if (daemonThread is null)
-         return;
-
-      if (Thread.getThis() !is cast(ThreadBase)daemonThread)
-         (cast(ThreadBase)daemonThread).join();
+      import core.atomic : atomicLoad;
+      import core.thread : Thread;
+      import std.datetime : msecs;
+      // Wait until all daemon event loops finished (prevents tear-down races)
+      while(atomicLoad(activeDaemons) > 0) Thread.sleep(10.msecs);
    }
 
    /// Suspend the daemon.
@@ -419,11 +418,7 @@ static:
    void resume()  @safe @nogc nothrow { suspended = false; }
 
    /// Check if the daemon is running.
-   bool isRunning() @nogc nothrow
-   {
-      if (daemonThread is null) return true;
-      else return !suspended && !exitRequested;
-   }
+   bool isRunning() @nogc nothrow { return !suspended && !exitRequested; }
 
    bool isSuspended() @safe @nogc nothrow { return suspended; }
 
@@ -453,6 +448,7 @@ package:
 
    void wake(Modules...)(DaemonConfigPtr config, WorkerConfigPtr workerConfig)
    {
+      import core.atomic : atomicFetchAdd, atomicFetchSub;
       import serverino.interfaces : Request;
       import std.process : environment, thisProcessID;
       import std.file : tempDir, exists, remove;
@@ -465,6 +461,8 @@ package:
       import std.string : join, representation;
 
       immutable daemonPid = thisProcessID.to!string;
+
+      atomicFetchAdd(activeDaemons, 1);
       immutable argsBkp = Base64.encode(Runtime.args.join("\0").representation);
 
       environment["SERVERINO_COMPONENT"] = "D";
@@ -483,22 +481,29 @@ package:
          );
       }
 
-      workerEnvironment = environment.toAA();
-      workerEnvironment["SERVERINO_DAEMON_PID"] = daemonPid;
-      workerEnvironment["SERVERINO_BUILD"] = Daemon.buildId();
-      workerEnvironment["SERVERINO_ARGS"] = argsBkp;
-      workerEnvironment["SERVERINO_COMPONENT"] = "WK";
+      // Initialize worker environment once (thread-safe)
+      {
+         import core.atomic : cas;
+         if (cas(&workerEnvInit, 0, 1))
+         {
+            workerEnvironment = environment.toAA();
+            workerEnvironment["SERVERINO_DAEMON_PID"] = daemonPid;
+            workerEnvironment["SERVERINO_BUILD"] = Daemon.buildId();
+            workerEnvironment["SERVERINO_ARGS"] = argsBkp;
+            workerEnvironment["SERVERINO_COMPONENT"] = "WK";
 
-      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_REQUEST_TIME"] = workerConfig.maxRequestTime.total!"msecs".to!string;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_HTTP_WAITING"] = workerConfig.maxHttpWaiting.total!"msecs".to!string;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_LIFETIME"] = workerConfig.maxWorkerLifetime.total!"msecs".to!string;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_IDLING"] = workerConfig.maxWorkerIdling.total!"msecs".to!string;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_DYNAMIC_WORKER_IDLING"] = workerConfig.maxDynamicWorkerIdling.total!"msecs".to!string;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_KEEP_ALIVE"] = workerConfig.keepAlive?"1":"0";
-      workerEnvironment["SERVERINO_WORKER_CONFIG_USER"] = workerConfig.user;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_GROUP"] = workerConfig.group;
-      workerEnvironment["SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE"] = workerConfig.serverSignature?"1":"0";
-      workerEnvironment["SERVERINO_WORKER_CONFIG_LOG_LEVEL"] = config.logLevel.to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_REQUEST_TIME"] = workerConfig.maxRequestTime.total!"msecs".to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_HTTP_WAITING"] = workerConfig.maxHttpWaiting.total!"msecs".to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_LIFETIME"] = workerConfig.maxWorkerLifetime.total!"msecs".to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_WORKER_IDLING"] = workerConfig.maxWorkerIdling.total!"msecs".to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_MAX_DYNAMIC_WORKER_IDLING"] = workerConfig.maxDynamicWorkerIdling.total!"msecs".to!string;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_KEEP_ALIVE"] = workerConfig.keepAlive?"1":"0";
+            workerEnvironment["SERVERINO_WORKER_CONFIG_USER"] = workerConfig.user;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_GROUP"] = workerConfig.group;
+            workerEnvironment["SERVERINO_WORKER_CONFIG_ENABLE_SERVER_SIGNATURE"] = workerConfig.serverSignature?"1":"0";
+            workerEnvironment["SERVERINO_WORKER_CONFIG_LOG_LEVEL"] = config.logLevel.to!string;
+         }
+      }
 
       version(Posix) {
          // On Posix we don't need to create a canary file.
@@ -518,8 +523,10 @@ package:
          scope(exit) removeCanary();
       }
 
+      bool isMainThread = (cast(ThreadBase)Thread.getThis()).isMainThread;
+
       // Reload the workers if the main executable is modified.
-      if (config.autoReload)
+      if (isMainThread && config.autoReload)
       {
          new Thread({
 
@@ -545,8 +552,20 @@ package:
          }).start();
       }
 
-      cast(ThreadBase)daemonThread = Thread.getThis();
-      bool isMainThread = (cast(ThreadBase)daemonThread).isMainThread;
+      // Multi-threaded daemon: spawn additional threads on first entry
+      if (isMainThread && config.daemonThreads > 1 && !multiThreadsStarted)
+      {
+         multiThreadsStarted = true;
+
+         foreach(idx; 1 .. config.daemonThreads)
+         {
+            auto th = new Thread({ Daemon.wake!Modules(config, workerConfig); });
+            th.name = "serverino-daemon-" ~ idx.to!string;
+            th.isDaemon = false; // Keep process alive
+            th.start();
+         }
+      }
+      // isMainThread already computed above
 
       info("Daemon started. [backend=", cast(string)(Backend), "; thread=", isMainThread ? "main" : "secondary", "]");
       now = CoarseTime.currTime;
@@ -565,7 +584,7 @@ package:
          }
       }
 
-      tryInit!Modules();
+      if (isMainThread) tryInit!Modules();
 
       static if (serverino.common.Backend == BackendType.EPOLL) epoll = epoll_create1(0);
       else static if (serverino.common.Backend == BackendType.KQUEUE)
@@ -581,9 +600,12 @@ package:
          changes = 0;
       }
 
-      // Starting all the listeners.
-      foreach(ref listener; config.listeners)
+      // Starting all the listeners (thread-local copies).
+      Listener[] threadListeners;
+      threadListeners.reserve(config.listeners.length);
+      foreach(orig; config.listeners)
       {
+         auto listener = new Listener(orig.index, orig.address);
          listener.config = config;
 
          listener.socket = new TcpSocket(listener.address.addressFamily);
@@ -595,10 +617,12 @@ package:
          version(Posix) listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
          // Extra listener tuning on Linux
-         version(linux)
+         static if(Backend == BackendType.EPOLL)
          {
             import core.sys.posix.sys.socket : SO_REUSEPORT;
-            listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
+
+            if (config.daemonThreads > 1)
+               listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
          }
 
          try
@@ -611,6 +635,7 @@ package:
                listener.socket.setOption(SocketOptionLevel.TCP, cast(SocketOption)23, config.listenerBacklog);
                listener.socket.setOption(SocketOptionLevel.TCP, cast(SocketOption)9, true);
             }
+
             listener.socket.listen(config.listenerBacklog);
             info("Listening on http://%s/".format(listener.socket.localAddress.toString));
          }
@@ -652,7 +677,7 @@ package:
 
             critical(msg);
 
-            foreach(ref l; config.listeners)
+            foreach(ref l; threadListeners)
             {
                if (l.socket !is null)
                {
@@ -667,11 +692,12 @@ package:
             epollAddSocket(listener.socket.handle, EPOLLIN, cast(void*)listener);
          else static if (serverino.common.Backend == BackendType.KQUEUE)
             Daemon.addKqueueChange(listener.socket.handle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*)listener);
+
+         threadListeners ~= listener;
       }
 
       ThreadBase mainThread;
-
-      // Search for the main thread.
+      // Search for the main thread (may not be used in background mode)
       foreach(ref t; Thread.getAll())
       {
          if (t.isMainThread)
@@ -680,8 +706,6 @@ package:
             break;
          }
       }
-
-      assert(mainThread !is null, "Main thread not found");
       startAgain:
 
       // Create all workers and start the ones that are required.
@@ -699,7 +723,7 @@ package:
       static if (serverino.common.Backend == BackendType.SELECT)
       {
          // We use a socketset to check for updates
-         SocketSet ssRead = new SocketSet(config.listeners.length + WorkerInfo.instances.length);
+         SocketSet ssRead = new SocketSet(threadListeners.length + WorkerInfo.instances.length);
          SocketSet ssWrite = new SocketSet(128);
       }
 
@@ -715,7 +739,7 @@ package:
             ssWrite.reset();
 
             // Fill socketSet with listeners, waiting for new connections.
-            foreach(ref listener; config.listeners)
+            foreach(ref listener; threadListeners)
                ssRead.add(listener.socket);
 
             // Fill socketSet with workers, waiting updates.
@@ -785,8 +809,7 @@ package:
                         worker.setStatus(WorkerInfo.State.STOPPED);
                      }
                   }
-
-                  writeCanary();
+                  if (isMainThread) writeCanary();
                }
 
                // Kill workers that are in an invalid state (unlikely to happen but better to check)
@@ -836,12 +859,13 @@ package:
             if (updates < 0 && errno == EINTR) continue;
 
             // If not, exit.
-            removeCanary();
+            if (isMainThread) removeCanary();
             break;
          }
          else if (updates == 0)
          {
-            if (!mainThread.isRunning)
+            // In background mode we don't depend on main thread liveness
+            if (isMainThread && mainThread !is null && !mainThread.isRunning)
                exitRequested = true;
 
             continue;
@@ -899,7 +923,7 @@ package:
             }
 
             // Check for new incoming connections.
-            foreach(ref listener; config.listeners)
+            foreach(ref listener; threadListeners)
             {
                if (updates == 0)
                   break;
@@ -1054,7 +1078,7 @@ package:
       // ----------------------------------
 
       // Close all the listeners.
-      foreach(ref listener; config.listeners)
+      foreach(ref listener; threadListeners)
       {
          listener.socket.shutdown(SocketShutdown.BOTH);
          listener.socket.close();
@@ -1075,10 +1099,10 @@ package:
       }
 
       // Call the onDaemonStop functions.
-      tryUninit!Modules();
+      if (isMainThread) tryUninit!Modules();
 
       // Delete the canary file.
-      removeCanary();
+      if (isMainThread) removeCanary();
 
       info("Daemon shutdown completed. Goodbye!");
 
@@ -1087,11 +1111,9 @@ package:
       stdout.flush();
       stderr.flush();
 
-      if (isMainThread)
-      {
-         import core.stdc.stdlib : exit;
-         exit(0);
-      }
+      // Avoid exiting the process from here in multi-thread/background mode.
+
+      atomicFetchSub(activeDaemons, 1);
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
@@ -1157,6 +1179,7 @@ package:
    private __gshared
    {
       string[string] workerEnvironment;
+      int workerEnvInit = 0;
    }
 
    private
@@ -1166,7 +1189,8 @@ package:
       static shared bool ready           = false;
       static shared bool suspended       = false;
 
-      static shared ThreadBase daemonThread = null;
+      static shared bool multiThreadsStarted = false;
+      static shared int  activeDaemons = 0;
    }
 
 }
