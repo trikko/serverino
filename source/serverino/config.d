@@ -192,7 +192,7 @@ struct ServerinoConfig
    }
 
    /// Sets the number of daemon instances (accept/event loops). Default is 1.
-   @safe ref ServerinoConfig setDaemonInstances(size_t val = 1) return { daemonConfig.daemonThreads = val; return this;}
+   @safe ref ServerinoConfig setDaemonInstances(size_t val = 1) return { daemonConfig.daemonInstances = val; return this;}
 
    /// Sets the maximum number of worker processes.
    @safe ref ServerinoConfig setMaxWorkers(size_t val = 5) return { daemonConfig.maxWorkers = val; return this; }
@@ -308,13 +308,13 @@ struct ServerinoConfig
       if (daemonConfig.maxWorkers == 0 || daemonConfig.maxWorkers > 1024)
          throw new Exception("Configuration error. Must be 1 <= maxWorkers <= 1024");
 
-      if (daemonConfig.daemonThreads == 0)
-         throw new Exception("Configuration error. Must be 1 <= daemonThreads");
+      if (daemonConfig.daemonInstances == 0)
+         throw new Exception("Configuration error. Must be 1 <= daemonInstances");
 
-      static if (Backend != BackendType.EPOLL)
+      version(Windows)
       {
-         if (daemonConfig.daemonThreads > 1)
-            throw new Exception("Configuration error. daemonThreads > 1 is available only on Linux with epoll backend");
+         if (daemonConfig.daemonInstances > 1)
+            throw new Exception("Configuration error. daemonInstances > 1 is not available on Windows");
       }
 
       version(Windows) {
@@ -404,7 +404,7 @@ package struct DaemonConfig
    size_t      maxRequestSize;
    Duration    maxHttpWaiting;
    Duration    keepAliveTimeout;
-   size_t      daemonThreads;
+   size_t      daemonInstances;
    size_t      minWorkers;
    size_t      maxWorkers;
    int         listenerBacklog;

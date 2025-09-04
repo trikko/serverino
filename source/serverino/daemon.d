@@ -572,11 +572,11 @@ package:
       // Only the main process (not child daemons) should spawn additional processes
       const bool isChildDaemon = environment.get("SERVERINO_DAEMON_CHILD") == "1";
 
-      if (isMainThread && config.daemonThreads > 1 && !multiProcessStarted && !isChildDaemon)
+      if (isMainThread && config.daemonInstances > 1 && !multiProcessStarted && !isChildDaemon)
       {
          multiProcessStarted = true;
 
-         foreach(idx; 1 .. config.daemonThreads)
+         foreach(idx; 1 .. config.daemonInstances)
          {
             import std.process : spawnProcess, Config;
             import std.range : repeat;
@@ -645,13 +645,24 @@ package:
 
          version(Posix) listener.socket.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
-         // Extra listener tuning on Linux
-         static if(Backend == BackendType.EPOLL)
+         // Extra listener tuning for multi-process daemons (POSIX)
+         version(Posix)
          {
             import core.sys.posix.sys.socket : SO_REUSEPORT;
             // Always enable SO_REUSEPORT with multi-process daemons for load balancing
-            if (config.daemonThreads > 1)
+            if (config.daemonInstances > 1)
                listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
+
+            // FreeBSD: prefer SO_REUSEPORT_LB if available for better load balancing
+            version(FreeBSD)
+            {
+               static if (is(typeof({ import core.sys.posix.sys.socket : SO_REUSEPORT_LB; })))
+               {
+                  import core.sys.posix.sys.socket : SO_REUSEPORT_LB;
+                  if (config.daemonInstances > 1)
+                     listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT_LB, true);
+               }
+            }
          }
 
          try
