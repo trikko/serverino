@@ -147,7 +147,7 @@ struct ServerinoConfig
 
       sc.setLogLevel();
       sc.setReturnCode();
-      sc.setDaemonThreads();
+      sc.setDaemonInstances();
       sc.setMaxWorkers();
       sc.setMinWorkers();
       sc.setMaxWorkerLifetime();
@@ -191,8 +191,8 @@ struct ServerinoConfig
       return this;
    }
 
-   /// Sets the number of daemon threads (accept/event loops). Default is 1.
-   @safe ref ServerinoConfig setDaemonThreads(size_t val = 1) return { daemonConfig.daemonThreads = val; return this;}
+   /// Sets the number of daemon instances (accept/event loops). Default is 1.
+   @safe ref ServerinoConfig setDaemonInstances(size_t val = 1) return { daemonConfig.daemonThreads = val; return this;}
 
    /// Sets the maximum number of worker processes.
    @safe ref ServerinoConfig setMaxWorkers(size_t val = 5) return { daemonConfig.maxWorkers = val; return this; }

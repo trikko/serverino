@@ -214,7 +214,10 @@ template ServerinoLoop(Modules...)
          }
       }
 
-      if (ServerinoProcess.isDynamicComponent || runAsSecondaryThread == false) return wakeServerino!allModules(config);
+      // Child daemon processes should run directly, not in background thread
+      import std.process : environment;
+      if (ServerinoProcess.isDynamicComponent || runAsSecondaryThread == false || environment.get("SERVERINO_DAEMON_CHILD") == "1")
+         return wakeServerino!allModules(config);
       else
       {
          import core.thread : Thread;

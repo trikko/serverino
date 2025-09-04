@@ -352,7 +352,21 @@ package class WorkerInfo
    pragma(inline, true)
    static auto ref dead() { return WorkerInfo.instances.filter!(x => x.status == WorkerInfo.State.STOPPED); }
 
-   private shared static this() { exePath = thisExePathWithFallback(); }
+   private shared static this() {
+      exePath = thisExePathWithFallback();
+
+      // Automatically kill when the main daemon process is terminated
+      version(linux)
+      {
+         import std.process : environment;
+         if (environment.get("SERVERINO_DAEMON_CHILD") == "1" && environment.get("SERVERINO_COMPONENT") != "WK")
+         {
+            import core.sys.linux.sys.prctl : prctl, PR_SET_PDEATHSIG;
+            import core.sys.posix.signal : SIGTERM;
+            prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
+         }
+      }
+   }
 
 package:
 
@@ -470,11 +484,13 @@ package:
       version(Posix)
       {
          auto base = baseName(Runtime.args[0]);
+         const bool isChild = environment.get("SERVERINO_DAEMON_CHILD") == "1";
+         auto daemonIndex = isChild ? environment.get("SERVERINO_DAEMON_INDEX", "?") : "0";
 
          setProcessName
          (
             [
-               base ~ " / daemon [PID: " ~ daemonPid ~ "]",
+               base ~ " / daemon-" ~ daemonIndex ~ " [PID: " ~ daemonPid ~ "]",
                base ~ " / daemon",
                base ~ " [D]"
             ]
@@ -552,22 +568,35 @@ package:
          }).start();
       }
 
-      // Multi-threaded daemon: spawn additional threads on first entry
-      if (isMainThread && config.daemonThreads > 1 && !multiThreadsStarted)
+      // Multi-process daemon: spawn additional daemon processes on first entry
+      // Only the main process (not child daemons) should spawn additional processes
+      const bool isChildDaemon = environment.get("SERVERINO_DAEMON_CHILD") == "1";
+
+      if (isMainThread && config.daemonThreads > 1 && !multiProcessStarted && !isChildDaemon)
       {
-         multiThreadsStarted = true;
+         multiProcessStarted = true;
 
          foreach(idx; 1 .. config.daemonThreads)
          {
-            auto th = new Thread({ Daemon.wake!Modules(config, workerConfig); });
-            th.name = "serverino-daemon-" ~ idx.to!string;
-            th.isDaemon = false; // Keep process alive
-            th.start();
+            import std.process : spawnProcess, Config;
+            import std.range : repeat;
+            import std.array : array;
+
+            auto env = environment.toAA.dup;
+            env["SERVERINO_DAEMON_CHILD"] = "1";
+            env["SERVERINO_DAEMON_INDEX"] = idx.to!string;
+
+            version(Posix) const pname = [WorkerInfo.exePath, cast(char[])(' '.repeat(30).array)];
+            else const pname = WorkerInfo.exePath;
+
+            auto pid = spawnProcess(pname, env, Config.detached);
+            childDaemonPids ~= pid.processID;
          }
       }
       // isMainThread already computed above
 
-      info("Daemon started. [backend=", cast(string)(Backend), "; thread=", isMainThread ? "main" : "secondary", "]");
+      auto processType = isChildDaemon ? "child" : (isMainThread ? "main" : "secondary");
+      info("Daemon started. [backend=", cast(string)(Backend), "; process=", processType, "]");
       now = CoarseTime.currTime;
 
       version(Posix)
@@ -620,7 +649,7 @@ package:
          static if(Backend == BackendType.EPOLL)
          {
             import core.sys.posix.sys.socket : SO_REUSEPORT;
-
+            // Always enable SO_REUSEPORT with multi-process daemons for load balancing
             if (config.daemonThreads > 1)
                listener.socket.setOption(SocketOptionLevel.SOCKET, cast(SocketOption)SO_REUSEPORT, true);
          }
@@ -1098,6 +1127,20 @@ package:
          catch (Exception e) { }
       }
 
+      // Terminate all child daemon processes (fallback for non-Linux or if PDEATHSIG didn't trigger)
+      version(Posix)
+      {
+         if (!isChildDaemon)
+         {
+            import core.sys.posix.signal : kill, SIGTERM;
+            foreach (pid; childDaemonPids)
+            {
+               scope (exit) {}
+               kill(pid, SIGTERM);
+            }
+         }
+      }
+
       // Call the onDaemonStop functions.
       if (isMainThread) tryUninit!Modules();
 
@@ -1189,8 +1232,9 @@ package:
       static shared bool ready           = false;
       static shared bool suspended       = false;
 
-      static shared bool multiThreadsStarted = false;
+      static bool multiProcessStarted = false;
       static shared int  activeDaemons = 0;
+      static shared int[] childDaemonPids;
    }
 
 }
