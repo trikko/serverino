@@ -1152,17 +1152,14 @@ package:
       {
          if (!isChildDaemon)
          {
-            import core.sys.posix.signal : kill, SIGTERM, SIGKILL;
+            import core.sys.posix.signal : kill, SIGINT, SIGKILL;
             import std.datetime : msecs;
 
             foreach (pid; childDaemonPids)
-               kill(pid, SIGTERM);
-
-            Thread.sleep(100.msecs);
-
-            foreach (pid; childDaemonPids)
-               kill(pid, SIGKILL);
-
+            {
+               kill(pid, SIGINT);
+               Thread.yield();
+            }
          }
       }
 
@@ -1179,6 +1176,9 @@ package:
       stderr.flush();
 
       isDaemonRunning = false;
+
+      import std.datetime : msecs;
+      Thread.sleep(100.msecs);
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
