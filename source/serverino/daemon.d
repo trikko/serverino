@@ -362,8 +362,9 @@ package class WorkerInfo
          if (environment.get("SERVERINO_DAEMON_CHILD") == "1" && environment.get("SERVERINO_COMPONENT") != "WK")
          {
             import core.sys.linux.sys.prctl : prctl, PR_SET_PDEATHSIG;
-            import core.sys.posix.signal : SIGTERM;
-            prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0);
+            import core.sys.posix.signal : SIGTERM, SIGINT;
+            auto rc = prctl(PR_SET_PDEATHSIG, SIGTERM | SIGINT, 0, 0, 0);
+            assert(rc == 0, "prctl(PR_SET_PDEATHSIG) failed");
          }
       }
    }
@@ -400,6 +401,11 @@ version(Posix)
    extern(C) void serverino_reload_handler(int num) nothrow @nogc @system
    {
       Daemon.reloadRequested = true;
+
+      // Propagate the same signal to child daemon processes if this is the main daemon
+      import core.sys.posix.signal : kill;
+      foreach (pid; Daemon.childDaemonPids)
+         kill(pid, num);
    }
 }
 
@@ -1139,14 +1145,24 @@ package:
          catch (Exception e) { }
       }
 
+      info("Daemon shutdown completed. Goodbye!");
+
       // Terminate all child daemon processes (fallback for non-Linux or if PDEATHSIG didn't trigger)
       version(Posix)
       {
          if (!isChildDaemon)
          {
-            import core.sys.posix.signal : kill, SIGTERM;
+            import core.sys.posix.signal : kill, SIGTERM, SIGKILL;
+            import std.datetime : msecs;
+
             foreach (pid; childDaemonPids)
                kill(pid, SIGTERM);
+
+            Thread.sleep(100.msecs);
+
+            foreach (pid; childDaemonPids)
+               kill(pid, SIGKILL);
+
          }
       }
 
@@ -1156,7 +1172,6 @@ package:
       // Delete the canary file.
       if (isMainThread) removeCanary();
 
-      info("Daemon shutdown completed. Goodbye!");
 
       // Flush the output buffers.
       import std.stdio : stdout, stderr;
