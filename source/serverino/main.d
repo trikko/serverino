@@ -79,14 +79,9 @@ class ServerinoLogger : Logger
       string prefix;
 
       if (ServerinoProcess.isDynamicComponent == false)
-      {
-         version(Windows){ prefix = "\x1b[1m*\x1b[0m "; }
-         else { prefix = "\x1b[1m*\x1b[0m "; }
-      }
-      else {
-         version(Windows){ prefix = text("\x1b[48;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m \x1b[0m "); }
-         else { prefix = text("\x1b[48;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m \x1b[0m "); }
-      }
+         prefix = "\x1b[1m*\x1b[0m ";
+      else
+         prefix = text("\x1b[48;2;", logColor[0], ";", logColor[1], ";", logColor[2],"m \x1b[0m ");
 
       prefix ~= format("[%06d]", processId);
       logPrefix = prefix;
