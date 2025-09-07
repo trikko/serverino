@@ -418,11 +418,10 @@ static:
    /// Shutdown the serverino daemon.
    void shutdown() {
       exitRequested = true;
-      import core.atomic : atomicLoad;
-      import core.thread : Thread;
-      import std.datetime : msecs;
+
       // Wait until all daemon event loops finished (prevents tear-down races)
-      while(atomicLoad(activeDaemons) > 0) Thread.sleep(10.msecs);
+      while(isDaemonRunning)
+         Thread.yield();
    }
 
    /// Suspend the daemon.
@@ -476,7 +475,7 @@ package:
 
       immutable daemonPid = thisProcessID.to!string;
 
-      atomicFetchAdd(activeDaemons, 1);
+      isDaemonRunning = true;
       immutable argsBkp = Base64.encode(Runtime.args.join("\0").representation);
 
       environment["SERVERINO_COMPONENT"] = "D";
@@ -1147,10 +1146,7 @@ package:
          {
             import core.sys.posix.signal : kill, SIGTERM;
             foreach (pid; childDaemonPids)
-            {
-               scope (exit) {}
                kill(pid, SIGTERM);
-            }
          }
       }
 
@@ -1167,9 +1163,7 @@ package:
       stdout.flush();
       stderr.flush();
 
-      // Avoid exiting the process from here in multi-thread/background mode.
-
-      atomicFetchSub(activeDaemons, 1);
+      isDaemonRunning = false;
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
@@ -1244,9 +1238,9 @@ package:
       static shared bool reloadRequested = false;
       static shared bool ready           = false;
       static shared bool suspended       = false;
+      static shared bool isDaemonRunning = false;
 
       static bool multiProcessStarted = false;
-      static shared int  activeDaemons = 0;
       static shared int[] childDaemonPids;
    }
 
