@@ -1179,6 +1179,9 @@ package:
 
       import std.datetime : msecs;
       Thread.sleep(100.msecs);
+
+      import core.stdc.stdlib : exit;
+      exit(0);
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
