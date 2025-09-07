@@ -39,7 +39,7 @@ import std.socket : Socket, SocketSet, SocketType, AddressFamily, SocketShutdown
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
-import core.thread : ThreadBase, Thread;
+import core.thread : ThreadBase, Thread, ThreadGroup;
 
 static if (serverino.common.Backend == BackendType.EPOLL) import core.sys.linux.epoll;
 
@@ -428,6 +428,8 @@ static:
       // Wait until all daemon event loops finished (prevents tear-down races)
       while(isDaemonRunning)
          Thread.yield();
+
+      (cast(ThreadGroup)Daemon.threadGroup).joinAll();
    }
 
    /// Suspend the daemon.
@@ -546,10 +548,12 @@ package:
 
       bool isMainThread = (cast(ThreadBase)Thread.getThis()).isMainThread;
 
+      Daemon.threadGroup = new ThreadGroup();
+
       // Reload the workers if the main executable is modified.
       if (isMainThread && config.autoReload)
       {
-         new Thread({
+         (cast(ThreadGroup)Daemon.threadGroup).add(new Thread({
 
             import std.file : getTimes;
 
@@ -570,7 +574,12 @@ package:
                }
             }
 
-         }).start();
+         }).start());
+      }
+
+      if (!isMainThread)
+      {
+         (cast(ThreadGroup)Daemon.threadGroup).add(Thread.getThis());
       }
 
       // Multi-process daemon: spawn additional daemon processes on first entry
@@ -1175,13 +1184,10 @@ package:
       stdout.flush();
       stderr.flush();
 
-      isDaemonRunning = false;
-
       import std.datetime : msecs;
       Thread.sleep(100.msecs);
 
-      import core.stdc.stdlib : exit;
-      exit(0);
+      isDaemonRunning = false;
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)
@@ -1257,6 +1263,8 @@ package:
       static shared bool ready           = false;
       static shared bool suspended       = false;
       static shared bool isDaemonRunning = false;
+
+      static shared ThreadGroup threadGroup = null;
 
       static bool multiProcessStarted = false;
       static shared int[] childDaemonPids;
