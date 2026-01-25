@@ -97,9 +97,10 @@ public struct route(alias T)
 private template comparePath(string _path)
 {
    import std.uri : encode;
+   enum encodedPath = _path.encode();
    enum comparePath = (const Request r){
       static assert(_path[0] == '/', "Every route must begin with a '/'");
-      return r.path == _path.encode();
+      return r.path == encodedPath;
    };
 }
 
