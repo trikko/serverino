@@ -32,6 +32,12 @@ import core.thread;
 
 mixin ServerinoBackground;
 
+// Variabile resettata ad ogni richiesta
+@RequestScope int scopedCounter;
+
+// Variabile persistente tra richieste
+int persistentCounter;
+
 @endpoint @route!"/head-test"
 void head_test(Request request, Output output)
 {
@@ -58,7 +64,7 @@ void clear_test(Request request, Output output)
 }
 
 
-@endpoint
+@endpoint @route!(r => r.path != "/request-scope-test")
 void test(Request request, Output output)
 {
    output.status = 200;
@@ -77,6 +83,16 @@ bool onException(Request request, Output output, Exception exception)
    output ~= "Exception catched";
    return true;
 }
+
+@endpoint @route!"/request-scope-test"
+void request_scope_test(Request request, Output output)
+{
+   import std.format : format;
+   scopedCounter++;
+   persistentCounter++;
+   output ~= format("scoped=%d persistent=%d", scopedCounter, persistentCounter);
+}
+
 
 void main()
 {
@@ -184,6 +200,15 @@ void main()
       req.perform();
 
       assert(content == "This should be sent");
+   }
+
+   {
+      // Test @RequestScope: scopedCounter should be reset to 1 and persistentCounter should be incremented by 1 for each request
+      auto r1 = cast(string) get("http://localhost:8080/request-scope-test", client);
+      assert(r1 == "scoped=1 persistent=1", "@RequestScope first request: " ~ r1);
+
+      auto r2 = cast(string) get("http://localhost:8080/request-scope-test", client);
+      assert(r2 == "scoped=1 persistent=2", "@RequestScope second request: " ~ r2);
    }
 
    Daemon.shutdown();

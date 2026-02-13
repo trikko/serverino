@@ -638,8 +638,12 @@ struct Worker
                   Exception exception = null;
 
                   {
-                     scope(exit) atomicStore(processedStartedAt, CoarseTime.zero);
+                     scope(exit) {
+                        resetRequestScopedVars!Modules();
+                        atomicStore(processedStartedAt, CoarseTime.zero);
+                     }
 
+                     resetRequestScopedVars!Modules();
                      atomicStore(processedStartedAt, CoarseTime.currTime);
 
                      try { callHandlers!Modules(request, output); }
@@ -1106,6 +1110,25 @@ void tryUninit(Modules...)()
          static if (__traits(compiles, f())) f();
          else static assert(0, "`" ~ __traits(identifier, f) ~ "` is marked with @onWorkerStop but it is not callable");
 
+      }}
+   }
+}
+
+void resetRequestScopedVars(Modules...)()
+{
+   import std.traits : getSymbolsByUDA, isFunction;
+
+   static foreach(m; Modules)
+   {
+      static foreach(v; getSymbolsByUDA!(m, RequestScope))
+      {{
+         static assert(!isFunction!v,
+            "`" ~ __traits(identifier, v) ~ "` is marked with @RequestScope but it is a function. Only global variables are allowed.");
+
+         static assert(__traits(compiles, destroy(v)),
+            "`" ~ __traits(identifier, v) ~ "` is marked with @RequestScope but `" ~ __traits(identifier, v) ~ " = " ~ __traits(identifier, v) ~ ".init` does not compile. Only assignable global variables are allowed.");
+
+         destroy(v);
       }}
    }
 }

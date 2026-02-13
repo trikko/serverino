@@ -79,6 +79,22 @@ public enum onWebSocketStop;     /// UDA. Functions with @onWebSocketStop attach
 ++/
 public enum onWorkerException;
 
+/++ UDA. Global variables marked with @RequestScope are automatically
+   reset (via destroy) at the beginning and end of each request, ensuring that
+   no data leaks between requests.
+   Example:
+   ---
+   @RequestScope UserData currentUser;
+
+   @endpoint
+   void handler(Request r, Output o) {
+      currentUser.name = r.get("name");  // reset at start of each request
+      o ~= currentUser.name;
+   }
+   ---
++/
+public enum RequestScope;
+
 import serverino.interfaces : Request;
 
 /++ UDA. You can use to filter requests using a function `bool(Request request) { }`
