@@ -195,6 +195,17 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 							<td>UDA. Functions with @onWorkerStop attached are called when worker is stopped
 </td>
 						</tr>
+						<tr>
+							<td>
+								<code>
+									<a id="requestScope" class="public" href="../serverino/config/requestScope.html">requestScope</a>
+								</code>
+							</td>
+							<td>UDA. Global variables marked with @requestScope are automatically
+   reset (via destroy) at the beginning and end of each request, ensuring that
+   no data leaks between requests.
+</td>
+						</tr>
 					</table>
 				</section>
 				<section>

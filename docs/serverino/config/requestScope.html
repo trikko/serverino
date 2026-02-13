@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Enum requestScope</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with
+				<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Enum requestScope</h1><p>UDA. Global variables marked with @requestScope are automatically
+   reset (via destroy) at the beginning and end of each request, ensuring that
+   no data leaks between requests.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">enum</span> <span class="typ">requestScope</span>
+				 <span class="pun">:</span> <span class="typ">void</span> <span class="pun">{ ... }</span>
+						</div>
+					</code>
+				</div>
+				
+				<section><h2>Enum members</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Example</h2>
+<pre class="code"><code class="lang-d"><span class="pun">@</span><span class="pln">requestScope </span><span class="typ">UserData </span><span class="pln">currentUser</span><span class="pun">;
+
+@<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln">
+</span><span class="typ">void </span><span class="pln">handler</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) {
+   </span><span class="pln">currentUser<wbr/></span><span class="pun">.</span><span class="pln">name </span><span class="pun">= </span><span class="pln">r<wbr/></span><span class="pun">.</span><span class="pln">get</span><span class="pun">(</span><span class="str">"name"</span><span class="pun">);  </span><span class="com">// reset at start of each request
+   </span><span class="pln">o </span><span class="pun">~= </span><span class="pln">currentUser<wbr/></span><span class="pun">.</span><span class="pln">name</span><span class="pun">;
+}</span></code></pre>
+</section>
+
+			</div>
+			<footer>
+				<div id="license-info">
+					
+					
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>
