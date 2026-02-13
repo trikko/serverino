@@ -99,6 +99,36 @@ void requestLog(Request request)
 > [!NOTE]
 > Using `Fallthrough.Yes` as a return value for a endpoint allows you to avoid stopping the flow even if the output is touched.
 
+## Managing request-scoped state
+
+Global variables marked with `@requestScope` are automatically reset at the beginning and end of each request, preventing data leaks between separate HTTP requests.
+
+```d
+import serverino;
+
+mixin ServerinoMain;
+
+// Global variable - reset for every request
+@requestScope UserData currentUser;
+
+// Global variable - persists across requests (until the worker is stopped)
+UserCache cache;
+
+@endpoint
+void handler(Request request, Output output)
+{
+	currentUser.id = request.get("user_id").to!int;  // Reset every request
+	cache.store(currentUser.id);  // Persists across requests
+
+	output ~= "User " ~ currentUser.id.to!text ~ " loaded";
+}
+```
+
+**How it works:**
+- Global variables marked with `@requestScope` are automatically destroyed and re-initialized at the beginning and end of each HTTP request
+- This ensures that state from one request doesn't leak into the next request
+- Useful for request-specific global state like the current user, request buffers, or temporary session data
+
 ## Websockets
 
 ```d
