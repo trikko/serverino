@@ -79,12 +79,12 @@ public enum onWebSocketStop;     /// UDA. Functions with @onWebSocketStop attach
 ++/
 public enum onWorkerException;
 
-/++ UDA. Global variables marked with @RequestScope are automatically
+/++ UDA. Global variables marked with @requestScope are automatically
    reset (via destroy) at the beginning and end of each request, ensuring that
    no data leaks between requests.
    Example:
    ---
-   @RequestScope UserData currentUser;
+   @requestScope UserData currentUser;
 
    @endpoint
    void handler(Request r, Output o) {
@@ -93,7 +93,7 @@ public enum onWorkerException;
    }
    ---
 +/
-public enum RequestScope;
+public enum requestScope;
 
 import serverino.interfaces : Request;
 

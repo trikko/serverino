@@ -1120,13 +1120,13 @@ void resetRequestScopedVars(Modules...)()
 
    static foreach(m; Modules)
    {
-      static foreach(v; getSymbolsByUDA!(m, RequestScope))
+      static foreach(v; getSymbolsByUDA!(m, requestScope))
       {{
          static assert(!isFunction!v,
-            "`" ~ __traits(identifier, v) ~ "` is marked with @RequestScope but it is a function. Only global variables are allowed.");
+            "`" ~ __traits(identifier, v) ~ "` is marked with @requestScope but it is a function. Only global variables are allowed.");
 
          static assert(__traits(compiles, destroy(v)),
-            "`" ~ __traits(identifier, v) ~ "` is marked with @RequestScope but `" ~ __traits(identifier, v) ~ " = " ~ __traits(identifier, v) ~ ".init` does not compile. Only assignable global variables are allowed.");
+            "`" ~ __traits(identifier, v) ~ "` is marked with @requestScope but `" ~ __traits(identifier, v) ~ " = " ~ __traits(identifier, v) ~ ".init` does not compile. Only assignable global variables are allowed.");
 
          destroy(v);
       }}
