@@ -24,8 +24,12 @@ jobs:
         exclude:
         - os: ubuntu-24.04-arm
           dc: dmd-2.109.0
+        - os: ubuntu-24.04-arm
+          dc: dmd-latest
         - os: macos-14
           dc: dmd-2.109.0
+        - os: macos-14
+          dc: dmd-latest
 
     runs-on: ${{ matrix.os }}
 
