@@ -722,7 +722,7 @@ struct Worker
                // Unhandled Exception escaped from user code
                catch (Exception e)
                {
-                  critical(format("%s:%s Uncatched exception: %s", e.file, e.line, e.msg));
+                  critical(format("%s:%s Uncaught exception: %s", e.file, e.line, e.msg));
                   critical(format("-------\n%s",e.info));
 
                   output.status = 500;
