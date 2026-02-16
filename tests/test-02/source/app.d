@@ -660,6 +660,11 @@ void test()
       }
 
       WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
+
+      // On macOS there's a race condition between daemon closing the socket and client sending the first message.
+      // If the daemon closes the socket while there's unread data in the buffer, it sends a RST.
+      version(OSX) Thread.sleep(10.msecs);
+
       ws.sendMessage(WebSocketMessage("Hello from client"), true);
 
       buffer.length = 32000;
@@ -685,6 +690,13 @@ void test()
          }
 
          reply ~= buffer[0..recv];
+      }
+
+      if (reply.length < 2)
+      {
+         warning("Reply too short: ", reply.length);
+         warning("Socket alive: ", sck.isAlive);
+         warning("Socket error: ", sck.getErrorText());
       }
 
       assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
@@ -716,6 +728,11 @@ void test()
       }
 
       WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
+
+      // On macOS there's a race condition between daemon closing the socket and client sending the first message.
+      // If the daemon closes the socket while there's unread data in the buffer, it sends a RST.
+      version(OSX) Thread.sleep(10.msecs);
+
       ws.sendMessage(WebSocketMessage("Hello "), false);
       ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "from "), false);
       ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "client"), true);

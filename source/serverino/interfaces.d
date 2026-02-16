@@ -1540,8 +1540,8 @@ class WebSocket
       }
       else
       {
-         static if(endian == Endian.littleEndian) const size_t len = swapEndian(cast(size_t) message.payload.length);
-         else const size_t len = cast(ushort) message.payload.length;
+         static if(endian == Endian.littleEndian) const ulong len = swapEndian(cast(ulong) message.payload.length);
+         else const ulong len = cast(ulong) message.payload.length;
 
          buffer[1] = 127 & ~Flags.MASK;
          buffer[2..10] = (cast(ubyte*)(&len))[0..8];
@@ -1761,17 +1761,15 @@ class WebSocket
          }
          else if (payloadLength == 127)
          {
-            if (cursor.length < size_t.sizeof)
+            if (cursor.length < ulong.sizeof)
                return WebSocketMessage.init;
 
-            payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
-
             static if (endian == Endian.littleEndian)
-               payloadLength = swapEndian((cast(size_t[])(cursor[0..size_t.sizeof]))[0]);
+               payloadLength = cast(size_t)swapEndian((cast(ulong[])(cursor[0..ulong.sizeof]))[0]);
             else
-               payloadLength = (cast(size_t[])(cursor[0..size_t.sizeof]))[0];
+               payloadLength = cast(size_t)(cast(ulong[])(cursor[0..ulong.sizeof]))[0];
 
-            cursor = cursor[size_t.sizeof..$];
+            cursor = cursor[ulong.sizeof..$];
          }
 
          if (flagMASK)

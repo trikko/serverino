@@ -130,7 +130,6 @@ struct WebSocketWorker
       auto dummySkt = listener.accept();
 
       // Wait for the daemon connection
-      listener.listen(5);
       channel = listener.accept();
 
       // We don't need this canary connection
@@ -152,8 +151,9 @@ struct WebSocketWorker
       }
 
        // Wait for socket protocol (AF_INET or AF_INET6)
-      AddressFamily af;
-      auto recv = channel.receive((&af)[0..1]);
+      ushort af_raw;
+      auto recv = channel.receive((&af_raw)[0..1]);
+      AddressFamily af = cast(AddressFamily)af_raw;
 
       // Wait for headers
       ubyte[DEFAULT_BUFFER_SIZE] buffer = void;
