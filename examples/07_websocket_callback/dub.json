@@ -2,7 +2,7 @@
 	"authors": [
 		"Andrea Fontana"
 	],
-	"copyright": "Copyright © 2024, Andrea Fontana",
+	"copyright": "Copyright © 2024-2026, Andrea Fontana",
 	"dependencies": {
 		"serverino": { "path" : "../.." }
 	},
