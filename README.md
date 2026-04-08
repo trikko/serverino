@@ -30,6 +30,7 @@ void simple(Request request, Output output) { output ~= request.dump(); }
 * [Serverino docs](https://trikko.github.io/serverino/) - Serverino reference, generated from code
 * [Examples](https://github.com/trikko/serverino/tree/master/examples) - Some ready-to-try examples
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
+* [LLM-Friendly Docs](https://trikko.github.io/serverino/llms.txt) - Optimized documentation for AI agents (Gemini, Claude, ...)
 
 ## Defining more than one endpoint
 > [!IMPORTANT]
