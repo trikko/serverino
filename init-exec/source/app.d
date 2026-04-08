@@ -6,6 +6,8 @@ import std;
 // Docs: https://trikko.github.io/serverino/
 // Tips and tricks: https://github.com/trikko/serverino/wiki/
 // Examples: https://github.com/trikko/serverino/tree/master/examples
+// LLM-Friendly Documentation: https://trikko.github.io/serverino/llms.txt
+
 import serverino;
 
 mixin ServerinoMain;
