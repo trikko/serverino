@@ -1,0 +1,251 @@
+# Serverino - Consolidated API Reference & Examples
+
+This document contains a comprehensive reference for the Serverino library, intended for consumption by Large Language Models.
+
+---
+
+## 1. Project Overview
+Serverino is a small and ready-to-go HTTP server library for the D programming language.
+- **Zero-dependency**: Only requires the D standard library (Phobos).
+- **Multi-platform**: Compiles and runs on Linux (epoll), macOS/BSD (kqueue), and Windows (select).
+- **Multi-process**: Uses a daemon-worker model to ensure that application crashes don't bring down the entire server.
+
+---
+
+## 2. Main Entry Points
+Serverino provides two primary ways to integrate into your application:
+
+### 2.1 ServerinoMain
+Replaces the `main()` function with a server-managed loop.
+```d
+import serverino;
+mixin ServerinoMain;
+```
+
+### 2.2 ServerinoBackground
+Starts the server in a separate thread, allowing you to maintain your own `main()` loop.
+```d
+import serverino;
+mixin ServerinoBackground;
+
+void main() {
+    // Your custom code here
+    while(true) { Thread.sleep(1.seconds); }
+}
+```
+
+---
+
+## 3. Configuration & UDAs (serverino.config)
+
+### 3.1 @onServerInit
+Used to initialize and configure the server. Must return a `ServerinoConfig`.
+```d
+@onServerInit ServerinoConfig setup() {
+   return ServerinoConfig.create()
+      .addListener("0.0.0.0", 8080)
+      .setWorkers(4)
+      .enableKeepAlive();
+}
+```
+
+### 3.2 ServerinoConfig Methods
+The `ServerinoConfig` struct uses a fluent API (method chaining).
+
+**Network & Listeners:**
+- `.addListener(address, port)`: Adds a listener (default 0.0.0.0:8080 if none added).
+- `.addListener!(ServerinoConfig.ListenerProtocol.IPV6)(address, port)`: Listen on IPv6.
+- `.setHttpTimeout(duration)`: Max time to wait for a request after connection (default 10s).
+- `.enableKeepAlive(bool, duration)`: Enable/disable HTTP/1.1 Keep-Alive (default 3s timeout).
+- `.setListenerBacklog(int)`: TCP backlog size (default 2048).
+
+**Workers & Processes:**
+- `.setWorkers(n)`: Sets a fixed number of workers.
+- `.setMinWorkers(n)` / `.setMaxWorkers(n)`: Sets a dynamic worker pool range.
+- `.setMaxWorkerLifetime(duration)`: Max time a worker lives before being replaced (default 6h).
+- `.setMaxWorkerIdling(duration)`: Max time an idle worker lives (default 1h).
+- `.setMaxRequestTime(duration)`: Max time for a single request (default 5s). Worker is killed if exceeded.
+- `.setDaemonInstances(n)`: Number of accept/event loops (default 1).
+- `.enableWorkersAutoReload(bool)`: Hot-reload workers if the executable changes.
+
+**Security & Metadata:**
+- `.setMaxRequestSize(bytes)`: Max allowed request size (default 10MB). Returns 413 if exceeded.
+- `.enableServerSignature(bool)`: Show/hide "Server: Serverino" header.
+- `.enableRemoteIp(bool)`: Adds `X-Remote-IP` header with client IP.
+- `.setWorkerUser(string)` / `.setWorkerGroup(string)`: Drop privileges to user/group (POSIX only).
+
+**Logging & Runtime:**
+- `.setLogLevel(LogLevel)`: Minimum log level to display.
+- `.enableLoggerOverride(bool)`: Enable/disable override of `std.experimental.logger`.
+
+---
+
+### 3.3 @endpoint
+Marks a function as a request handler.
+```d
+@endpoint
+void handler(Request req, Output output) {
+    output ~= "Hello!";
+}
+```
+
+### 3.4 @route
+Filters requests based on path or a custom delegate.
+```d
+@endpoint @route!"/api/data"
+void apiHandler(Request r, Output o) { ... }
+
+@endpoint @route!(r => r.path.startsWith("/static/"))
+void staticHandler(Request r, Output o) { ... }
+```
+
+### 3.5 @priority
+Sets the order of execution for endpoints (descending). Default is 0.
+```d
+@endpoint @priority(10)
+void highPriority(Request r, Output o) { ... }
+```
+
+### 3.6 Other UDAs
+- `@onDaemonStart`, `@onDaemonStop`: Lifecycle events in the master process.
+- `@onWorkerStart`, `@onWorkerStop`: Lifecycle events in each worker process.
+- `@onWorkerException`: Custom exception handler.
+- `@requestScope`: Global variables that are reset automatically for each request.
+
+---
+
+## 4. Interfaces (serverino.interfaces)
+
+### 4.1 Request Struct
+Represents an incoming HTTP request.
+- `method`: HTTP method (GET, POST, etc.). Use `Request.Method` enum for comparison.
+- `path`: Request path (e.g., "/index.html").
+- `get`: Query parameters. Use `.read("key", "default")` or `.has("key")`.
+- `post`: POST data (URL-encoded). Use `.read("key", "default")` or `.has("key")`.
+- `form`: Multipart form data (files/fields). Use `.read("key")` which returns a `FormData` struct.
+- `header`: HTTP headers (keys are always lowercase). Use `.read("key")`.
+- `cookie`: Incoming cookies. Use `.read("key")`.
+- `body`: Raw request body. Access via `request.body.data` and `request.body.contentType`.
+- `user`, `password`: Credentials from Basic Auth.
+- `host`: The requested host.
+
+**Correct Access Pattern:**
+```d
+// WRONG: request.get["name"]
+// CORRECT:
+string name = request.get.read("name", "Guest");
+if (request.get.has("admin")) { ... }
+```
+
+### 4.2 Output Struct
+Used to build the HTTP response.
+- `output ~= "string"`: Appends to the response body.
+- `output.status = 200`: Sets the HTTP status code (see `Output.Status`).
+- `output.addHeader("Name", "Value")`: Adds a header.
+- `output.setCookie(Cookie)`: Sets a cookie.
+- `output.serveFile(path, OnFileServed)`: Efficiently serves a static file.
+    - `OnFileServed.KeepFile`: Default behavior.
+    - `OnFileServed.DeleteFile`: Delete file after sending (useful for temp files).
+
+### 4.3 FormData Struct
+Returned by `request.form.read("field")`.
+- `isFile`: Boolean, true if it's an uploaded file.
+- `filename`: Original filename if it's a file.
+- `path`: Temporary path on disk if it's a file.
+- `data`: Field content if it's NOT a file.
+
+### 4.4 ServerinoProcess (Static Struct)
+Useful to identify the current process role.
+- `ServerinoProcess.isDaemon`: True if master process.
+- `ServerinoProcess.isWorker`: True if request worker.
+- `ServerinoProcess.isWebSocket`: True if WebSocket handler.
+- `ServerinoProcess.daemonPID`: Returns the PID of the master process.
+
+---
+
+## 5. Examples
+
+### 5.1 Simple GET Parameters
+```d
+@endpoint @route!"/hello"
+void greet(Request r, Output o) {
+    string name = r.get.read("name", "World");
+    o ~= "Hello, " ~ name ~ "!";
+}
+```
+
+### 5.2 POST Form Handling (URL-encoded)
+Used for standard HTML forms with `method="POST"`.
+```d
+@endpoint @route!"/login"
+void doLogin(Request r, Output o) {
+    if (r.method == Request.Method.Post) {
+        string user = r.post.read("user");
+        string pass = r.post.read("pass");
+        
+        if (user == "admin" && pass == "secret") o ~= "Welcome!";
+        else o.status = 403;
+    }
+}
+```
+
+### 5.3 Multipart Form (File Upload)
+Used for forms with `enctype="multipart/form-data"`.
+```d
+@endpoint @route!"/upload"
+void handleUpload(Request r, Output o) {
+    auto file = r.form.read("myFile");
+    if (file.isFile) {
+        import std.file : copy;
+        copy(file.path, "uploads/" ~ file.filename);
+        o ~= "File uploaded successfully!";
+    }
+}
+```
+
+### 5.4 JSON API (Raw Body)
+```d
+@endpoint @route!"/api/json"
+void handleJson(Request r, Output o) {
+    import std.json;
+    JSONValue j = parseJSON(r.body.data);
+    o.addHeader("Content-Type", "application/json");
+    o ~= `{"status": "ok"}`;
+}
+```
+
+---
+
+## 6. WebSocket Support (serverino.websocket)
+
+### 6.1 WebSocket Class
+- `ws.send(data)`: Sends a message (string, bytes, or basic type).
+- `ws.sendClose()`: Sends a close frame.
+- `ws.sendPing()`: Sends a ping frame.
+- `ws.receiveMessage()`: Manually pulls a message (blocking or non-blocking).
+
+**Delegates (Event Handlers):**
+- `ws.onMessage`: Called for every valid message received.
+- `ws.onTextMessage`: Called for text frames.
+- `ws.onBinaryMessage`: Called for binary frames.
+- `ws.onCloseMessage`: Called when client closes.
+
+### 6.2 WebSocketMessage Struct
+- `msg.asString`: Get payload as string.
+- `msg.as!T`: Get payload as type T.
+- `msg.opcode`: Get the frame opcode (Text, Binary, Ping, etc.).
+- `msg.isValid`: Check if message was parsed correctly.
+
+### 6.3 Example
+```d
+@endpoint @route!"/ws"
+void wsUpgrade(Request r, Output o) { /* Just a route filter */ }
+
+@onWebSocketStart
+void onStart(WebSocket ws) {
+    ws.onTextMessage = (string text) {
+        ws.send("You said: " ~ text);
+        return true; // Propagate to onMessage if needed
+    };
+}
+```

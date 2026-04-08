@@ -26,6 +26,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 /++ Serverino is a small and ready-to-go http server, in D. It is multiplatform
 + and compiles with DMD, LDC and GDC.
 +
++ LLM-Friendly Documentation: $(LINK https://trikko.github.io/serverino/llms.txt)
++
 + The following example shows how to create a server that responds to all requests
 + with the request dump, in a few lines of code.
 + ---

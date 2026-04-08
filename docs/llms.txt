@@ -1,0 +1,29 @@
+# Serverino - High-performance HTTP/WebSocket server for D
+
+Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D programming language. It is designed for high availability, protection against slow-client attacks, and ease of use.
+
+## Core Characteristics
+- **Multi-process**: Isolated workers for maximum resilience.
+- **High Performance**: Native event loops (epoll, kqueue, select).
+- **Zero Dependency**: Only requires a D compiler (DMD, LDC, GDC).
+- **Modern API**: Clean, UDA-based routing and configuration.
+
+## Essential Links
+- [Full Documentation for LLMs](llms-full.txt)
+- [Official Website](https://trikko.github.io/serverino/)
+- [GitHub Repository](https://github.com/trikko/serverino)
+
+## Quick Start
+```d
+import serverino;
+mixin ServerinoMain;
+
+@endpoint
+void hello(Request req, Output output) {
+    output ~= "Hello, Serverino!";
+}
+```
+
+## Main Modules
+- [serverino.config](serverino/config.html): UDAs and ServerinoConfig.
+- [serverino.interfaces](serverino/interfaces.html): Request, Output, and Cookie structs.
