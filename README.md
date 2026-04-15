@@ -169,6 +169,39 @@ Serverino workers can be restarted on demand without causing downtime.
 This allows you to recompile your workers and perform hot-reloading of your application code without any service interruption or dropped connections.
 
 
+## Experimental HTTPS support
+> [!WARNING]
+> HTTPS support is currently **experimental** and only available on **POSIX** systems (Linux, macOS, etc.).
+
+Serverino can handle HTTPS connections natively using OpenSSL. To enable this feature, you need to use the `https` subconfiguration of serverino in your project.
+
+In your `dub.sdl`:
+```sdl
+subConfiguration "serverino" "https"
+```
+
+In your `dub.json`:
+```json
+"subConfigurations": {
+    "serverino": "https"
+}
+```
+
+Once activated, you need to enable it in your configuration and provide the certificates:
+
+```d
+@onServerInit
+ServerinoConfig configure()
+{
+   return ServerinoConfig.create()
+      .enableHttps()
+      .addHttpsCertificate("server.crt", "server.key");
+}
+```
+
+> [!TIP]
+> You can call `addHttpsCertificate` multiple times to support SNI with different domains. The first certificate added will be used as the default one.
+
 ## Shielding the whole thing
 > [!CAUTION]
 >  I recommend securing *serverino* behind a full web server. Below, I provide three examples of how to run *serverino* with *caddy*, *nginx* and *apache*.
