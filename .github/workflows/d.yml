@@ -48,7 +48,13 @@ jobs:
              echo "import serverino; mixin ServerinoMain; @endpoint void a(Request r) { }" | dmd -i -Isource -ofinline_3 - &&
              echo "import serverino; mixin ServerinoBackground; @endpoint void a(Request r) { } void main() { }" | dmd -i -Isource -ofinline_4 -
 
-
+      - name: Setup OpenSSL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openssl
+          echo "CPATH=$(brew --prefix openssl)/include" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=$(brew --prefix openssl)/lib" >> $GITHUB_ENV
+          
       - name: Run test-01
         run: dub run --root=tests/test-01
 
