@@ -34,6 +34,7 @@ import std.experimental.logger : info, warning, error;
 
 // Import OpenSSL headers via ImportC
 import serverino.openssl_headers;
+alias size_t = object.size_t;
 
 // Constants for TLS errors
 package enum TlsWantRead  = 0x7100;
