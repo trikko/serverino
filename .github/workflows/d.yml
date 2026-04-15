@@ -70,3 +70,8 @@ jobs:
               && dub build --root=examples/09_simple_session/
               && dub build --root=examples/10_diet_ng_templates/
               && dub build --root=examples/11_elemi_integration/
+              
+      - name: Build https examples
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: dub build --build=release --root=examples/12_https/
+        

@@ -28,14 +28,15 @@ module serverino.daemon;
 import serverino.common;
 import serverino.communicator;
 import serverino.config;
+import serverino.tls;
 
 import std.stdio : File;
 import std.conv : to;
-import std.experimental.logger : log, info, warning;
+import std.experimental.logger : log, info, warning, error;
 import std.process : ProcessPipes;
 
 import std.format : format;
-import std.socket : Socket, SocketSet, SocketType, AddressFamily, SocketShutdown, TcpSocket, SocketOption, SocketOptionLevel, SocketException, socket_t;
+import std.socket : Socket, SocketSet, SocketType, AddressFamily, SocketShutdown, TcpSocket, SocketOption, SocketOptionLevel, SocketException, socket_t, socketPair;
 import std.algorithm : filter;
 import std.datetime : SysTime, Clock, seconds;
 
@@ -231,7 +232,7 @@ package class WorkerInfo
             if (wp.flags & WorkerPayload.Flags.DAEMON_SHUTDOWN) Daemon.shutdown();
             else if (wp.flags & WorkerPayload.Flags.DAEMON_SUSPEND) Daemon.suspend();
 
-            version(disable_websockets)
+            version(serverino_disable_websockets)
             {
                // Nothing to do here.
             }
@@ -239,7 +240,7 @@ package class WorkerInfo
             {
                pragma(msg, "-----------------------------------------------------------------------------------");
                pragma(msg, "Warning: DMD 2.102 or later is required to use the websocket feature.");
-               pragma(msg, "Please upgrade your DMD compiler or build using `disable_websockets` version/config");
+               pragma(msg, "Please upgrade your DMD compiler or build using `serverino_disable_websockets` version");
                pragma(msg, "-----------------------------------------------------------------------------------");
             }
             else
@@ -269,14 +270,50 @@ package class WorkerInfo
                   webs.connect(socketAddress);
 
                   // Send socket to websocket
-                  auto toSend = communicator.clientSkt.release();
+                  socket_t toSend;
 
-                  // We must remove the socket from the epoll/kqueue before sending it to the websocket.
-                  static if (serverino.common.Backend == BackendType.EPOLL) Daemon.epollRemoveSocket(toSend);
-                  else static if (serverino.common.Backend == BackendType.KQUEUE)
+                  version(serverino_enable_https)
                   {
-                     Daemon.addKqueueChange(toSend, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
-                     Daemon.addKqueueChange(toSend, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+                     if (communicator.tlsStream !is null)
+                     {
+                        auto pair = socketPair();
+                        communicator.proxySkt = pair[0];
+                        communicator.proxySktHandle = pair[0].handle;
+                        communicator.proxySkt.blocking = false;
+                        toSend = pair[1].release();
+
+                        communicator.status = Communicator.State.WEBSOCKET;
+
+                        static if (serverino.common.Backend == BackendType.EPOLL)
+                           Daemon.epollAddSocket(communicator.proxySktHandle, EPOLLIN, cast(void*) communicator);
+                        else static if (serverino.common.Backend == BackendType.KQUEUE)
+                           Daemon.addKqueueChange(communicator.proxySktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) communicator);
+
+                     }
+                     else
+                     {
+                        toSend = communicator.clientSkt.release();
+
+                        // We must remove the socket from the epoll/kqueue before sending it to the websocket.
+                        static if (serverino.common.Backend == BackendType.EPOLL) Daemon.epollRemoveSocket(toSend);
+                        else static if (serverino.common.Backend == BackendType.KQUEUE)
+                        {
+                           Daemon.addKqueueChange(toSend, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+                           Daemon.addKqueueChange(toSend, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+                        }
+                     }
+                  }
+                  else
+                  {
+                     toSend = communicator.clientSkt.release();
+
+                     // We must remove the socket from the epoll/kqueue before sending it to the websocket.
+                     static if (serverino.common.Backend == BackendType.EPOLL) Daemon.epollRemoveSocket(toSend);
+                     else static if (serverino.common.Backend == BackendType.KQUEUE)
+                     {
+                        Daemon.addKqueueChange(toSend, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+                        Daemon.addKqueueChange(toSend, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+                     }
                   }
 
                   version(Posix) auto sent = socketTransferSend(toSend, webs, pid.to!int);
@@ -309,7 +346,7 @@ package class WorkerInfo
                      }
                   }
 
-                  communicator.reset();
+                  if (communicator.status != Communicator.State.WEBSOCKET) communicator.reset();
                   return;
                }
             }
@@ -624,10 +661,36 @@ package:
 
             sigaction_t act_reload = { sa_handler: &serverino_reload_handler };
             sigaction(SIGUSR1, &act_reload, null);
+
+            sigaction_t act_ignore = { sa_handler: SIG_IGN };
+            sigaction(SIGPIPE, &act_ignore, null);
          }
       }
 
       if (isMainThread) tryInit!Modules();
+
+      version(serverino_enable_https)
+      {
+         if (config.httpsEnabled && tlsContext is null)
+         {
+            tlsContext = new TlsContext(config.httpsCertificates);
+            if (!tlsContext.isValid)
+            {
+               error("Failed to initialize TLS context.");
+               tlsContext = null;
+            }
+            else 
+            {
+               info("TLS context initialized successfully.");
+
+               if (tlsContext.validCount > 0)
+                  info("TLS loaded certificates: ", tlsContext.validCount);
+               
+               if (tlsContext.invalidCount > 0)
+                  warning("TLS not loaded certificates: ", tlsContext.invalidCount);
+            }
+         }
+      }
 
       static if (serverino.common.Backend == BackendType.EPOLL) epoll = epoll_create1(0);
       else static if (serverino.common.Backend == BackendType.KQUEUE)
@@ -693,7 +756,12 @@ package:
             }
 
             listener.socket.listen(config.listenerBacklog);
-            info("Listening on http://%s/".format(listener.socket.localAddress.toString));
+            version(serverino_enable_https)
+            {
+               if (config.httpsEnabled) info("Listening on https://%s/".format(listener.socket.localAddress.toString));
+               else info("Listening on http://%s/".format(listener.socket.localAddress.toString));
+            }
+            else info("Listening on http://%s/".format(listener.socket.localAddress.toString));
          }
          catch (SocketException se)
          {
@@ -1266,8 +1334,11 @@ package:
 
       static shared ThreadGroup threadGroup = null;
 
-      static bool multiProcessStarted = false;
       static shared int[] childDaemonPids;
+      static bool multiProcessStarted = false;
+
+   package:
+      version(serverino_enable_https) static __gshared TlsContext tlsContext = null;
    }
 
 }

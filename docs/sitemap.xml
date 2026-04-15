@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<url><loc>http://127.0.0.1/llms.txt</loc></url>
-<url><loc>http://127.0.0.1/llms-full.txt</loc></url>
 <url><loc>http://127.0.0.1/index.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/endpoint.html</loc></url>
@@ -20,13 +18,17 @@
 <url><loc>http://127.0.0.1/serverino/config/route.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/route.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.addHttpsCertificate.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.addListener.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.create.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableHTTPS.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableLoggerOverride.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableRemoteIp.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableServerSignature.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableWorkersAutoReload.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableHTTPS.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableHTTPS.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableLoggerOverride.html</loc></url>

@@ -268,7 +268,6 @@ ServerinoConfig conf()
 void test()
 {
 
-
    {
       string content;
 
@@ -498,15 +497,14 @@ Content-Disposition: form-data; name=\"field1\"\r
    ///Authorization Base64 Test
    {
       string content;
-
       auto http = HTTP("http://myuser@127.0.0.1:8080/json/dump/test");
-      http.method = HTTP.Method.post;
+      http.method = HTTP.Method.get;
       http.addRequestHeader("Authorization", "Basic msnmsknkjs");
       http.onReceive = (ubyte[] data) { content ~= data; return data.length; };
       http.perform();
 
       auto j = parseJSON(content);
-      assert(j["method"].str == "POST");
+      assert(j["method"].str == "GET");
       assert(j["path"].str == "/json/dump/test");
       assert(j["host"].str == "127.0.0.1:8080");
       assert(j["username"].str ==  string.init);

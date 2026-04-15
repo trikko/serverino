@@ -282,6 +282,51 @@ struct ServerinoConfig
    /// Ditto
    @safe ref ServerinoConfig disableServerSignature() return { return enableServerSignature(false); }
 
+
+   /// Enable HTTPS on the server.
+   @safe ref ServerinoConfig enableHTTPS(bool enable = true) return
+   {
+      version(serverino_enable_https)
+      {
+         daemonConfig.httpsEnabled = enable;
+      }
+      else
+      {
+         assert(false, "HTTPS is not enabled. Add 'https' subconfiguration to serverino");
+      }
+
+      return this;
+   }
+
+   /// Disable HTTPS on the server.
+   @safe ref ServerinoConfig disableHTTPS() return { return enableHTTPS(false); }
+
+   /// Add an HTTPS certificate to the server.
+   @safe ref ServerinoConfig addHttpsCertificate(string certPath, string keyPath) return
+   {
+      version(serverino_enable_https)
+      {
+         daemonConfig.httpsEnabled = true;
+         daemonConfig.httpsCertificates ~= DaemonConfig.HttpsCertificate(certPath, keyPath);
+      }
+      else
+      {
+         assert(false, "HTTPS is not enabled. Add 'https' subconfiguration to serverino");
+      }
+
+      return this;
+   }
+
+   /**
+    * Backward compatibility for enableHTTPS(cert, key)
+    *
+    * Deprecated: use enableHTTPS() and addHttpsCertificate(cert, key) instead.
+    */
+   @safe ref ServerinoConfig enableHTTPS(string certPath, string keyPath) return
+   {
+      return addHttpsCertificate(certPath, keyPath);
+   }
+
    /// Add a new listener.
    @safe ref ServerinoConfig addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port) return
    {
@@ -429,4 +474,11 @@ package struct DaemonConfig
    bool        overrideLogger;
    bool        autoReload;
    Listener[]  listeners;
+
+   version(serverino_enable_https)
+   {
+      struct HttpsCertificate { string certPath; string keyPath; }
+      bool               httpsEnabled;
+      HttpsCertificate[] httpsCertificates;
+   }
 }

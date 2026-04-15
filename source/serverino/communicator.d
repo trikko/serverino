@@ -29,11 +29,13 @@ import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now, Daemon;
 import serverino.config : DaemonConfigPtr;
-import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown, socket_t;
+import serverino.tls;
+
+import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown, socket_t, socketPair;
 import std.string: join;
 import std.algorithm : strip;
 import std.conv : text, to;
-import std.experimental.logger : log, info, warning;
+import std.experimental.logger : log, info, warning, error;
 import std.stdio : File;
 import std.file : getSize;
 
@@ -114,7 +116,8 @@ package class Communicator
       READING_HEADERS,  // Reading headers from client
       READING_BODY,     // Reading body from client
       KEEP_ALIVE,        // Keep alive if the client wants to
-      WEBSOCKET
+      WEBSOCKET,
+      HANDSHAKING
    }
 
    DaemonConfigPtr config;
@@ -163,6 +166,31 @@ package class Communicator
 
          this.clientSkt = null;
          clientSktHandle = socket_t.max;
+         
+         version(serverino_enable_https)
+         {
+            if (tlsStream !is null)
+            {
+               tlsStream.close();
+               tlsStream = null;
+            }
+
+            if (proxySkt !is null)
+            {
+               static if (serverino.common.Backend == BackendType.EPOLL)
+                  Daemon.epollRemoveSocket(proxySktHandle);
+               else static if (serverino.common.Backend == BackendType.KQUEUE)
+               {
+                  Daemon.addKqueueChange(proxySktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+                  Daemon.addKqueueChange(proxySktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+               }
+
+               proxySkt.shutdown(SocketShutdown.BOTH);
+               proxySkt.close();
+               proxySkt = null;
+               proxySktHandle = socket_t.max;
+            }
+         }
       }
    }
 
@@ -197,6 +225,15 @@ package class Communicator
             Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, cast(void*) this);
             Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_ADD | EV_ENABLE, cast(void*) this);
          }
+
+         version(serverino_enable_https)
+         {
+            if (config.httpsEnabled && Daemon.tlsContext !is null)
+            {
+               tlsStream = new TlsStream(Daemon.tlsContext, s);
+               status = State.HANDSHAKING;
+            }
+         }
       }
       else assert(false);
    }
@@ -209,6 +246,23 @@ package class Communicator
          clientSkt.shutdown(SocketShutdown.BOTH);
          clientSkt.close();
          unsetClientSocket();
+      }
+
+      version(serverino_enable_https)
+      {
+         if (tlsStream !is null)
+         {
+            tlsStream.close(); 
+            tlsStream = null;
+         }
+
+         if (proxySkt !is null)
+         {
+            proxySkt.shutdown(SocketShutdown.BOTH);
+            proxySkt.close();
+            proxySkt = null;
+            proxySktHandle = socket_t.max;
+         }
       }
 
       unsetWorker();
@@ -327,8 +381,24 @@ package class Communicator
    }
 
    // Write the buffered data to the client socket
-   void onWriteAvailable()
-   {
+    void onWriteAvailable()
+    {
+      version(serverino_enable_https)
+      {
+         if (status == State.HANDSHAKING)
+         {
+            auto ret = tlsStream.handshake();
+            if (ret == 0) status = State.PAIRED;
+            else if (ret == TlsWantRead || ret == TlsWantWrite) return;
+            else
+            {
+            reset();
+            error("RESET");
+            return;
+            }
+         }
+      }
+
       if (isSendFile)
       {
          if (file.eof && sendBuffer.length == 0)
@@ -345,7 +415,7 @@ package class Communicator
          }
          else if (sendBuffer.length > 0)
          {
-            buffer_again: immutable sent = clientSkt.send(sendBuffer.array);
+            buffer_again: immutable sent = sktSend(sendBuffer.array);
 
             if (sent == Socket.ERROR)
             {
@@ -403,7 +473,7 @@ package class Communicator
          if (maxToSend == 0)
             return;
 
-         again: immutable sent = clientSkt.send(sendBuffer.array[bufferSent..maxToSend]);
+         again: immutable sent = sktSend(sendBuffer.array[bufferSent..maxToSend]);
 
          if (sent >= 0)
          {
@@ -441,7 +511,11 @@ package class Communicator
                   if (!isKeepAlive)
                   {
                      // Proactively half-close the write side for connection: close
-                     clientSkt.shutdown(SocketShutdown.SEND);
+                     version(serverino_enable_https)
+                     {
+                        if (tlsStream is null) clientSkt.shutdown(SocketShutdown.SEND);
+                     }
+                     else clientSkt.shutdown(SocketShutdown.SEND);
                      reset();
                   }
                }
@@ -487,7 +561,7 @@ package class Communicator
 
       if (!file.isOpen)
       {
-         clientSkt.send("HTTP/1.0 404 Not Found\r\n\r\n");
+         sktSend("HTTP/1.0 404 Not Found\r\n\r\n");
          reset();
          return;
       }
@@ -523,7 +597,7 @@ package class Communicator
 
       if (sendBuffer.length == 0)
       {
-         again: auto sent = clientSkt.send(data);
+         again: auto sent = sktSend(data);
 
          if (sent >= 0)
          {
@@ -554,7 +628,11 @@ package class Communicator
                if (!isKeepAlive)
                {
                   // Proactively half-close the write side for connection: close
-                  clientSkt.shutdown(SocketShutdown.SEND);
+                  version(serverino_enable_https)
+                  {
+                     if (tlsStream is null) clientSkt.shutdown(SocketShutdown.SEND);
+                  }
+                  else clientSkt.shutdown(SocketShutdown.SEND);
                   reset();
                }
             }
@@ -588,6 +666,66 @@ package class Communicator
    {
       import std.string: indexOf;
 
+      version(serverino_enable_https)
+      {
+         if (status == State.HANDSHAKING)
+         {
+            auto ret = tlsStream.handshake();
+
+            // All done. Let's continue.
+            if (ret == 0) status = State.PAIRED;
+
+             // Need more data or need to write data
+            else if (ret == TlsWantRead || ret == TlsWantWrite) return;
+            
+            // Generic error. (for example: browser do not accept provided certificate)
+            else
+            {
+               reset();
+               return;
+            }
+         }
+
+         if (status == State.WEBSOCKET && tlsStream !is null)
+         {
+            ubyte[DEFAULT_BUFFER_SIZE] bufferPump = void;
+            bool againPump = true;
+
+            while(againPump)
+            {
+               againPump = false;
+
+               // Read from client (TLS) -> Write to worker (Plain)
+               auto readClient = tlsStream.read(bufferPump);
+               if (readClient > 0)
+               {
+                  proxySkt.send(bufferPump[0..readClient]);
+                  againPump = true;
+               }
+               else if (readClient < 0 && readClient != TlsWantRead && readClient != TlsWantWrite)
+               {
+                  reset();
+                  return;
+               }
+
+               // Read from worker (Plain) -> Write to client (TLS)
+               auto readWorker = proxySkt.receive(bufferPump);
+               if (readWorker > 0)
+               {
+                  tlsStream.write(bufferPump[0..readWorker]);
+                  againPump = true;
+               }
+               else if (readWorker == 0 || (readWorker < 0 && !wouldHaveBlocked))
+               {
+                  reset();
+                  return;
+               }
+            }
+
+            return;
+         }
+      }
+
       // Create a new request if the current one is completed
       if (status == State.PAIRED || status == State.KEEP_ALIVE)
       {
@@ -613,7 +751,7 @@ package class Communicator
 
       // Read the data from the client socket if it's not buffered
       // Set the requestDatareceived flag to true if the first data is read to check for timeouts
-      again: bytesRead = clientSkt.receive(buffer);
+      again: bytesRead = sktReceive(buffer);
       lastRecv = now;
 
       if (bytesRead > 0)
@@ -670,7 +808,7 @@ package class Communicator
                   if (firstLine < 18)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
+                     sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Request line too short.");
                      reset();
                      return;
@@ -706,7 +844,7 @@ package class Communicator
                   if (request.httpVersion != ProtoRequest.HttpVersion.HTTP_10 && request.httpVersion != ProtoRequest.HttpVersion.HTTP_11)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
+                     sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Http version unknown.");
                      reset();
                      return;
@@ -715,7 +853,7 @@ package class Communicator
                   if (popped != 3 || !fields.empty)
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
+                     sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Malformed request line.");
                      reset();
                      return;
@@ -724,7 +862,7 @@ package class Communicator
                   if (request.uri[0] != '/')
                   {
                      request.isValid = false;
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
+                     sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Absolute uri?");
                      reset();
                      return;
@@ -840,7 +978,7 @@ package class Communicator
 
                   if (request.isValid == false)
                   {
-                     clientSkt.send("HTTP/1.0 400 Bad Request\r\n\r\n");
+                     sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
                      debug warning("Bad Request. Malformed request.");
                      reset();
                      return;
@@ -860,7 +998,7 @@ package class Communicator
                   {
                      if (request.headersLength + request.contentLength  > config.maxRequestSize)
                      {
-                        clientSkt.send("HTTP/1.0 413 Request Entity Too Large\r\n\r\n");
+                        sktSend("HTTP/1.0 413 Request Entity Too Large\r\n\r\n");
                         reset();
                         return;
                      }
@@ -872,7 +1010,7 @@ package class Communicator
 
                      // If required, we send the 100-continue response now
                      if (request.expect100)
-                        clientSkt.send(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
+                        sktSend(cast(char[])(request.httpVersion ~ " 100 continue\r\n\r\n"));
                   }
                   else
                   {
@@ -891,7 +1029,7 @@ package class Communicator
                // Max 16k of headers
                else if (bufferRead.length >= MAX_HEADERS_SIZE)
                {
-                  clientSkt.send("HTTP/1.0 431 Request Header Fields Too Large\r\n\r\n");
+                  sktSend("HTTP/1.0 431 Request Header Fields Too Large\r\n\r\n");
                   reset();
                   return;
                }
@@ -1019,6 +1157,26 @@ package class Communicator
       return c;
    }
 
+   pragma(inline, true)
+   private ptrdiff_t sktReceive(void[] buffer)
+   {
+      version(serverino_enable_https) if (tlsStream !is null) return tlsStream.read(cast(ubyte[])buffer);
+      return clientSkt.receive(buffer);
+   }
+
+   pragma(inline, true)
+   private ptrdiff_t sktSend(const(void)[] buffer)
+   {
+      version(serverino_enable_https) if (tlsStream !is null) return tlsStream.write(cast(const(ubyte)[])buffer);
+      return clientSkt.send(buffer);
+   }
+
+   pragma(inline, true)
+   private ptrdiff_t sktSend(string s)
+   {
+      return sktSend(cast(const(void)[])s);
+   }
+
    DataBuffer!char   sendBuffer;
    size_t            bufferSent;
 
@@ -1043,6 +1201,14 @@ package class Communicator
 
    CoarseTime        lastRecv    = CoarseTime.zero;
    CoarseTime        lastRequest = CoarseTime.zero;
+
+   // TLS support
+   version(serverino_enable_https)
+   {
+      TlsStream         tlsStream = null;
+      Socket            proxySkt = null;    // Internal socket for worker proxying (HTTPS)
+      socket_t          proxySktHandle = socket_t.max;
+   }
 
    Communicator      next = null;
    Communicator      prev = null;

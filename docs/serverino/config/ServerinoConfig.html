@@ -42,8 +42,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				</ul>
 			</div>
 			<p id="main-nav-footer">
-				Built with
-				<a href="https://github.com/MartinNowak/scod">scod</a>
+				Built with<a href="https://github.com/MartinNowak/scod">scod</a>
 			</p>
 		</nav>
 		<div id="main-contents">
@@ -54,8 +53,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">struct</span> <span class="typ">ServerinoConfig</span>
-				<span class="pun">;</span>
+				<span class="kwd">struct</span> <span class="typ">ServerinoConfig</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
@@ -80,6 +78,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/config/ServerinoConfig.addHttpsCertificate.html" class="public">
+									<code>addHttpsCertificate</code>
+								</a>
+								<span class="tableEntryAnnotation">(certPath, keyPath)</span>
+							</td>
+							<td>Add an HTTPS certificate to the server.
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/config/ServerinoConfig.addListener.html" class="public">
 									<code>addListener</code>
 								</a>
@@ -96,6 +104,16 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Create a new instance of ServerinoConfig
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.disableHTTPS.html" class="public">
+									<code>disableHTTPS</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Disable HTTPS on the server.
 </td>
 						</tr>
 						<tr>
@@ -145,6 +163,26 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableHTTPS.html" class="public">
+									<code>enableHTTPS</code>
+								</a>
+								<span class="tableEntryAnnotation">(enable)</span>
+							</td>
+							<td>Enable HTTPS on the server.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/ServerinoConfig.enableHTTPS.html" class="public">
+									<code>enableHTTPS</code>
+								</a>
+								<span class="tableEntryAnnotation">(certPath, keyPath)</span>
+							</td>
+							<td>Backward compatibility for enableHTTPS(cert, key)
 </td>
 						</tr>
 						<tr>
@@ -367,12 +405,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 					</table>
 				</section>
-				
 			</div>
 			<footer>
 				<div id="license-info">
-					
-					
 					
 				</div>
 			</footer>

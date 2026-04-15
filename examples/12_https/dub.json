@@ -1,0 +1,18 @@
+{
+	"authors": [
+		"Andrea Fontana"
+	],
+	"dependencies": {
+		"serverino": {
+			"path": "../../"
+		}
+	},
+	"subConfigurations": {
+		"serverino": "https"
+	},
+	"license": "proprietary",
+	"name": "https_ipv6_example",
+	"preBuildCommands": [
+		"[ -f server.key ] && [ -f server.crt ] || openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -nodes -subj '/C=IT/ST=Italy/L=Milan/O=Trikko/OU=ICT/CN=localhost'"
+	]
+}

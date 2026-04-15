@@ -624,10 +624,10 @@ struct Worker
 
             version(debugRequest)
             {
-               log("-- REQ: ", request.path);
+               log("-- PATH: ", request.path);
                log("-- PARSING STATUS: ", request._internal._parsingStatus);
 
-               try { log("-- REQ: ", request); }
+               try { log("-- REQUEST: \n", request); }
                catch (Exception e ) {log("EX:", e);}
             }
 
@@ -1054,7 +1054,7 @@ bool acceptWebsocket(Modules...)(Request request)
    {
       static foreach(f; getSymbolsByUDA!(m, onWebSocketUpgrade))
       {
-         version(disable_websockets) static assert(false, "You compiled with -version=disable_websockets. You need to remove it to use WebSockets.");
+         version(serverino_disable_websockets) static assert(false, "You compiled with -version=serverino_disable_websockets. You need to remove it to use WebSockets.");
          static if (__VERSION__ < 2102) static assert(false, "You need at least DMD 2.102 to use WebSockets.");
 
          static assert(isFunction!f, "`" ~ __traits(identifier, f) ~ "` is marked with @onWebSocketUpgrade but it is not a function");

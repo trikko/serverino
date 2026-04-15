@@ -32,13 +32,13 @@ public enum BackendType
 {
    SELECT = "select",
    EPOLL = "epoll",
-	KQUEUE = "kqueue"
+   KQUEUE = "kqueue"
 }
 
 // The backend is selected using the version directive or by checking the OS
-version(use_select) { enum Backend = BackendType.SELECT; }
-else version(use_epoll) { enum Backend = BackendType.EPOLL; }
-else version(use_kqueue) { enum Backend = BackendType.KQUEUE; }
+version(serverino_select_backend) { enum Backend = BackendType.SELECT; }
+else version(serverino_epoll_backend) { enum Backend = BackendType.EPOLL; }
+else version(serverino_kqueue_backend) { enum Backend = BackendType.KQUEUE; }
 else {
    version(linux) enum Backend = BackendType.EPOLL;
 	else version(BSD) enum Backend = BackendType.SELECT;
