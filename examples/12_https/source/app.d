@@ -25,7 +25,7 @@ ServerinoConfig configure()
     // e.g., 127.0.0.1 localhost domain1.test domain2.test
 
     return ServerinoConfig.create()
-        .enableHTTPS() 
+        .enableHttps() 
 
         // You can add multiple certificates.
         // Create a simple self-signed cert with openssl (for "localhost"):

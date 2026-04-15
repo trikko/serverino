@@ -284,7 +284,7 @@ struct ServerinoConfig
 
 
    /// Enable HTTPS on the server.
-   @safe ref ServerinoConfig enableHTTPS(bool enable = true) return
+   @safe ref ServerinoConfig enableHttps(bool enable = true) return
    {
       version(serverino_enable_https)
       {
@@ -299,7 +299,7 @@ struct ServerinoConfig
    }
 
    /// Disable HTTPS on the server.
-   @safe ref ServerinoConfig disableHTTPS() return { return enableHTTPS(false); }
+   @safe ref ServerinoConfig disableHttps() return { return enableHttps(false); }
 
    /// Add an HTTPS certificate to the server.
    @safe ref ServerinoConfig addHttpsCertificate(string certPath, string keyPath) return
@@ -318,11 +318,11 @@ struct ServerinoConfig
    }
 
    /**
-    * Backward compatibility for enableHTTPS(cert, key)
+    * Backward compatibility for enableHttps(cert, key)
     *
-    * Deprecated: use enableHTTPS() and addHttpsCertificate(cert, key) instead.
+    * Deprecated: use enableHttps() and addHttpsCertificate(cert, key) instead.
     */
-   @safe ref ServerinoConfig enableHTTPS(string certPath, string keyPath) return
+   @safe ref ServerinoConfig enableHttps(string certPath, string keyPath) return
    {
       return addHttpsCertificate(certPath, keyPath);
    }
