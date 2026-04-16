@@ -80,4 +80,16 @@ jobs:
       - name: Build https examples
         if: ${{ matrix.os != 'windows-latest' }}
         run: dub build --build=release --root=examples/12_https/
+
+      - name: Test https example
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          cd examples/12_https
+          ./https_ipv6_example &
+          PID=$!
+          sleep 1
+          curl -kv https://localhost:8443 --retry 5 --retry-connrefused --retry-delay 1 | grep "You are connected via HTTPS"
+          EXIT_CODE=$?
+          kill $PID
+          exit $EXIT_CODE
         
