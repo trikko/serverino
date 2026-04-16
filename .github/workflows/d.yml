@@ -85,7 +85,7 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           cd examples/12_https
-          ./https_ipv6_example &
+          ./https_example &
           PID=$!
           sleep 1
           curl -kv https://localhost:8443 --retry 5 --retry-connrefused --retry-delay 1 | grep "You are connected via HTTPS"

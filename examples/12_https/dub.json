@@ -11,7 +11,7 @@
 		"serverino": "https"
 	},
 	"license": "proprietary",
-	"name": "https_ipv6_example",
+	"name": "https_example",
 	"preBuildCommands": [
 		"[ -f server.key ] && [ -f server.crt ] || openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -nodes -subj '/C=IT/ST=Italy/L=Milan/O=Example/OU=ICT/CN=localhost'"
 	]
