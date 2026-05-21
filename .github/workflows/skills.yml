@@ -1,0 +1,110 @@
+name: Generate Serverino Skill Archive
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'examples/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-skill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Serverino Codebase
+        uses: actions/checkout@v4
+
+      - name: Create Skill Directory structure
+        run: |
+          mkdir -p build/serverino/wiki
+          mkdir -p build/serverino/examples
+
+      - name: Download LLM Docs
+        run: |
+          curl -s https://trikko.github.io/serverino/llms.txt -o build/serverino/llms.txt
+          curl -s https://trikko.github.io/serverino/llms-full.txt -o build/serverino/llms-full.txt
+
+      - name: Clone Wiki Tips
+        run: |
+          git clone --depth 1 https://github.com/trikko/serverino.wiki.git temp_wiki
+          cp temp_wiki/*.md build/serverino/wiki/
+          rm -rf temp_wiki
+
+      - name: Copy Examples from codebase
+        run: |
+          cp -r examples/* build/serverino/examples/
+
+      - name: Generate SKILL.md (English version)
+        run: |
+          cat << 'EOF' > build/serverino/SKILL.md
+          ---
+          name: serverino-dlang
+          description: Official documentation, examples, and guides for Serverino, a zero-dependency HTTP/WebSocket server for the D programming language. Use this whenever the user asks questions about Serverino or web development in D.
+          ---
+
+          # Serverino - HTTP/WebSocket Server for D
+
+          Serverino is a high-performance, multi-process, zero-dependency HTTP and WebSocket server library for the D programming language (dlang).
+
+          **Asset directory**: `${CLAUDE_SKILL_DIR}`
+
+          ## Locally Available Resources
+          All the information needed to understand and write correct Serverino code is saved within this skill. Use these as your single source of truth:
+
+          1. **Core Documentation & Consolidated API Reference**:
+             - `llms.txt` - High-level overview, main modules, and quick-start.
+             - `llms-full.txt` - Detailed API reference for configuration, routing (UDAs), interfaces (Request, Output, FormData), and complete examples (GET, POST, JSON API, File Upload, WebSockets).
+
+          2. **Specific Use Cases & Recipes (Wiki)**:
+             Available in the `./wiki/` directory:
+             - `Tips:-authorization.md` - How to implement authentication.
+             - `Tips:-docker.md` - Docker configurations.
+             - `Tips:-filter-requests-with-@route.md` - Advanced routing examples using the `@route` UDA.
+             - `Tips:-init-your-workers.md` - Initializing worker processes.
+             - `Tips:-mute-output.md` - Muting/configuring log outputs.
+             - `Tips:-passing-params-from-main-process-(daemon)-to-workers.md` - Parameter sharing between master (daemon) and workers.
+             - `Tips:-read-a-posted-file.md` - Reading files sent via POST.
+             - `Tips:-redirect.md` - How to execute HTTP redirects.
+             - `Tips:-run-serverino-as-systemd-service.md` - Running as a Systemd service.
+             - `Tips:-running-a-thread-in-parallel-to-serverino.md` - Running parallel threads.
+             - `Tips:-serverino-with-multiple-source-file.md` - Multi-file compilation.
+
+          3. **Official Codebase Examples**:
+             Available in the subfolders of the `./examples/` directory:
+             - `01_hello_world` - Basic server.
+             - `02_priority` - Endpoint priority management.
+             - `03_form` - HTML form handling (GET/POST).
+             - `04_html_dom` - Generating HTML responses.
+             - `05_websocket_echo` - Basic WebSocket echo server.
+             - `06_websocket_noise_stream` - Generating WebSocket streams.
+             - `07_websocket_callback` - Advanced WebSocket callbacks.
+             - `08_cmdline_args` - Command-line arguments.
+             - `09_simple_session` - Session management via cookies.
+             - `10_diet_ng_templates` - Integration with Diet templates.
+             - `11_elemi_integration` - HTML generation with Elemi.
+             - `12_https` - HTTPS configuration.
+
+          ## Essential Coding Rules
+          1. **Correct Parameter Access**:
+             - **NEVER** access query or POST parameters as associative arrays (e.g., `request.get["name"]` is WRONG).
+             - **ALWAYS** use `.read` or `.has` (e.g., `string name = request.get.read("name", "Default");` or `if (request.get.has("admin"))`).
+          2. **Output Handling**:
+             - Append data to response body: `output ~= "data"`.
+             - Set status code: `output.status = 200`.
+             - Add headers: `output.addHeader("Name", "Value")`.
+          3. **Local Docs First**:
+             - When asked a specific question, read local files `llms.txt`, `llms-full.txt`, `./wiki/*`, or `./examples/*` first to ensure correct syntax.
+          EOF
+
+      - name: Zip the Skill folder
+        run: |
+          cd build
+          zip -r ../serverino-skill.zip serverino/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: serverino-skill
+          path: serverino-skill.zip
