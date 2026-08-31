@@ -18,3 +18,14 @@ dub.selections*
 *.lib
 test-1/test-1
 init-exec/serverino_init-exec
+
+# TLS private keys and certificates.
+# The https examples generate self-signed ones via preBuildCommands: never commit them.
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+
+# Example binaries
+examples/*/*_example
