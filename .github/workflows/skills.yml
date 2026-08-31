@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - 'examples/**'
+      - 'docs/llms.txt'
+      - 'docs/llms-full.txt'
+      - '.github/workflows/skills.yml'
   workflow_dispatch:
 
 jobs:
@@ -21,13 +24,16 @@ jobs:
           mkdir -p build/serverino/wiki
           mkdir -p build/serverino/examples
 
-      - name: Download LLM Docs
+      - name: Copy LLM Docs from the checkout
         run: |
-          curl -s https://trikko.github.io/serverino/llms.txt -o build/serverino/llms.txt
-          curl -s https://trikko.github.io/serverino/llms-full.txt -o build/serverino/llms-full.txt
+          # Taken from the repository, not from GitHub Pages: this way the skill always
+          # matches the commit that triggered the run, and a failed fetch cannot end up
+          # packaged as a silently broken skill.
+          cp docs/llms.txt docs/llms-full.txt build/serverino/
 
       - name: Clone Wiki Tips
         run: |
+          set -euo pipefail
           git clone --depth 1 https://github.com/trikko/serverino.wiki.git temp_wiki
           cp temp_wiki/*.md build/serverino/wiki/
           rm -rf temp_wiki
@@ -94,7 +100,12 @@ jobs:
              - Append data to response body: `output ~= "data"`.
              - Set status code: `output.status = 200`.
              - Add headers: `output.addHeader("Name", "Value")`.
-          3. **Local Docs First**:
+             - `serveFile` takes its disposal action as a **template** parameter: `output.serveFile!(OnFileServed.DeleteFile)("/tmp/f.pdf")`, NOT `serveFile(path, OnFileServed.DeleteFile)`.
+          3. **WebSockets**:
+             - A single `@onWebSocketUpgrade bool(Request)` function is **required**: without it every upgrade is rejected.
+             - The handler is an `@endpoint` taking `(Request, WebSocket)`, and it normally loops forever.
+             - `@onWebSocketStart` and `@onWebSocketStop` take **no arguments**: they cannot be used to receive the WebSocket.
+          4. **Local Docs First**:
              - When asked a specific question, read local files `llms.txt`, `llms-full.txt`, `./wiki/*`, or `./examples/*` first to ensure correct syntax.
           EOF
 
