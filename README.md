@@ -25,12 +25,14 @@ import serverino;
 mixin ServerinoMain;
 void simple(Request request, Output output) { output ~= request.dump(); }
 ```
+> [!NOTE]
+> No `@endpoint` needed here: when your app has exactly one handler, serverino picks it up automatically. As soon as you add a second one, tag them all with `@endpoint`.
 
 ## Documentation you need
 * [Serverino docs](https://trikko.github.io/serverino/) - Serverino reference, generated from code
 * [Examples](https://github.com/trikko/serverino/tree/master/examples) - Some ready-to-try examples
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
-* [LLM-Friendly Docs](https://trikko.github.io/serverino/llms.txt) - Optimized documentation for AI agents (Gemini, Claude, ...)
+* [llms.txt](https://trikko.github.io/serverino/llms.txt) - Documentation for AI agents (Claude, Gemini, ...), following the [llms.txt](https://llmstxt.org) convention. The full reference is in [llms-full.txt](https://trikko.github.io/serverino/llms-full.txt)
 
 ## Defining more than one endpoint
 > [!IMPORTANT]
@@ -105,6 +107,7 @@ void requestLog(Request request)
 Global variables marked with `@requestScope` are automatically reset at the beginning and end of each request, preventing data leaks between separate HTTP requests.
 
 ```d
+import std;
 import serverino;
 
 mixin ServerinoMain;
@@ -118,7 +121,7 @@ UserCache cache;
 @endpoint
 void handler(Request request, Output output)
 {
-	currentUser.id = request.get("user_id").to!int;  // Reset every request
+	currentUser.id = request.get.read("user_id").to!int;  // Reset every request
 	cache.store(currentUser.id);  // Persists across requests
 
 	output ~= "User " ~ currentUser.id.to!text ~ " loaded";
@@ -163,8 +166,8 @@ void handler(Request request, Output output)
 > Hot-reloading only affects the worker processes, not the main daemon process. If you modify code in the main daemon process, those changes will not be applied until you fully restart the server. Only changes to endpoint handlers and worker-specific code will be picked up by the hot-reload mechanism.
 
 Serverino workers can be restarted on demand without causing downtime.
- * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -10 <daemon_pid>` or `kill -SIGUSR1 <daemon_pid>`
- * On Windows: delete the canary file in the temp folder named `serverino-pid-<sha256 of pid>.canary`
+ * On POSIX systems: send `SIGUSR1` signal to the main process with `kill -SIGUSR1 <daemon_pid>` (avoid the numeric form: SIGUSR1 is 10 on Linux but 30 on macOS/BSD)
+ * On Windows: delete the canary file in the temp folder named `serverino-<daemon_pid>-<sha256 of pid>.canary`
 
 This allows you to recompile your workers and perform hot-reloading of your application code without any service interruption or dropped connections.
 

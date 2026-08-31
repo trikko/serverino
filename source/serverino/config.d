@@ -88,7 +88,7 @@ public enum onWorkerException;
 
    @endpoint
    void handler(Request r, Output o) {
-      currentUser.name = r.get("name");  // reset at start of each request
+      currentUser.name = r.get.read("name");  // reset at start of each request
       o ~= currentUser.name;
    }
    ---

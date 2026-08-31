@@ -1,29 +1,38 @@
-# Serverino - High-performance HTTP/WebSocket server for D
+# Serverino
 
-Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D programming language. It is designed for high availability, protection against slow-client attacks, and ease of use.
+> Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D programming language. It uses a daemon/worker process model (epoll on Linux, kqueue on macOS/BSD, select elsewhere) for resilience against crashes and slow-client attacks, and a UDA-based API for routing and configuration. Version 0.7.21.
 
-## Core Characteristics
-- **Multi-process**: Isolated workers for maximum resilience.
-- **High Performance**: Native event loops (epoll, kqueue, select).
-- **Zero Dependency**: Only requires a D compiler (DMD, LDC, GDC).
-- **Modern API**: Clean, UDA-based routing and configuration.
+Endpoints are plain functions annotated with `@endpoint`; the server is started by mixing in `ServerinoMain`. Workers are separate processes, not threads: no application state is shared between requests.
 
-## Essential Links
-- [Full Documentation for LLMs](llms-full.txt)
-- [Official Website](https://trikko.github.io/serverino/)
-- [GitHub Repository](https://github.com/trikko/serverino)
-
-## Quick Start
 ```d
 import serverino;
 mixin ServerinoMain;
 
 @endpoint
-void hello(Request req, Output output) {
+void hello(Request request, Output output) {
     output ~= "Hello, Serverino!";
 }
 ```
 
-## Main Modules
-- [serverino.config](serverino/config.html): UDAs and ServerinoConfig.
-- [serverino.interfaces](serverino/interfaces.html): Request, Output, and Cookie structs.
+## Docs
+
+- [Consolidated reference for LLMs](https://trikko.github.io/serverino/llms-full.txt): Complete API reference, patterns and pitfalls in a single file. Start here.
+- [serverino.config](https://trikko.github.io/serverino/serverino/config.html): UDAs (`@endpoint`, `@route`, `@priority`, lifecycle hooks) and the `ServerinoConfig` fluent API.
+- [serverino.interfaces](https://trikko.github.io/serverino/serverino/interfaces.html): `Request`, `Output`, `Cookie`, `WebSocket`, `WebSocketMessage`, `ServerinoProcess`.
+- [API index](https://trikko.github.io/serverino/): Generated ddox documentation.
+
+## Examples
+
+- [All examples](https://github.com/trikko/serverino/tree/master/examples): Compiled in CI, so always in sync with the current API.
+- [Hello world](https://github.com/trikko/serverino/tree/master/examples/01_hello_world): Minimal server.
+- [Forms and file uploads](https://github.com/trikko/serverino/tree/master/examples/03_form): `request.post` and `request.form`.
+- [WebSocket echo](https://github.com/trikko/serverino/tree/master/examples/05_websocket_echo): `@onWebSocketUpgrade` plus a `(Request, WebSocket)` endpoint.
+- [WebSocket callbacks](https://github.com/trikko/serverino/tree/master/examples/07_websocket_callback): `ws.onTextMessage` and friends.
+- [Sessions](https://github.com/trikko/serverino/tree/master/examples/09_simple_session): Cookie handling across a multi-process server.
+- [HTTPS with SNI](https://github.com/trikko/serverino/tree/master/examples/12_https): Experimental; requires the `https` dub subconfiguration and POSIX.
+
+## Project
+
+- [GitHub repository](https://github.com/trikko/serverino): Source, issues and README.
+- [Wiki: tips and tricks](https://github.com/trikko/serverino/wiki/): Recipes beyond the API reference.
+- [dub package](https://code.dlang.org/packages/serverino): `dub add serverino`.
