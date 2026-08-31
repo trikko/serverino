@@ -999,6 +999,10 @@ struct Output
                // Text/document formats
                ".html" : "text/html", ".htm" : "text/html", ".shtml" : "text/html", ".css" : "text/css", ".xml" : "text/xml",
                ".txt" : "text/plain", ".md" : "text/markdown", ".csv" : "text/csv", ".yaml" : "text/yaml", ".yml" : "text/yaml",
+               ".log" : "text/plain", ".ini" : "text/plain", ".conf" : "text/plain", ".cfg" : "text/plain",
+               ".toml" : "application/toml", ".tsv" : "text/tab-separated-values",
+               ".vtt" : "text/vtt", ".srt" : "application/x-subrip", ".ics" : "text/calendar", ".vcf" : "text/vcard",
+               ".diff" : "text/x-diff", ".patch" : "text/x-diff", ".sql" : "application/sql",
                ".jad" : "text/vnd.sun.j2me.app-descriptor", ".wml" : "text/vnd.wap.wml", ".htc" : "text/x-component",
 
                // Image formats
@@ -1010,7 +1014,7 @@ struct Output
 
                // Web fonts
                ".woff" : "application/font-woff", ".woff2": "font/woff2", ".ttf" : "font/ttf", ".otf" : "font/otf",
-               ".eot" : "application/vnd.ms-fontobject",
+               ".eot" : "application/vnd.ms-fontobject", ".ttc" : "font/collection",
 
                // Archives and applications
                ".jar" : "application/java-archive", ".war" : "application/java-archive", ".ear" : "application/java-archive",
@@ -1030,6 +1034,9 @@ struct Output
                ".xspf" : "application/xspf+xml", ".zip" : "application/zip",
                ".br" : "application/x-brotli", ".gz" : "application/gzip",
                ".bz2" : "application/x-bzip2", ".xz" : "application/x-xz",
+               ".tar" : "application/x-tar", ".tgz" : "application/gzip", ".zst" : "application/zstd",
+               ".epub" : "application/epub+zip", ".apk" : "application/vnd.android.package-archive",
+               ".sh" : "application/x-sh", ".py" : "text/x-python",
 
                // Generic binary files
                ".bin" : "application/octet-stream", ".exe" : "application/octet-stream", ".dll" : "application/octet-stream",
@@ -1041,15 +1048,18 @@ struct Output
                ".docx" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                ".xlsx" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                ".pptx" : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+               ".odt" : "application/vnd.oasis.opendocument.text",
+               ".ods" : "application/vnd.oasis.opendocument.spreadsheet",
+               ".odp" : "application/vnd.oasis.opendocument.presentation",
 
                // Audio formats
                ".mid" : "audio/midi", ".midi" : "audio/midi", ".kar" : "audio/midi",
                ".mp3" : "audio/mpeg", ".ogg" : "audio/ogg", ".m4a" : "audio/x-m4a",
                ".ra" : "audio/x-realaudio", ".opus" : "audio/opus", ".aac" : "audio/aac",
-               ".flac" : "audio/flac",
+               ".flac" : "audio/flac", ".wav" : "audio/wav", ".weba" : "audio/webm", ".m4b" : "audio/mp4",
 
                // Video
-               ".3gpp" : "video/3gpp", ".3gp" : "video/3gpp", ".ts" : "video/mp2t", ".mp4" : "video/mp4",
+               ".3gpp" : "video/3gpp", ".3gp" : "video/3gpp", ".mp4" : "video/mp4",
                ".mpeg" : "video/mpeg", ".mpg" : "video/mpeg", ".mov" : "video/quicktime",
                ".webm" : "video/webm", ".flv" : "video/x-flv", ".m4v" : "video/x-m4v",
                ".mng" : "video/x-mng", ".asx" : "video/x-ms-asf", ".asf" : "video/x-ms-asf",
@@ -1057,8 +1067,13 @@ struct Output
                ".mkv" : "video/x-matroska", ".ogv" : "video/ogg",
 
                // Web development
-               ".js" : "application/javascript", ".wasm" : "application/wasm",
-               ".ts" : "application/typescript",
+               ".js" : "application/javascript", ".mjs" : "application/javascript", ".cjs" : "application/javascript",
+               ".wasm" : "application/wasm",
+               // NOTE: ".ts" is ambiguous (MPEG transport stream vs TypeScript): HLS wins, since ".m3u8" is served too.
+               ".ts" : "video/mp2t",
+               ".map" : "application/json", ".jsonld" : "application/ld+json",
+               ".webmanifest" : "application/manifest+json", ".xslt" : "application/xslt+xml",
+               ".gltf" : "model/gltf+json", ".glb" : "model/gltf-binary",
                ".atom" : "application/atom+xml", ".rss" : "application/rss+xml",
                ".mml" : "text/mathml"
             ];
