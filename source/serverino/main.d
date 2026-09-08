@@ -234,7 +234,14 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
 {
    // If the return code is not 0 or forceExit is true, serverino will exit immediately.
    if (config.returnCode != 0 || config.forceExit)
+   {
+      import serverino.daemon : Daemon;
+      import std.conv : to;
+
+      // With ServerinoBackground nobody reads this return code: let the user's main() know.
+      Daemon.setBootFailure("Serverino did not start. Return code: " ~ config.returnCode.to!string);
       return config.returnCode;
+   }
 
    if (config.daemonConfig.overrideLogger)
    {
@@ -249,7 +256,12 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
    }
    catch (Exception e) {
       import std.experimental.logger : error;
+      import serverino.daemon : Daemon;
+
       error(e.msg);
+
+      // Ditto: with ServerinoBackground this return code goes nowhere.
+      Daemon.setBootFailure(e.msg);
       return 1;
    }
 

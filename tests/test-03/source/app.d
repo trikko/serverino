@@ -106,7 +106,8 @@ void main()
    client.operationTimeout = 500.msecs;
    client.dataTimeout = 500.msecs;
 
-   while(!Daemon.bootCompleted) Thread.sleep(100.msecs);
+   while(!Daemon.bootCompleted && !Daemon.bootFailed) Thread.sleep(100.msecs);
+   assert(!Daemon.bootFailed, "Serverino did not start: " ~ Daemon.bootError);
 
    assertNotThrown(get("http://localhost:8080/1", client) == "OK");
 

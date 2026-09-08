@@ -38,9 +38,16 @@ void main()
    import core.thread;
    import serverino.daemon;
 
-   // Is serverino ready?
-   while(!Daemon.bootCompleted)
+   // Is serverino ready? (bootFailed breaks the loop if the configuration is invalid)
+   while(!Daemon.bootCompleted && !Daemon.bootFailed)
       Thread.sleep(10.msecs);
+
+   if (Daemon.bootFailed)
+   {
+      import core.stdc.stdlib : exit;
+      writeln("Serverino did not start: ", Daemon.bootError);
+      exit(-1);
+   }
 
    // Run the tests
    try {

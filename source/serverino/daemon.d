@@ -494,6 +494,29 @@ static:
    /// Is serverino ready to accept requests?
    bool bootCompleted() @safe @nogc nothrow { return ready; }
 
+   /++ Did serverino give up starting? (invalid configuration, or a return code
+    + set from `@onServerInit`)
+    +
+    + It matters with `ServerinoBackground`: the daemon runs on its own thread, so
+    + a failed boot can't reach your `main()` as a return code. Without checking
+    + this, a `while(!Daemon.bootCompleted)` loop would wait forever.
+    + ---
+    + while(!Daemon.bootCompleted && !Daemon.bootFailed) Thread.sleep(10.msecs);
+    + if (Daemon.bootFailed) { stderr.writeln(Daemon.bootError); return 1; }
+    + ---
+   +/
+   bool bootFailed() @safe @nogc nothrow { return bootFailure; }
+
+   /// Why the boot failed. Empty if it didn't.
+   string bootError() @trusted nothrow { return cast(string)bootErrorMessage; }
+
+   // Called by wakeServerino() when serverino gives up before the daemon starts.
+   package void setBootFailure(string message) @trusted nothrow
+   {
+      bootErrorMessage = message;
+      bootFailure = true;
+   }
+
    /// Reload all workers
    void reload() @safe @nogc nothrow { reloadRequested = true; }
 
@@ -1472,6 +1495,8 @@ package:
       static shared bool exitRequested   = false;
       static shared bool reloadRequested = false;
       static shared bool ready           = false;
+      static shared bool bootFailure     = false;
+      static shared string bootErrorMessage = null;
       static shared bool suspended       = false;
       static shared bool isDaemonRunning = false;
 
