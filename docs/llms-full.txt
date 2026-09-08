@@ -104,6 +104,19 @@ void main() {
 }
 ```
 
+The daemon runs on its own thread, so a failed boot (an invalid configuration, or
+a `setReturnCode()` from `@onServerInit`) can't reach your `main()` as a return
+code, and it does **not** terminate the process: it's up to you to check it.
+`Daemon.bootFailed` and `Daemon.bootError` (from `serverino.daemon`) report it:
+
+```d
+while(!Daemon.bootCompleted && !Daemon.bootFailed) Thread.sleep(10.msecs);
+if (Daemon.bootFailed) { stderr.writeln(Daemon.bootError); return 1; }
+```
+
+Waiting on `bootCompleted` alone would wait forever. With `ServerinoMain` none of
+this applies: the return code is the process exit code.
+
 ---
 
 ## 4. Configuration (serverino.config)
@@ -159,7 +172,7 @@ and turned into an exception during validation, listing every failed listener.
 | `.enableServerSignature(bool)` | disabled | Adds the `Server: serverino` header. |
 | `.enableRemoteIp(bool)` | disabled | Adds an `x-remote-ip` header with the client IP. |
 | `.setWorkerUser(string)` / `.setWorkerGroup(string)` | none | Drop privileges, e.g. `"www-data"`. POSIX only; throws on Windows. |
-| `.enableHttps()` / `.addHttpsCertificate(cert, key)` | disabled | See section 10. |
+| `.addListener(address, port, Https(cert, key))` | - | Encrypted listener. See section 10. |
 
 ### 4.4 Logging & runtime
 
@@ -270,6 +283,7 @@ beyond the endpoint call.
 | `id` | `string` | Unique per request, e.g. `a1b2-0042`. Handy for logs. |
 | `route` | `string[]` | Fully-qualified names of the endpoints that ran. |
 | `requestLine` | `string` | Raw request line. |
+| `isSecure` | `bool` | True if the request came from a https listener. Set by the daemon: a client can't forge it. |
 | `worker` | | Id of the worker serving the request. |
 | `dump(bool html = true)` | `string` | Human-readable dump of the whole request; for debugging. |
 
@@ -366,7 +380,7 @@ output.setCookie(c);
 
 TLS support is **experimental**, **opt-in at build time** and **POSIX only**
 (it uses OpenSSL). Add the `https` subconfiguration in your dub file, otherwise
-`enableHttps()` and `addHttpsCertificate()` fail with an assertion.
+passing certificates to `addListener()` is a compile time error.
 
 ```json
 {
@@ -377,15 +391,38 @@ TLS support is **experimental**, **opt-in at build time** and **POSIX only**
 
 The dub.sdl equivalent is `subConfiguration "serverino" "https"`.
 
+Certificates are attached to a **listener**, not to the whole process: plain and
+encrypted listeners can coexist in the same serverino.
+
 ```d
 @onServerInit ServerinoConfig setup() {
    return ServerinoConfig.create()
-      .enableHttps()
-      // The first certificate added is the default/fallback one.
+      .addListener("0.0.0.0", 80)   // plain http
+      // The first certificate of the set is the default/fallback one.
       // Adding more than one enables SNI.
-      .addHttpsCertificate("server.crt", "server.key")
-      .addHttpsCertificate("other-domain.crt", "other-domain.key")
-      .addListener("0.0.0.0", 8443);
+      .addListener("0.0.0.0", 443, Https("server.crt", "server.key").add("other-domain.crt", "other-domain.key"));
+}
+```
+
+`Https` is a value you can build at runtime: `Https(cert, key, cert, key, ...)`,
+`Https(rangeOfPairs)`, `.add(cert, key)` (chainable) and `~=`. Handy when the
+certificates come from a directory or from the command line:
+
+```d
+auto certificates = Https();
+foreach(f; dirEntries("certs", "*.crt", SpanMode.shallow))
+   certificates.add(f.name, f.name.setExtension(".key"));
+```
+
+`request.isSecure` tells whether a request came from an encrypted listener. It
+travels on the private daemon-to-worker channel, so a client can't forge it:
+
+```d
+@endpoint @priority(100) auto forceHttps(Request request, Output output) {
+   if (request.isSecure) return Fallthrough.Yes;
+   output.status = 301;
+   output.addHeader("location", "https://" ~ request.host ~ request.path);
+   return Fallthrough.No;
 }
 ```
 
@@ -396,8 +433,18 @@ openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 
    -nodes -subj '/C=IT/ST=Italy/L=Venice/O=Example/OU=ICT/CN=localhost'
 ```
 
-`.disableHttps()` turns it off. `enableHttps(cert, key)` still exists but is
-deprecated in favour of `enableHttps()` + `addHttpsCertificate()`.
+> WebSocket over TLS (wss) is supported on the epoll and kqueue backends only: on
+> the `select` backend the daemon never wakes up on the worker-to-client
+> direction. Also note that a wss connection reports the address family of the
+> internal socket pair, so `remoteAddress`/`localAddress` are not meaningful there.
+
+Certificates are loaded when the daemon starts. To reload them after a renewal,
+call `Daemon.reloadCertificates()` (from `serverino.daemon`) or send `SIGHUP` to
+the daemon process: every listener rebuilds its TLS context within a second,
+connections already established keep the certificate they were built with, and
+if the new files can't be loaded the previous ones stay in use. A https listener
+whose certificates are all invalid at startup is a fatal error: serverino never
+falls back to plain text on a port declared as encrypted.
 
 ---
 
@@ -516,8 +563,11 @@ connections:
 - **Windows**: delete the canary file
   `<tempDir>/serverino-<daemon_pid>-<sha256 of the pid>.canary`
 
-The daemon itself is never reloaded, so changes to `@onServerInit` (listeners,
-worker counts, TLS certificates) require a full restart.
+TLS certificates are reloaded separately, without restarting anything:
+`Daemon.reloadCertificates()` or `kill -SIGHUP <daemon_pid>` (see section 10).
+
+The daemon itself is never reloaded, so other changes to `@onServerInit`
+(listeners, worker counts) require a full restart.
 
 ---
 

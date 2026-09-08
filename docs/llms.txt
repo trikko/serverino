@@ -29,7 +29,7 @@ void hello(Request request, Output output) {
 - [WebSocket echo](https://github.com/trikko/serverino/tree/master/examples/05_websocket_echo): `@onWebSocketUpgrade` plus a `(Request, WebSocket)` endpoint.
 - [WebSocket callbacks](https://github.com/trikko/serverino/tree/master/examples/07_websocket_callback): `ws.onTextMessage` and friends.
 - [Sessions](https://github.com/trikko/serverino/tree/master/examples/09_simple_session): Cookie handling across a multi-process server.
-- [HTTPS with SNI](https://github.com/trikko/serverino/tree/master/examples/12_https): Experimental; requires the `https` dub subconfiguration and POSIX.
+- [HTTPS with SNI](https://github.com/trikko/serverino/tree/master/examples/12_https): Plain and encrypted listeners in one process, `request.isSecure`, hot reload of the certificates. Experimental; requires the `https` dub subconfiguration and POSIX.
 
 ## Project
 

@@ -190,20 +190,37 @@ In your `dub.json`:
 }
 ```
 
-Once activated, you need to enable it in your configuration and provide the certificates:
+Once activated, attach the certificates to the listener you want to encrypt:
 
 ```d
 @onServerInit
 ServerinoConfig configure()
 {
    return ServerinoConfig.create()
-      .enableHttps()
-      .addHttpsCertificate("server.crt", "server.key");
+      .addListener("0.0.0.0", 80)                                       // plain http
+      .addListener("0.0.0.0", 443, Https("server.crt", "server.key"));  // https
 }
 ```
 
+Certificates belong to a listener, not to the whole process: plain and encrypted listeners can live
+together in the same serverino. Use `request.isSecure` to tell the two apart, for example to redirect
+everything to https while still serving an ACME challenge in clear.
+
 > [!TIP]
-> You can call `addHttpsCertificate` multiple times to support SNI with different domains. The first certificate added will be used as the default one.
+> `Https` is a set you can build at runtime, so the certificates don't have to be known upfront:
+> ```d
+> auto certificates = Https();
+> foreach(f; dirEntries("certs", "*.crt", SpanMode.shallow))
+>    certificates.add(f.name, f.name.setExtension(".key"));
+> ```
+> The first certificate of the set is the default one, the others are picked using SNI.
+
+> [!NOTE]
+> WebSocket over TLS works on the epoll and kqueue backends (Linux, macOS, BSD), not on `select`.
+
+Certificates are read when the daemon starts. After renewing them (certbot, acme, ...) call
+`Daemon.reloadCertificates()`, or send a `SIGHUP` to the daemon: the listeners pick up the new
+certificates without restarting the server, and connections already established keep working.
 
 ## Shielding the whole thing
 > [!CAUTION]

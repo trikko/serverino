@@ -64,6 +64,10 @@ jobs:
       - name: Run test-03
         run: dub run --root=tests/test-03
 
+      - name: Run test-04 (https)
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: dub run --root=tests/test-04
+
       - name: Build examples
         run: dub build --build=release --root=examples/01_hello_world/
               && dub build --root=examples/02_priority/
@@ -89,6 +93,11 @@ jobs:
           PID=$!
           sleep 1
           curl -kv https://localhost:8443 --retry 5 --retry-connrefused --retry-delay 1 | grep "You are connected via HTTPS"
+          EXIT_CODE=$?
+          # The same process also serves plain http on another listener
+          [ "$EXIT_CODE" = "0" ] && curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ | grep -q "^301$"
+          EXIT_CODE=$?
+          [ "$EXIT_CODE" = "0" ] && curl -s http://localhost:8080/insecure | grep "connected via plain HTTP"
           EXIT_CODE=$?
           kill $PID
           exit $EXIT_CODE
