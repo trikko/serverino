@@ -346,7 +346,12 @@ package class WorkerInfo
                      }
                   }
 
+                  // The websocket lives on its own process now: the worker is free again.
+                  // (in the TLS case the communicator stays alive to pump the encrypted side,
+                  // so it doesn't go through reset() and nobody else would unset the worker)
                   if (communicator.status != Communicator.State.WEBSOCKET) communicator.reset();
+                  else communicator.unsetWorker();
+
                   return;
                }
             }

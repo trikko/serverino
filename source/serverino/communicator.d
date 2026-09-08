@@ -736,13 +736,15 @@ package class Communicator
                againPump = false;
 
                // Read from client (TLS) -> Write to worker (Plain)
+               // Nothing to read is the normal case here: only a real error (or a
+               // clean shutdown) must tear the connection down.
                auto readClient = tlsStream.read(bufferPump);
                if (readClient > 0)
                {
                   proxySkt.send(bufferPump[0..readClient]);
                   againPump = true;
                }
-               else if (readClient < 0 && readClient != TlsWantRead && readClient != TlsWantWrite)
+               else if (readClient == 0 || (readClient < 0 && !tlsStream.wouldBlock))
                {
                   reset();
                   return;

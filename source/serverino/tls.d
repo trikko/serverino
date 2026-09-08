@@ -212,6 +212,7 @@ package class TlsStream
     SSL* ssl;
     Socket socket;
     bool handshakeComplete = false;
+    bool _wouldBlock = false;
     TlsContext context;
 
     public:
@@ -278,11 +279,16 @@ package class TlsStream
     ptrdiff_t read(ubyte[] buffer)
     {
         import std.socket : Socket;
+        _wouldBlock = false;
         int ret = SSL_read(ssl, buffer.ptr, cast(int)buffer.length);
         if (ret > 0) return cast(ptrdiff_t)ret;
         
         int err = SSL_get_error(ssl, ret);
-        if (err == D_SSL_ERROR_WANT_READ || err == D_SSL_ERROR_WANT_WRITE) return Socket.ERROR;
+        if (err == D_SSL_ERROR_WANT_READ || err == D_SSL_ERROR_WANT_WRITE)
+        {
+            _wouldBlock = true;
+            return Socket.ERROR;
+        }
         
         return ret; // Error or connection closed
     }
@@ -290,14 +296,25 @@ package class TlsStream
     ptrdiff_t write(const(ubyte)[] buffer)
     {
         import std.socket : Socket;
+        _wouldBlock = false;
         int ret = SSL_write(ssl, buffer.ptr, cast(int)buffer.length);
         if (ret > 0) return cast(ptrdiff_t)ret;
         
         int err = SSL_get_error(ssl, ret);
-        if (err == D_SSL_ERROR_WANT_READ || err == D_SSL_ERROR_WANT_WRITE) return Socket.ERROR;
+        if (err == D_SSL_ERROR_WANT_READ || err == D_SSL_ERROR_WANT_WRITE)
+        {
+            _wouldBlock = true;
+            return Socket.ERROR;
+        }
         
         return ret;
     }
+
+    /+ Did the last read()/write() fail just because there was nothing to do?
+     + OpenSSL doesn't promise anything about errno when it returns WANT_READ/WANT_WRITE,
+     + so wouldHaveBlocked() can't be trusted on a TLS stream: ask the stream itself.
+    +/
+    @property bool wouldBlock() const { return _wouldBlock; }
 
     void close()
     {
