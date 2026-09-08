@@ -444,6 +444,40 @@ version(Posix)
       foreach (pid; Daemon.childDaemonPids)
          kill(pid, num);
    }
+
+   version(serverino_enable_https)
+   extern(C) void serverino_reload_certificates_handler(int num) nothrow @nogc @system
+   {
+      // Just bump the generation: the actual reload is done by the event loops.
+      import core.atomic : atomicOp;
+      atomicOp!"+="(Daemon.certificatesGeneration, 1);
+
+      import core.sys.posix.signal : kill;
+      foreach (pid; Daemon.childDaemonPids)
+         kill(pid, num);
+   }
+}
+
+version(serverino_enable_https)
+{
+   import serverino.config : Https;
+
+   // Identity of a certificate set: listeners sharing it share their TLS context.
+   package string tlsContextKey(const(Https.Certificate)[] certificates) @safe
+   {
+      import std.array : appender;
+
+      auto key = appender!string;
+      foreach(certificate; certificates)
+      {
+         key ~= certificate.certPath;
+         key ~= "\0";
+         key ~= certificate.keyPath;
+         key ~= "\0";
+      }
+
+      return key.data;
+   }
 }
 
 // The Daemon class is the core of serverino.
@@ -457,6 +491,33 @@ static:
 
    /// Reload all workers
    void reload() @safe @nogc nothrow { reloadRequested = true; }
+
+   version(serverino_enable_https)
+   {
+      /++ Reload the TLS certificates from disk, without restarting the daemon.
+       + Every listener rebuilds its TLS context within a second; connections already
+       + established keep using the certificate they were built with.
+       + If the new certificates can't be loaded, the previous ones stay in use.
+       +
+       + Sending SIGHUP to the daemon does the same thing. Call it from the daemon
+       + process (that's the one propagating the reload to its children).
+       + ---
+       + // After renewing a certificate with certbot/acme
+       + Daemon.reloadCertificates();
+       + ---
+      +/
+      void reloadCertificates() @trusted nothrow
+      {
+         import core.atomic : atomicOp;
+         atomicOp!"+="(certificatesGeneration, 1);
+
+         version(Posix)
+         {
+            import core.sys.posix.signal : kill, SIGHUP;
+            foreach (pid; childDaemonPids) kill(pid, SIGHUP);
+         }
+      }
+   }
 
    /// Shutdown the serverino daemon.
    void shutdown() {
@@ -662,35 +723,19 @@ package:
             sigaction_t act_reload = { sa_handler: &serverino_reload_handler };
             sigaction(SIGUSR1, &act_reload, null);
 
+            version(serverino_enable_https)
+            {
+               import core.sys.posix.signal : SIGHUP;
+               sigaction_t act_reload_certs = { sa_handler: &serverino_reload_certificates_handler };
+               sigaction(SIGHUP, &act_reload_certs, null);
+            }
+
             sigaction_t act_ignore = { sa_handler: SIG_IGN };
             sigaction(SIGPIPE, &act_ignore, null);
          }
       }
 
       if (isMainThread) tryInit!Modules();
-
-      version(serverino_enable_https)
-      {
-         if (config.httpsEnabled && tlsContext is null)
-         {
-            tlsContext = new TlsContext(config.httpsCertificates);
-            if (!tlsContext.isValid)
-            {
-               error("Failed to initialize TLS context.");
-               tlsContext = null;
-            }
-            else 
-            {
-               info("TLS context initialized successfully.");
-
-               if (tlsContext.validCount > 0)
-                  info("TLS loaded certificates: ", tlsContext.validCount);
-               
-               if (tlsContext.invalidCount > 0)
-                  warning("TLS not loaded certificates: ", tlsContext.invalidCount);
-            }
-         }
-      }
 
       static if (serverino.common.Backend == BackendType.EPOLL) epoll = epoll_create1(0);
       else static if (serverino.common.Backend == BackendType.KQUEUE)
@@ -709,10 +754,48 @@ package:
       // Starting all the listeners (thread-local copies).
       Listener[] threadListeners;
       threadListeners.reserve(config.listeners.length);
+
+      version(serverino_enable_https)
+      {
+         // Listeners sharing the same certificates share one context.
+         // (addListener!BOTH builds two listeners out of a single call)
+         TlsContext[string] tlsContexts;
+         import core.atomic : atomicLoad;
+         uint appliedCertificatesGeneration = atomicLoad(certificatesGeneration);
+      }
+
       foreach(orig; config.listeners)
       {
-         auto listener = new Listener(orig.index, orig.address);
+         auto listener = new Listener(orig.index, orig.address, orig.certificates);
          listener.config = config;
+
+         version(serverino_enable_https)
+         {
+            if (orig.certificates.length > 0)
+            {
+               immutable key = tlsContextKey(orig.certificates);
+
+               if (auto cached = key in tlsContexts) listener.tlsContext = *cached;
+               else
+               {
+                  auto ctx = new TlsContext(orig.certificates);
+
+                  if (!ctx.isValid)
+                  {
+                     import std.experimental.logger : critical;
+                     import core.stdc.stdlib : exit, EXIT_FAILURE;
+                     critical("Cannot load any valid certificate for ", orig.address.toString, ". Refusing to serve it in clear.");
+                     exit(EXIT_FAILURE);
+                  }
+
+                  if (ctx.invalidCount > 0)
+                     warning("TLS: ", ctx.invalidCount, " certificate(s) not loaded for ", orig.address.toString);
+
+                  tlsContexts[key] = ctx;
+                  listener.tlsContext = ctx;
+               }
+            }
+         }
 
          listener.socket = new TcpSocket(listener.address.addressFamily);
          listener.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
@@ -758,7 +841,7 @@ package:
             listener.socket.listen(config.listenerBacklog);
             version(serverino_enable_https)
             {
-               if (config.httpsEnabled) info("Listening on https://%s/".format(listener.socket.localAddress.toString));
+               if (listener.tlsContext !is null) info("Listening on https://%s/".format(listener.socket.localAddress.toString));
                else info("Listening on http://%s/".format(listener.socket.localAddress.toString));
             }
             else info("Listening on http://%s/".format(listener.socket.localAddress.toString));
@@ -917,6 +1000,61 @@ package:
                else {
                   if (!exists(canaryFileName))
                      Daemon.reloadRequested = true;
+               }
+
+               // Certificates changed on disk: rebuild the contexts of this thread's listeners.
+               version(serverino_enable_https)
+               {
+                  import core.atomic : atomicLoad;
+                  immutable generation = atomicLoad(Daemon.certificatesGeneration);
+
+                  if (generation != appliedCertificatesGeneration)
+                  {
+                     appliedCertificatesGeneration = generation;
+
+                     TlsContext[string] rebuilt;
+
+                     foreach(ref listener; threadListeners)
+                     {
+                        if (listener.certificates.length == 0) continue;
+
+                        immutable key = tlsContextKey(listener.certificates);
+
+                        if (auto cached = key in rebuilt) listener.tlsContext = *cached;
+                        else
+                        {
+                           auto ctx = new TlsContext(listener.certificates);
+
+                           if (!ctx.isValid)
+                           {
+                              // Never leave a https listener without certificates: keep the old ones.
+                              error("TLS reload failed for ", listener.address.toString, ". Keeping the previous certificates.");
+                              ctx.retire();
+                              continue;
+                           }
+
+                           rebuilt[key] = ctx;
+                           listener.tlsContext = ctx;
+                        }
+                     }
+
+                     if (rebuilt.length > 0)
+                     {
+                        // Retire the contexts nobody uses anymore. They are freed as soon
+                        // as the last connection built on them is gone.
+                        foreach(oldContext; tlsContexts.byValue)
+                        {
+                           bool stillInUse = false;
+                           foreach(newContext; rebuilt.byValue)
+                              if (newContext is oldContext) stillInUse = true;
+
+                           if (!stillInUse) oldContext.retire();
+                        }
+
+                        tlsContexts = rebuilt;
+                        info("TLS certificates reloaded.");
+                     }
+                  }
                }
 
                // If a reload is requested we restart all the workers (not the running ones)
@@ -1338,7 +1476,7 @@ package:
       static bool multiProcessStarted = false;
 
    package:
-      version(serverino_enable_https) static __gshared TlsContext tlsContext = null;
+      version(serverino_enable_https) static shared uint certificatesGeneration = 0;
    }
 
 }

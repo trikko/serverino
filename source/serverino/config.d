@@ -34,6 +34,8 @@ import std.traits : ReturnType;
 
 import serverino.common : Backend, BackendType;
 
+version(serverino_enable_https) import serverino.tls : TlsContext;
+
 /++ Used as optional return type for functions with `@endpoint`` UDA attached.
  It is used to override the default behavior of serverino: if an endpoint returns Fallthrough.Yes, the next endpoint is called even if the current one has written to the output.
  ---
@@ -150,6 +152,109 @@ auto configure()
 }
 ---
 ++/
+/++ A set of TLS certificates, to be attached to a listener.
+ +
+ + The set is accumulable and can be built from a range, so certificates don't
+ + need to be known at compile time: they can come from a directory, from the
+ + command line or from a configuration file.
+ + ---
+ + // A single certificate, known upfront
+ + config.addListener("0.0.0.0", 443, Https("fullchain.pem", "privkey.pem"));
+ +
+ + // Every certificate found in a directory
+ + auto certs = Https();
+ + foreach(f; dirEntries(dir, "*.crt", SpanMode.shallow))
+ +    certs.add(f.name, f.name.setExtension(".key"));
+ +
+ + config.addListener("0.0.0.0", 443, certs);
+ + ---
+ + The first certificate of the set is the default one, the others are picked using SNI.
++/
+struct Https
+{
+   /// A certificate and its private key. Both must be PEM encoded.
+   static struct Certificate
+   {
+      string certPath;  /// Path of the certificate (PEM)
+      string keyPath;   /// Path of the private key (PEM)
+   }
+
+   @safe:
+
+   /++ Build a set from an even number of paths, in cert/key order.
+    + ---
+    + auto certs = Https("a.crt", "a.key", "b.crt", "b.key");
+    + ---
+   +/
+   this(string[] paths...) { add(paths); }
+
+   /++ Build a set from a range of `Https.Certificate`, or of anything indexable
+    + with two elements (`string[2]`, `Tuple!(string, string)`, ...)
+   +/
+   this(R)(R certificates) if (!is(R : string[]))
+   {
+      foreach(c; certificates)
+      {
+         static if (is(typeof(c) : const Certificate)) add(c.certPath, c.keyPath);
+         else add(c[0], c[1]);
+      }
+   }
+
+   /// Add a certificate to the set. Chainable.
+   ref Https add(string certPath, string keyPath) return
+   {
+      _certificates ~= Certificate(certPath, keyPath);
+      return this;
+   }
+
+   /// Ditto
+   ref Https add(Certificate certificate) return
+   {
+      _certificates ~= certificate;
+      return this;
+   }
+
+   /// Add an even number of paths, in cert/key order. Chainable.
+   ref Https add(string[] paths) return
+   {
+      if (paths.length % 2 != 0)
+      {
+         _errors ~= "an even number of paths is required (cert, key, cert, key, ...)";
+         return this;
+      }
+
+      for(size_t i = 0; i < paths.length; i += 2)
+         add(paths[i], paths[i+1]);
+
+      return this;
+   }
+
+   /// Append a certificate, or another set of certificates.
+   ref Https opOpAssign(string op : "~")(Certificate certificate) return { return add(certificate); }
+
+   /// Ditto
+   ref Https opOpAssign(string op : "~")(Https other) return
+   {
+      _certificates ~= other._certificates;
+      _errors ~= other._errors;
+      return this;
+   }
+
+   /// How many certificates are in this set?
+   @nogc nothrow size_t length() const { return _certificates.length; }
+
+   /// Is this set empty?
+   @nogc nothrow bool empty() const { return _certificates.length == 0; }
+
+   /// The certificates, in insertion order. The first one is the default one.
+   @nogc nothrow const(Certificate)[] certificates() const { return _certificates; }
+
+   package:
+
+   Certificate[]  _certificates;
+   string[]       _errors;
+}
+
 struct ServerinoConfig
 {
 
@@ -283,61 +388,44 @@ struct ServerinoConfig
    @safe ref ServerinoConfig disableServerSignature() return { return enableServerSignature(false); }
 
 
-   /// Enable HTTPS on the server.
-   @safe ref ServerinoConfig enableHttps(bool enable = true) return
-   {
-      version(serverino_enable_https)
-      {
-         daemonConfig.httpsEnabled = enable;
-      }
-      else
-      {
-         assert(false, "HTTPS is not enabled. Add 'https' subconfiguration to serverino");
-      }
-
-      return this;
-   }
-
-   /// Disable HTTPS on the server.
-   @safe ref ServerinoConfig disableHttps() return { return enableHttps(false); }
-
-   /// Add an HTTPS certificate to the server.
-   @safe ref ServerinoConfig addHttpsCertificate(string certPath, string keyPath) return
-   {
-      version(serverino_enable_https)
-      {
-         daemonConfig.httpsEnabled = true;
-         daemonConfig.httpsCertificates ~= DaemonConfig.HttpsCertificate(certPath, keyPath);
-      }
-      else
-      {
-         assert(false, "HTTPS is not enabled. Add 'https' subconfiguration to serverino");
-      }
-
-      return this;
-   }
-
-   /**
-    * Backward compatibility for enableHttps(cert, key)
-    *
-    * Deprecated: use enableHttps() and addHttpsCertificate(cert, key) instead.
-    */
-   @safe ref ServerinoConfig enableHttps(string certPath, string keyPath) return
-   {
-      return addHttpsCertificate(certPath, keyPath);
-   }
-
-   /// Add a new listener.
+   /// Add a new listener. Plain HTTP.
    @safe ref ServerinoConfig addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port) return
+   {
+      return addListenerImpl!p(address, port, Https.init, false);
+   }
+
+   /++ Add a new HTTPS listener, using the certificates provided.
+    + Plain and encrypted listeners can live together in the same process.
+    + Requires the `https` subconfiguration of serverino (POSIX only).
+    + ---
+    + ServerinoConfig.create()
+    +    .addListener("0.0.0.0", 80)                                     // plain http
+    +    .addListener("0.0.0.0", 443, Https("fullchain.pem", "privkey.pem"));
+    + ---
+   +/
+   @safe ref ServerinoConfig addListener(ListenerProtocol p = ListenerProtocol.IPV4)(string address, ushort port, Https certificates) return
+   {
+      version(serverino_enable_https) return addListenerImpl!p(address, port, certificates, true);
+      else static assert(false, "HTTPS is not enabled. Add 'https' subconfiguration to serverino");
+   }
+
+   private @safe ref ServerinoConfig addListenerImpl(ListenerProtocol p)(string address, ushort port, Https certificates, bool https) return
    {
       enum LISTEN_IPV4 = (p == ListenerProtocol.IPV4 || p == ListenerProtocol.BOTH);
       enum LISTEN_IPV6 = (p == ListenerProtocol.IPV6 || p == ListenerProtocol.BOTH);
 
+      import std.format : format;
+
+      foreach(err; certificates._errors)
+         failedListeners ~= format(`"%s:%d" (%s)`, address, port, err);
+
+      if (https && certificates.empty)
+         failedListeners ~= format(`"%s:%d" (no certificate provided for a https listener)`, address, port);
+
       try {
-         static if(LISTEN_IPV4) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new InternetAddress(address, port));
-         static if(LISTEN_IPV6) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new Internet6Address(address, port));
+         static if(LISTEN_IPV4) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new InternetAddress(address, port), certificates._certificates);
+         static if(LISTEN_IPV6) daemonConfig.listeners ~= new Listener(daemonConfig.listeners.length, new Internet6Address(address, port), certificates._certificates);
       } catch (Exception e) {
-         import std.format : format;
          failedListeners ~=  format(`"%s:%d" (%s)`, address, port, e.msg);
       }
 
@@ -384,6 +472,21 @@ struct ServerinoConfig
             throw new Exception("Configuration error. user/group is not available on Windows");
       }
 
+      version(serverino_enable_https)
+      {
+         import std.file : exists;
+
+         foreach(listener; daemonConfig.listeners)
+            foreach(certificate; listener.certificates)
+            {
+               if (!exists(certificate.certPath))
+                  throw new Exception("Configuration error. Certificate file not found: " ~ certificate.certPath);
+
+               if (!exists(certificate.keyPath))
+                  throw new Exception("Configuration error. Private key file not found: " ~ certificate.keyPath);
+            }
+      }
+
       if (failedListeners.length > 0)
          throw new Exception("Configuration error. Cannot listen on " ~ failedListeners.join(", "));
 
@@ -423,17 +526,18 @@ package class Listener
       else communicator = new Communicator(config);
 
       communicator.lastRecv = now;
-      communicator.setClientSocket(socket.accept());
+      communicator.setClientSocket(socket.accept(), this);
    }
 
    @safe:
 
    @disable this();
 
-   this(size_t index, Address address)
+   this(size_t index, Address address, Https.Certificate[] certificates = null)
    {
       this.address = address;
       this.index = index;
+      this.certificates = certificates;
    }
 
    DaemonConfigPtr config;
@@ -441,6 +545,12 @@ package class Listener
    size_t   index;
 
    Socket   socket;
+
+   // Empty => this listener is plain http.
+   Https.Certificate[] certificates;
+
+   // Built by the daemon, one per thread/process: never shared between them.
+   version(serverino_enable_https) @system TlsContext tlsContext = null;
 }
 
 package struct WorkerConfig
@@ -474,11 +584,4 @@ package struct DaemonConfig
    bool        overrideLogger;
    bool        autoReload;
    Listener[]  listeners;
-
-   version(serverino_enable_https)
-   {
-      struct HttpsCertificate { string certPath; string keyPath; }
-      bool               httpsEnabled;
-      HttpsCertificate[] httpsCertificates;
-   }
 }

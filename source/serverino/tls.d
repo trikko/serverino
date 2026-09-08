@@ -27,7 +27,7 @@ module serverino.tls;
 version(serverino_enable_https):
 
 import serverino.common;
-import serverino.config : DaemonConfig;
+import serverino.config : Https;
 import std.socket : Socket, socket_t;
 import std.string : toStringz;
 import std.experimental.logger : info, warning, error;
@@ -80,7 +80,7 @@ package class TlsContext
     }
 
     public:
-    this(DaemonConfig.HttpsCertificate[] certificates)
+    this(const(Https.Certificate)[] certificates)
     {
         if (certificates.length == 0) return;
 
@@ -142,20 +142,68 @@ package class TlsContext
         {
             SSL_CTX_set_tlsext_servername_callback(default_ctx, &sni_callback);
             SSL_CTX_set_tlsext_servername_arg(default_ctx, cast(void*)this);
+
+            // OpenSSL keeps a raw pointer to this object for the SNI callback: the GC can't see it.
+            import core.memory : GC;
+            GC.addRoot(cast(void*)this);
+            rooted = true;
         }
     }
 
-    ~this()
-    {
-        if (default_ctx !is null) SSL_CTX_free(default_ctx);
-        foreach(ctx; extra_ctxs) SSL_CTX_free(ctx);
-    }
+    ~this() { freeContexts(); }
 
     bool isValid() { return valid>0; }
     size_t validCount() { return valid; }
     size_t invalidCount() { return invalid; }
 
-    
+    // A stream created from this context is alive: the context can't go away yet.
+    void acquire()
+    {
+        import core.atomic : atomicOp;
+        atomicOp!"+="(liveStreams, 1);
+    }
+
+    // Ditto, the other way around.
+    void release()
+    {
+        import core.atomic : atomicOp;
+        if (atomicOp!"-="(liveStreams, 1) == 0 && retired) freeContexts();
+    }
+
+    /+ Detach this context: it is not used for new connections anymore.
+     + The SSL_CTXs are freed as soon as the last stream created from them is gone.
+     + Connections already established keep working: SSL_new() takes a reference on SSL_CTX.
+    +/
+    void retire()
+    {
+        import core.atomic : atomicLoad;
+        retired = true;
+        if (atomicLoad(liveStreams) == 0) freeContexts();
+    }
+
+    private:
+
+    shared size_t liveStreams = 0;
+    bool retired = false;
+    bool freed = false;
+    bool rooted = false;
+
+    void freeContexts()
+    {
+        if (freed) return;
+        freed = true;
+
+        if (default_ctx !is null) { SSL_CTX_free(default_ctx); default_ctx = null; }
+        foreach(ctx; extra_ctxs) SSL_CTX_free(ctx);
+        extra_ctxs = null;
+
+        if (rooted)
+        {
+            import core.memory : GC;
+            GC.removeRoot(cast(void*)this);
+            rooted = false;
+        }
+    }
 }
 
 package class TlsStream
@@ -164,18 +212,33 @@ package class TlsStream
     SSL* ssl;
     Socket socket;
     bool handshakeComplete = false;
+    TlsContext context;
 
     public:
     this(TlsContext context, Socket s)
     {
         this.socket = s;
+        this.context = context;
+        context.acquire();
         ssl = SSL_new(context.default_ctx);
         SSL_set_fd(ssl, cast(int)s.handle);
     }
 
     ~this()
     {
-        if (ssl !is null) SSL_free(ssl);
+        if (ssl !is null) { SSL_free(ssl); ssl = null; }
+        releaseContext();
+    }
+
+    // Called by the communicator when the connection is dropped, so that a
+    // retired context is freed right away instead of waiting for the GC.
+    void releaseContext()
+    {
+        if (context !is null)
+        {
+            context.release();
+            context = null;
+        }
     }
 
     int handshake()

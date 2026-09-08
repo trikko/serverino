@@ -28,7 +28,7 @@ module serverino.communicator;
 import serverino.common;
 import serverino.databuffer;
 import serverino.daemon : WorkerInfo, now, Daemon;
-import serverino.config : DaemonConfigPtr;
+import serverino.config : DaemonConfigPtr, Listener;
 import serverino.tls;
 
 import std.socket : Socket, SocketOption, SocketOptionLevel, lastSocketError, wouldHaveBlocked, SocketShutdown, socket_t, socketPair;
@@ -131,6 +131,9 @@ package class Communicator
 
    DaemonConfigPtr config;
 
+   // The listener this connection came from: it decides if the connection is encrypted.
+   Listener listener;
+
    this(DaemonConfigPtr config)
    {
       // Add the new instance to the list of dead communicators
@@ -175,12 +178,17 @@ package class Communicator
 
          this.clientSkt = null;
          clientSktHandle = socket_t.max;
+
+         // The communicator goes back to the pool: it can be reused by another
+         // listener, possibly with a different (or no) TLS configuration.
+         this.listener = null;
          
          version(serverino_enable_https)
          {
             if (tlsStream !is null)
             {
                tlsStream.close();
+               tlsStream.releaseContext();
                tlsStream = null;
             }
 
@@ -204,9 +212,10 @@ package class Communicator
    }
 
    // Assign a client socket to the communicator and move it to the paired state
-   void setClientSocket(Socket s)
+   void setClientSocket(Socket s, Listener listener)
    {
       status = State.PAIRED;
+      this.listener = listener;
 
       if (s !is null && this.clientSkt is null)
       {
@@ -237,9 +246,9 @@ package class Communicator
 
          version(serverino_enable_https)
          {
-            if (config.httpsEnabled && Daemon.tlsContext !is null)
+            if (listener !is null && listener.tlsContext !is null)
             {
-               tlsStream = new TlsStream(Daemon.tlsContext, s);
+               tlsStream = new TlsStream(listener.tlsContext, s);
                status = State.HANDSHAKING;
             }
          }
@@ -261,12 +270,23 @@ package class Communicator
       {
          if (tlsStream !is null)
          {
-            tlsStream.close(); 
+            tlsStream.close();
+            tlsStream.releaseContext();
             tlsStream = null;
          }
 
          if (proxySkt !is null)
          {
+            // Drop it from the event loop before closing it, as unsetClientSocket() does:
+            // a closed fd left registered is a stale wakeup waiting to happen.
+            static if (serverino.common.Backend == BackendType.EPOLL)
+               Daemon.epollRemoveSocket(proxySktHandle);
+            else static if (serverino.common.Backend == BackendType.KQUEUE)
+            {
+               Daemon.addKqueueChange(proxySktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, null);
+               Daemon.addKqueueChange(proxySktHandle, EVFILT_WRITE, EV_DELETE | EV_DISABLE, null);
+            }
+
             proxySkt.shutdown(SocketShutdown.BOTH);
             proxySkt.close();
             proxySkt = null;
