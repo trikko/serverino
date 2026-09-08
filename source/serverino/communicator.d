@@ -924,6 +924,10 @@ package class Communicator
                         break;
                      }
 
+                     // The daemon injects this header itself: drop the one sent by the client,
+                     // otherwise it would silently override ours on the worker side.
+                     if (config.withRemoteIp && key == "x-remote-ip") continue;
+
                      // 100-continue
                      if (key == "expect" && value.length == 12 && value[0..4] == "100-") request.expect100 = true;
                      else if (key == "connection")
