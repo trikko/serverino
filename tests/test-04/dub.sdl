@@ -1,0 +1,8 @@
+name "test-04"
+authors "Andrea Fontana"
+copyright "Copyright © 2023-2026, Andrea Fontana"
+license "MIT"
+dependency "serverino" path="../../"
+subConfiguration "serverino" "https"
+versions "SERVERINO_TESTS"
+preBuildCommands "openssl req -x509 -newkey rsa:2048 -keyout first.key -out first.crt -days 2 -nodes -subj '/CN=first.test' 2>/dev/null"
