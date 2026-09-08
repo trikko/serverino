@@ -149,13 +149,15 @@ package class WorkerInfo
       setStatus(WorkerInfo.State.IDLING);
    }
 
-   ~this()
-   {
-      if (status != State.STOPPED)
-         setStatus(State.STOPPED);
-
-      clear();
-   }
+   // NOTE: no destructor here, on purpose.
+   //
+   // WorkerInfo lives in `instances`, which is thread local: when the daemon thread
+   // ends, every worker becomes garbage and is finalized at process teardown. A
+   // finalizer can't touch another GC reference (`pi`, `unixSocket`) nor the event
+   // loop (`Daemon.changeList` is GC memory too): by then they may already be gone.
+   // On kqueue that's a write into freed memory, which is why macOS was segfaulting
+   // right after the goodbye message. Resources are released by clear(), called
+   // explicitly when the daemon shuts down.
 
    void clear()
    {
@@ -173,6 +175,7 @@ package class WorkerInfo
          unixSocket.shutdown(SocketShutdown.BOTH);
          unixSocket.close();
          unixSocket = null;
+         unixSocketHandle = socket_t.max;
       }
 
       communicator = null;
@@ -1374,19 +1377,27 @@ package:
          listener.socket.close();
       }
 
-      // Kill all the workers.
-      foreach(ref worker; WorkerInfo.alive)
+      // Kill all the workers and release what they own right now, while this thread
+      // is still alive and the kqueue/epoll descriptors are still valid. Leaving it
+      // to the GC means doing it from a finalizer at process teardown, which is not
+      // allowed to touch any of it. (see the note on WorkerInfo)
+      foreach(ref worker; WorkerInfo.instances)
       {
          try
          {
-            if (worker)
-            {
-               if (worker.unixSocket) worker.unixSocket.shutdown(SocketShutdown.BOTH);
-               if (worker.pi) worker.pi.kill();
-            }
+            if (worker is null) continue;
+
+            if (worker.unixSocket) worker.unixSocket.shutdown(SocketShutdown.BOTH);
+            if (worker.pi) worker.pi.kill();
+
+            // Straight to the field: setStatus() would try to restart a static worker.
+            worker.status = WorkerInfo.State.STOPPED;
+            worker.clear();
          }
          catch (Exception e) { }
       }
+
+      WorkerInfo.instances = null;
 
       info("Daemon shutdown completed. Goodbye!");
 
