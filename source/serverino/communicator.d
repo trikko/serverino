@@ -54,6 +54,13 @@ extern(C) long syscall(long number, ...);
  */
 package class ProtoRequest
 {
+   this()
+   {
+      // Room for the DaemonToWorkerHeader, filled in by setWorker()
+      data.length = DaemonToWorkerHeader.sizeof;
+      data[] = 0;
+   }
+
    enum Connection
    {
       Unknown = "unknown",
@@ -78,7 +85,7 @@ package class ProtoRequest
       s ~= text("URI: ", uri, "\n");
       s ~= text("BODY: ", contentLength, "\n");
       s ~= text("HEADERS:", "\n");
-      s ~= (data[uint.sizeof..headersLength]);
+      s ~= (data[DaemonToWorkerHeader.sizeof..headersLength]);
       s ~= "\n";
 
       return s;
@@ -95,7 +102,9 @@ package class ProtoRequest
    char[]   method;              // HTTP method
    char[]   uri;                 // Request URI
 
-   char[]   data = [0,0,0,0];    // Request data (first 4 bytes will be set to the length of the data)
+   bool     isSecure = false;    // Received over a TLS connection?
+
+   char[]   data;                // Request data. The first bytes are reserved for the DaemonToWorkerHeader
    ProtoRequest next = null;     // Next request in the queue
 
    Connection  connection = Connection.Unknown;
@@ -369,9 +378,11 @@ package class Communicator
       worker.setStatus(WorkerInfo.State.PROCESSING);
       auto current = requestToProcess;
 
-      // We fill the first 4 bytes of the data with the length of the data
-      uint len = cast(uint)(current.data.length - uint.sizeof);
-      *(cast(uint*)(current.data.ptr)) = len;
+      // We fill the first bytes of the data with the daemon-to-worker header
+      DaemonToWorkerHeader header;
+      header.length = cast(uint)(current.data.length - DaemonToWorkerHeader.sizeof);
+      header.requestFlags = current.isSecure ? DaemonToWorkerHeader.Flags.SECURE : DaemonToWorkerHeader.Flags.NONE;
+      *(cast(DaemonToWorkerHeader*)(current.data.ptr)) = header;
 
       isKeepAlive = current.connection == ProtoRequest.Connection.KeepAlive;
       worker.unixSocket.send(current.data);
@@ -805,6 +816,8 @@ package class Communicator
                   bufferRead.length = 0;
                   request.isValid = true;
 
+                  version(serverino_enable_https) request.isSecure = (tlsStream !is null);
+
                   auto firstLine = request.data.indexOfNewline;
 
                   // HACK: A single line (http 1.0?) request.
@@ -814,7 +827,7 @@ package class Communicator
                      request.data ~= "\r\n";
                   }
 
-                  if (firstLine < 18)
+                  if (firstLine < DaemonToWorkerHeader.sizeof + 14)
                   {
                      request.isValid = false;
                      sktSend("HTTP/1.0 400 Bad Request\r\n\r\n");
@@ -825,7 +838,7 @@ package class Communicator
 
                   import std.algorithm : splitter;
 
-                  auto fields = request.data[uint.sizeof..firstLine].splitter(' ');
+                  auto fields = request.data[DaemonToWorkerHeader.sizeof..firstLine].splitter(' ');
                   size_t popped = 0;
 
                   if (!fields.empty)

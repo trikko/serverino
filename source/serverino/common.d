@@ -200,6 +200,37 @@ package struct WorkerPayload
 	size_t 	contentLength = 0;
 }
 
+// Struct DaemonToWorkerHeader is prepended by the daemon to every request sent to a worker.
+// It belongs to the private daemon<->worker protocol: a client can't forge it.
+// Without TLS support there's nothing to flag, so the header is just the length, as it has always been.
+package struct DaemonToWorkerHeader
+{
+	enum Flags : uint
+	{
+		NONE = 0,
+		SECURE = 1 << 0,	// Request received over a TLS connection
+	}
+
+	uint	length = 0;		// Bytes following this header
+
+	version(serverino_enable_https) uint flags = 0;
+
+	// Accessors, so that callers don't need to care about the build configuration
+	@safe @nogc nothrow uint requestFlags() const
+	{
+		version(serverino_enable_https) return flags;
+		else return Flags.NONE;
+	}
+
+	@safe @nogc nothrow void requestFlags(uint f)
+	{
+		version(serverino_enable_https) flags = f;
+	}
+}
+
+version(serverino_enable_https) static assert(DaemonToWorkerHeader.sizeof == 8);
+else static assert(DaemonToWorkerHeader.sizeof == 4);
+
 // An implementation of unix domain sockets for Windows
 version(Windows)
 {

@@ -227,10 +227,13 @@ struct Worker
          import serverino.databuffer;
 
          uint size;
+         uint requestFlags;
          bool sizeRead = false;
          ptrdiff_t recv = -1;
          static DataBuffer!ubyte data;
+         static DataBuffer!ubyte header;
          data.clear();
+         header.clear();
 
          while(sizeRead == false || size > data.length)
          {
@@ -264,10 +267,19 @@ struct Worker
             if (recv == 0) break;
             else if (sizeRead == false)
             {
-               size = *(cast(uint*)(buffer[0..uint.sizeof].ptr));
-               data.reserve(size);
-               data.append(buffer[uint.sizeof..recv]);
-               sizeRead = true;
+               // The header is tiny, but on a stream socket it could still be split across two reads
+               header.append(buffer[0..recv]);
+
+               if (header.length >= DaemonToWorkerHeader.sizeof)
+               {
+                  auto hdr = *(cast(DaemonToWorkerHeader*)(header.array.ptr));
+                  size = hdr.length;
+                  requestFlags = hdr.requestFlags;
+                  data.reserve(size);
+                  data.append(header.array[DaemonToWorkerHeader.sizeof..$]);
+                  header.clear();
+                  sizeRead = true;
+               }
             }
             else data.append(buffer[0..recv]);
          }
@@ -286,7 +298,7 @@ struct Worker
 
          WorkerPayload wp = WorkerPayload
          (
-            parseHttpRequest!Modules(config, data.array),
+            parseHttpRequest!Modules(config, data.array, requestFlags),
             output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length
          );
 
@@ -297,7 +309,7 @@ struct Worker
 
    }
 
-   typeof(WorkerPayload.flags) parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data)
+   typeof(WorkerPayload.flags) parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data, uint requestFlags)
    {
 
       scope(exit) {
@@ -481,6 +493,7 @@ struct Worker
             request._internal._path           = normalize(cast(string)path[0..pathLen]);
             request._internal._rawQueryString = cast(string)path[queryStart..queryLen];
             request._internal._method         = cast(string)method;
+            request._internal._isSecure       = (requestFlags & DaemonToWorkerHeader.Flags.SECURE) != 0;
 
             if (request._internal._method == "HEAD") output._internal._doNotSendBody = true;
 

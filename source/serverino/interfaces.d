@@ -293,6 +293,19 @@ struct Request
    /// Use at your own risk! Raw data from user.
    @safe @nogc @property nothrow public auto requestLine() const { return _internal._rawRequestLine; }
 
+   /++ Is this request coming from a TLS (https) listener?
+    + The flag is set by the daemon on its private channel to the worker, so a client can't forge it.
+    + ---
+    + @endpoint void forceHttps(Request request, Output output)
+    + {
+    +    if (request.isSecure) return;
+    +    output.status = 301;
+    +    output.addHeader("location", "https://" ~ request.host ~ request.path);
+    + }
+    + ---
+   +/
+   @safe @nogc @property nothrow public bool isSecure() const { return _internal._isSecure; }
+
    /// Basic http authentication user. Safe only if sent thru https!
    @safe @nogc @property nothrow public auto user() const { return _internal._user; }
 
@@ -663,6 +676,7 @@ struct Request
          buffer.append(_user ~ "\n");
          buffer.append(_password ~ "\n");
          buffer.append(_worker ~ "\n");
+         buffer.append((_isSecure ? "1" : "0") ~ "\n");
 
          buffer.append(_header.length.to!string ~ "\n");
          foreach(k,v; _header)
@@ -697,8 +711,9 @@ struct Request
          _user = lines[4];
          _password = lines[5];
          _worker = lines[6];
+         _isSecure = (lines[7] == "1");
 
-         size_t index = 7;
+         size_t index = 8;
          size_t headerLength = lines[index].to!size_t;
          index++;
 
@@ -823,6 +838,8 @@ struct Request
 
       HttpVersion _httpVersion;
 
+      bool _isSecure = false;
+
       FormData[string]   _form;
       ParsingStatus      _parsingStatus = ParsingStatus.OK;
 
@@ -843,6 +860,7 @@ struct Request
          _user          = string.init;
          _password      = string.init;
          _httpVersion   = HttpVersion.HTTP10;
+         _isSecure      = false;
 
          _rawQueryString   = string.init;
          _rawHeaders       = string.init;
