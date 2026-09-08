@@ -586,6 +586,23 @@ package class Communicator
       onWriteAvailable();
    }
 
+   // Queue data we couldn't send yet, and ask the event loop to wake us up
+   // as soon as the socket is writable again.
+   private void bufferAndWaitForWrite(scope const char[] data)
+   {
+      sendBuffer.append(data);
+
+      hasBuffer = true;
+
+      static if(serverino.common.Backend == BackendType.EPOLL)
+         Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
+      else static if(serverino.common.Backend == BackendType.KQUEUE)
+      {
+         Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, cast(void*) this);
+         Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
+      }
+   }
+
    // Try to write the data to the client socket, it buffers the data if the socket is not ready
    void write(scope char[] data)
    {
@@ -603,18 +620,7 @@ package class Communicator
          {
             responseSent += sent;
             if (sent < data.length)
-            {
-               sendBuffer.append(data[sent..data.length]);
-
-               hasBuffer = true;
-               static if(serverino.common.Backend == BackendType.EPOLL)
-                  Daemon.epollEditSocket(clientSktHandle, EPOLLIN | EPOLLOUT, cast(void*) this);
-               else static if(serverino.common.Backend == BackendType.KQUEUE)
-               {
-                  Daemon.addKqueueChange(clientSktHandle, EVFILT_READ, EV_DELETE | EV_DISABLE, cast(void*) this);
-                  Daemon.addKqueueChange(clientSktHandle, EVFILT_WRITE, EV_ADD | EV_ENABLE, cast(void*) this);
-               }
-            }
+               bufferAndWaitForWrite(data[sent..data.length]);
 
             // If the response is completed, unset the worker
             // and if the client is not keep alive, reset the communicator
@@ -651,7 +657,10 @@ package class Communicator
                reset();
                return;
             }
-            else sendBuffer.append(data);
+
+            // Nothing could be written: the socket buffer is full. Queue everything
+            // and wait for a write event, otherwise nobody would ever flush it.
+            else bufferAndWaitForWrite(data);
          }
       }
       else
