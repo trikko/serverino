@@ -1,0 +1,15 @@
+{
+	"authors": [
+		"Andrea Fontana"
+	],
+	"dependencies": {
+		"serverino": {
+			"path": "../../"
+		}
+	},
+	"subConfigurations": {
+		"serverino": "https"
+	},
+	"license": "proprietary",
+	"name": "letsencrypt_example"
+}

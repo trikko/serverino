@@ -84,6 +84,7 @@ jobs:
       - name: Build https examples
         if: ${{ matrix.os != 'windows-latest' }}
         run: dub build --build=release --root=examples/12_https/
+              && dub build --build=release --root=examples/13_letsencrypt/
 
       - name: Test https example
         if: ${{ matrix.os != 'windows-latest' }}

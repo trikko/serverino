@@ -91,6 +91,7 @@ jobs:
              - `10_diet_ng_templates` - Integration with Diet templates.
              - `11_elemi_integration` - HTML generation with Elemi.
              - `12_https` - HTTPS configuration.
+             - `13_letsencrypt` - Let's Encrypt certificate and renewal from inside serverino.
 
           ## Essential Coding Rules
           1. **Correct Parameter Access**:
