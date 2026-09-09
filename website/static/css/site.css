@@ -180,11 +180,11 @@ section + section { border-top: 1px solid var(--line); }
 .demo-title p { margin: 0; color: var(--muted); font-size: .88rem; }
 .demo-title .lines { margin-left: auto; font-family: var(--mono); font-size: .75rem; color: var(--muted); }
 
-/* La colonna del codice si dimensiona sul proprio contenuto, cosi. ogni demo
-   prende la larghezza che le serve invece di una meta. uguale per tutte; il
-   pannello a fianco ha un minimo sotto il quale non scende, e si tiene il
-   resto. Se il codice fosse cosi. largo da non stare, torna a scorrere lui. */
-.demo-body { display: grid; grid-template-columns: minmax(0, max-content) minmax(360px, 1fr); }
+/* La colonna del codice e. larga quanto lo snippet piu. largo della pagina: il
+   js la misura e la scrive in --code-col, cosi. nessun blocco scorre e i
+   divisori restano allineati scendendo. Senza js si dimensiona sul proprio
+   contenuto, che e. il comportamento corretto per un blocco solo. */
+.demo-body { display: grid; grid-template-columns: minmax(0, var(--code-col, max-content)) minmax(360px, 1fr); }
 .demo-source { border-right: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .demo-source pre { margin: 0; padding: 18px; overflow-x: auto; line-height: 1.6; }
 .demo-live { padding: 18px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -216,8 +216,10 @@ section + section { border-top: 1px solid var(--line); }
 .timing b { color: var(--ink); font-weight: 700; }
 
 .output {
-   /* One fixed height: filling this box must not resize the page around it. */
-   margin: 0; padding: 12px 14px; height: 232px; overflow: auto;
+   /* Prende tutto lo spazio che avanza nella colonna, che dipende dal codice a
+      fianco e non da cosa ci finisce dentro: cosi. non si scorre avendo il
+      vuoto sotto, e riempirlo non muove comunque la pagina. */
+   margin: 0; padding: 12px 14px; flex: 1 1 0; min-height: 140px; overflow: auto;
    background: var(--surface); border: 1px solid var(--line); border-radius: 7px;
    font-family: var(--mono); font-size: .82rem; white-space: pre-wrap; word-break: break-word;
    color: var(--ink);
@@ -258,7 +260,10 @@ section + section { border-top: 1px solid var(--line); }
 .seg .btn.on { background: var(--surface-2); color: var(--deep); font-weight: 650; }
 .seg .btn:hover { color: var(--deep); }
 
-canvas.plot { width: 100%; height: 150px; display: block; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+/* Come il riquadro dell.output prende lo spazio che avanza, ma con un tetto:
+   un registro di testo guadagna da ogni riga in piu., un grafico no. */
+canvas.plot { width: 100%; flex: 1 1 0; min-height: 150px; max-height: 380px; display: block;
+   border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
 
 .curl { display: flex; align-items: center; gap: 8px; margin-top: auto; }
 .curl code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--muted); font-size: .76rem; }

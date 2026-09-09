@@ -712,6 +712,22 @@
       window.addEventListener("beforeunload", () => { if (ws) ws.close(); });
    }
 
+   /* One width for every snippet on the page: the widest of them. Each demo
+      would otherwise size its own column, which fits but leaves the dividers
+      staggered down the page. */
+   function alignDemoColumns() {
+      const panels = Array.from(document.querySelectorAll(".demo-source pre"));
+      if (!panels.length) return;
+
+      snippets().then(() => requestAnimationFrame(() => {
+         const widest = Math.max(...panels.map(p => p.scrollWidth));
+         const room = document.querySelector(".demo-body").clientWidth - 360;
+
+         document.documentElement.style.setProperty("--code-col",
+            Math.min(widest, Math.max(360, room)) + "px");
+      })).catch(() => {});
+   }
+
    /* ------------------------------------------------------------ examples page */
 
    function mountExamples(host, toc) {
@@ -790,6 +806,7 @@
             .catch(() => {});
 
       document.querySelectorAll("[data-demo]").forEach(mountDemo);
+      alignDemoColumns();
 
       const examples = document.getElementById("examples");
       if (examples) mountExamples(examples, document.getElementById("examples-toc"));
