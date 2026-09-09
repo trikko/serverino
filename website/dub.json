@@ -1,0 +1,38 @@
+{
+	"name": "serverino-website",
+	"description": "The serverino website, served by serverino itself.",
+	"authors": [
+		"Andrea Fontana"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"serverino": {
+			"path": "../"
+		}
+	},
+	"stringImportPaths": [
+		"../examples",
+		"source",
+		"../docs"
+	],
+	"buildTypes": {
+		"small": {
+			"buildOptions": [
+				"releaseMode",
+				"optimize"
+			],
+			"dflags-ldc": [
+				"-Oz",
+				"-L=--gc-sections",
+				"-linker=lld",
+				"-L=--icf=all"
+			],
+			"dflags-dmd": [
+				"-L--gc-sections"
+			],
+			"postBuildCommands-posix": [
+				"test -f \"$DUB_TARGET_PATH/$DUB_TARGET_NAME\" && strip -s \"$DUB_TARGET_PATH/$DUB_TARGET_NAME\" || true"
+			]
+		}
+	}
+}

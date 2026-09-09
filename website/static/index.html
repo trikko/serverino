@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>serverino — HTTP and WebSocket server for D</title>
+<meta name="description" content="Serverino is a zero-dependency HTTP and WebSocket server library for the D programming language. Write a function, get a server.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="llms-txt" href="https://trikko.github.io/serverino/llms.txt">
+</head>
+<body>
+<header class="site-header">
+   <div class="wrap">
+      <div class="brandline">
+         <a class="brand" href="/"><img src="/img/logo.svg" alt=""> serverino</a>
+         <a class="version" id="version" href="https://github.com/trikko/serverino/releases"
+            target="_blank" rel="noopener" title="Latest release"></a>
+      </div>
+      <nav class="site-nav">
+         <a href="/" aria-current="page">Home</a>
+         <a href="/examples">Examples</a>
+         <a href="/docs">Docs</a>
+         <a href="/llm">With an LLM</a>
+         <a class="gh" href="https://github.com/trikko/serverino" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>GitHub</span>
+         </a>
+      </nav>
+   </div>
+</header>
+
+<main>
+<section class="hero">
+   <div class="wrap hero-grid">
+      <div>
+         <h1>Write a function.<br>You have a web server.</h1>
+         <p class="lead">
+            Serverino is an <strong>HTTP and WebSocket server</strong> for the D programming language.
+            No dependencies, no framework to learn, nothing to install next to it: every request is
+            handled by a plain function, in its own worker process.
+         </p>
+         <div class="cta">
+            <a class="btn btn-primary" href="/docs">Get started</a>
+            <a class="btn" href="/examples">See the examples</a>
+         </div>
+         <div class="badges">
+            <span>Zero dependencies</span>
+            <span>Linux, macOS, Windows</span>
+            <span>MIT licensed</span>
+         </div>
+      </div>
+
+      <div class="code">
+         <div class="code-head"><span>app.d</span></div>
+         <pre data-copy><code>import serverino;
+mixin ServerinoMain;
+
+void hello(Request request, Output output)
+{
+   auto name = request.get.read("name", "world");
+   output ~= "Hello, " ~ name ~ "!";
+}</code></pre>
+      </div>
+   </div>
+</section>
+
+<section>
+   <div class="wrap">
+      <div class="section-head">
+         <div class="eyebrow">Not a screenshot</div>
+         <h2>That code is running right now</h2>
+         <p>
+            This website <em>is</em> a serverino application. The endpoint below lives in the same
+            process that just sent you this page: press Run and you are calling it.
+         </p>
+      </div>
+
+      <article data-demo="hello"></article>
+      <article data-demo="footprint"></article>
+
+      <p style="color:var(--muted)">
+         Every demo on this site works the same way. On the
+         <a href="/examples">examples page</a> you can also break one of its worker processes and
+         watch the site carry on, see where the workers come from, or watch its memory move in
+         real time over a WebSocket.
+      </p>
+   </div>
+</section>
+
+<section>
+   <div class="wrap">
+      <div class="section-head">
+         <div class="eyebrow">Why serverino</div>
+         <h2>Small on the outside, careful on the inside</h2>
+         <p>The API is a handful of functions and attributes. What is underneath is a process
+            architecture designed so that your code cannot take the server down.</p>
+      </div>
+
+      <div class="cards">
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h9"/></svg></div>
+            <h3>Zero dependencies</h3>
+            <p>Only the D standard library. One executable of a few megabytes to deploy: no runtime,
+               no package tree, nothing installed on the machine.</p>
+         </div>
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+            <h3>A process per request</h3>
+            <p>Workers are separate processes. A segfault, a leak or an endless loop in one request
+               costs you that request, not the server.</p>
+         </div>
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div>
+            <h3>Fast, and cheap to keep running</h3>
+            <p>epoll, kqueue or select, chosen for your platform. Idle, this whole site is a couple
+               of processes and a few megabytes of memory &mdash; the demo above measures it.</p>
+         </div>
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5m2 5a8 8 0 0 1-14 5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg></div>
+            <h3>Hot reload</h3>
+            <p>Rebuild, send a signal, and workers restart with the new code. Connections already
+               open are not dropped.</p>
+         </div>
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg></div>
+            <h3>HTTPS, certificate included</h3>
+            <p>Attach a certificate to a listener and reload it without restarting: an example
+               here gets and renews its own from Let's Encrypt, with nothing in front of it.</p>
+         </div>
+         <div class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M8 9 4 12l4 3M16 9l4 3-4 3M13 6l-2 12"/></svg></div>
+            <h3>WebSockets, not an add-on</h3>
+            <p>Take a <code>WebSocket</code> instead of an <code>Output</code> and you are done.
+               Each connection gets its own process.</p>
+         </div>
+      </div>
+   </div>
+</section>
+
+<section>
+   <div class="wrap narrow">
+      <div class="section-head">
+         <div class="eyebrow">Quickstart</div>
+         <h2>Three commands</h2>
+         <p>You need a D compiler and dub. Nothing else.</p>
+      </div>
+
+      <pre class="sample">dub init your_app -t serverino
+cd your_app
+dub run</pre>
+
+      <p>
+         That gives you a working server on <code>http://localhost:8080</code>. From there,
+         <a href="/docs">the documentation</a> walks you through routing, forms, cookies,
+         WebSockets and HTTPS &mdash; or you can go straight to
+         <a href="/examples">thirteen complete examples</a>.
+      </p>
+
+      <div class="note">
+         <p><strong>Coming from an LLM-assisted workflow?</strong> Serverino ships
+            <code>llms.txt</code> and a full text reference meant to be pasted into a model's
+            context. <a href="/llm">Here is how to use them</a>.</p>
+      </div>
+   </div>
+</section>
+
+<section>
+   <div class="wrap narrow">
+      <div class="support">
+         <div>
+            <h2>Enjoying it?</h2>
+            <p>
+               Serverino is MIT licensed and free to use, at work too: nothing to sign, nothing
+               expected. It is written in spare time, for the pleasure of it &mdash; and if you
+               feel like it, there is a beer button.
+            </p>
+         </div>
+         <a class="btn btn-primary" href="https://paypal.me/andreafontana/5"
+            target="_blank" rel="noopener">🍺 Buy me a beer</a>
+      </div>
+   </div>
+</section>
+
+</main>
+<footer class="site-footer">
+   <div class="wrap">
+      <div class="footer-grid">
+         <div>
+            <h4>Serverino</h4>
+            <ul>
+               <li><a href="/examples">Examples</a></li>
+               <li><a href="/docs">Documentation</a></li>
+               <li><a href="/llm">Working with an LLM</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Reference</h4>
+            <ul>
+               <li><a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a></li>
+               <li><a href="https://github.com/trikko/serverino/wiki/" target="_blank" rel="noopener">Wiki</a></li>
+               <li><a href="https://code.dlang.org/packages/serverino" target="_blank" rel="noopener">dub package</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Project</h4>
+            <ul>
+               <li><a href="https://github.com/trikko/serverino" target="_blank" rel="noopener">Source on GitHub</a></li>
+               <li><a href="https://github.com/trikko/serverino/issues" target="_blank" rel="noopener">Issues</a></li>
+            </ul>
+         </div>
+         <div class="beer">
+            <h4>Say thanks</h4>
+            <p>Serverino is free, and stays free.</p>
+            <a class="btn btn-small" href="https://paypal.me/andreafontana/5"
+               target="_blank" rel="noopener">🍺 Buy me a beer</a>
+         </div>
+      </div>
+      <div class="colophon">
+         Serverino is MIT licensed, © 2023-2026 Andrea Fontana.
+         This site is a serverino application: it serves its own pages and runs its own demos.
+         It speaks plain http behind a reverse proxy for one reason only: the machine hosts
+         other sites too.
+      </div>
+   </div>
+</footer>
+<script src="/js/dhighlight.js"></script>
+<script src="/js/site.js"></script>
+
+</body>
+</html>

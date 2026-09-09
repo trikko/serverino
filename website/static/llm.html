@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Using serverino with an LLM — serverino</title>
+<meta name="description" content="llms.txt, the consolidated reference, the Claude skill and a CLAUDE.md template: how to get correct serverino code out of a language model.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="llms-txt" href="https://trikko.github.io/serverino/llms.txt">
+</head>
+<body>
+<header class="site-header">
+   <div class="wrap">
+      <div class="brandline">
+         <a class="brand" href="/"><img src="/img/logo.svg" alt=""> serverino</a>
+         <a class="version" id="version" href="https://github.com/trikko/serverino/releases"
+            target="_blank" rel="noopener" title="Latest release"></a>
+      </div>
+      <nav class="site-nav">
+         <a href="/">Home</a>
+         <a href="/examples">Examples</a>
+         <a href="/docs">Docs</a>
+         <a href="/llm" aria-current="page">With an LLM</a>
+         <a class="gh" href="https://github.com/trikko/serverino" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>GitHub</span>
+         </a>
+      </nav>
+   </div>
+</header>
+
+<main>
+<section>
+   <div class="wrap narrow prose">
+      <div class="section-head">
+         <div class="eyebrow">With an LLM</div>
+         <h1>Give it the reference, not your memory of it</h1>
+         <p>
+            Serverino is small — a handful of attributes and two structs — but it is also small
+            enough to be rare in a model's training data, so a model left to guess will fill the
+            gaps with vibe.d or Node idioms. Hand it these files instead. They work with any tool:
+            there is nothing vendor-specific about a text file.
+         </p>
+      </div>
+
+      <h2>Three files, served from here</h2>
+
+      <table>
+         <thead><tr><th>File</th><th>What it is</th></tr></thead>
+         <tbody>
+            <tr>
+               <td><a href="/llms.txt"><code>/llms.txt</code></a></td>
+               <td>A page of overview, in the <a href="https://llmstxt.org/" target="_blank"
+                  rel="noopener">llms.txt</a> shape. Cheap to paste anywhere.</td>
+            </tr>
+            <tr>
+               <td><a href="/llms-full.txt"><code>/llms-full.txt</code></a></td>
+               <td>The whole API in one file: configuration, every attribute, <code>Request</code>,
+                  <code>Output</code>, WebSockets, worked examples. Around 700 lines.</td>
+            </tr>
+            <tr>
+               <td><a href="/SKILL.md"><code>/SKILL.md</code></a></td>
+               <td>The rules that are easiest to get wrong, ready to install as a skill.
+                  <a href="/AGENTS.md"><code>/AGENTS.md</code></a> is the very same text without
+                  the front matter, for tools that want a plain rules file to save as
+                  <code>AGENTS.md</code>, <code>CLAUDE.md</code> or <code>.cursorrules</code>.</td>
+            </tr>
+         </tbody>
+      </table>
+
+      <h2>Ask your agent to install it</h2>
+
+      <p>
+         Anything that can read a URL can do this for you, so there is nothing to download by
+         hand. Paste this and let it work:
+      </p>
+
+      <div class="promptbox">
+         <p id="install-prompt">Install the skill at
+            <span class="origin">https://serverino.dev</span>/SKILL.md. It is the reference for
+            serverino, the D web server library I am using.</p>
+         <button data-copy-target="#install-prompt" type="button">Copy</button>
+      </div>
+
+      <p>
+         Claude Code drops it in <code>~/.claude/skills/</code>; other tools save it as their rules
+         file. Either way the model stops guessing, and what it reads is the same text this page
+         links above.
+      </p>
+
+   </div>
+</section>
+</main>
+<footer class="site-footer">
+   <div class="wrap">
+      <div class="footer-grid">
+         <div>
+            <h4>Serverino</h4>
+            <ul>
+               <li><a href="/examples">Examples</a></li>
+               <li><a href="/docs">Documentation</a></li>
+               <li><a href="/llm">Working with an LLM</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Reference</h4>
+            <ul>
+               <li><a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a></li>
+               <li><a href="https://github.com/trikko/serverino/wiki/" target="_blank" rel="noopener">Wiki</a></li>
+               <li><a href="https://code.dlang.org/packages/serverino" target="_blank" rel="noopener">dub package</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Project</h4>
+            <ul>
+               <li><a href="https://github.com/trikko/serverino" target="_blank" rel="noopener">Source on GitHub</a></li>
+               <li><a href="https://github.com/trikko/serverino/issues" target="_blank" rel="noopener">Issues</a></li>
+            </ul>
+         </div>
+         <div class="beer">
+            <h4>Say thanks</h4>
+            <p>Serverino is free, and stays free.</p>
+            <a class="btn btn-small" href="https://paypal.me/andreafontana/5"
+               target="_blank" rel="noopener">🍺 Buy me a beer</a>
+         </div>
+      </div>
+      <div class="colophon">
+         Serverino is MIT licensed, © 2023-2026 Andrea Fontana.
+         This site is a serverino application: it serves its own pages and runs its own demos.
+         It speaks plain http behind a reverse proxy for one reason only: the machine hosts
+         other sites too.
+      </div>
+   </div>
+</footer>
+<script src="/js/dhighlight.js"></script>
+<script src="/js/site.js"></script>
+
+</body>
+</html>

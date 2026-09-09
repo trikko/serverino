@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — serverino</title>
+<meta name="description" content="How to use serverino: endpoints, routing, requests and responses, configuration, WebSockets, HTTPS, hot reload and deployment.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="llms-txt" href="https://trikko.github.io/serverino/llms.txt">
+</head>
+<body>
+<header class="site-header">
+   <div class="wrap">
+      <div class="brandline">
+         <a class="brand" href="/"><img src="/img/logo.svg" alt=""> serverino</a>
+         <a class="version" id="version" href="https://github.com/trikko/serverino/releases"
+            target="_blank" rel="noopener" title="Latest release"></a>
+      </div>
+      <nav class="site-nav">
+         <a href="/">Home</a>
+         <a href="/examples">Examples</a>
+         <a href="/docs" aria-current="page">Docs</a>
+         <a href="/llm">With an LLM</a>
+         <a class="gh" href="https://github.com/trikko/serverino" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>GitHub</span>
+         </a>
+      </nav>
+   </div>
+</header>
+
+<main>
+<section>
+   <div class="wrap">
+      <div class="section-head">
+         <div class="eyebrow">Documentation</div>
+         <h1>Everything you need to know, in one page</h1>
+         <p>
+            A guided tour of serverino: endpoints, routing, requests, responses, configuration,
+            WebSockets, HTTPS and deployment. For the exhaustive list of types and members, see the
+            <a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a>.
+         </p>
+      </div>
+
+      <div class="with-aside">
+         <nav class="toc">
+            <h4>On this page</h4>
+            <ol>
+               <li><a href="#install">Install</a></li>
+               <li><a href="#first">Your first endpoint</a></li>
+               <li><a href="#routing">Routing and priority</a></li>
+               <li><a href="#request">The request</a></li>
+               <li><a href="#output">The response</a></li>
+               <li><a href="#config">Configuration</a></li>
+               <li><a href="#lifecycle">Lifecycle hooks</a></li>
+               <li><a href="#websocket">WebSockets</a></li>
+               <li><a href="#limits">Rate limiting</a></li>
+               <li><a href="#https">HTTPS and certificates</a></li>
+               <li><a href="#reload">Hot reload</a></li>
+               <li><a href="#deploy">Deploying</a></li>
+               <li><a href="#architecture">How it works inside</a></li>
+            </ol>
+         </nav>
+
+         <div class="prose">
+
+<h2 id="install">Install</h2>
+
+<p>You need a D compiler (DMD 2.109 or newer, or a recent LDC) and dub. The fastest way to
+start is the project template:</p>
+
+<pre class="sample">dub init your_app -t serverino
+cd your_app
+dub run</pre>
+
+<p>To add serverino to an existing project:</p>
+
+<pre class="sample">dub add serverino</pre>
+
+<h2 id="first">Your first endpoint</h2>
+
+<p>An endpoint is a free function that takes a <code>Request</code> and an <code>Output</code>.
+<code>mixin ServerinoMain</code> writes <code>main()</code> for you.</p>
+
+<pre class="sample" data-copy><code>import serverino;
+mixin ServerinoMain;
+
+void hello(Request request, Output output)
+{
+   auto name = request.get.read("name", "world");
+   output ~= "Hello, " ~ name ~ "!";
+}</code></pre>
+
+<p>With a single handler you can leave the attribute out. As soon as there is a second one,
+every endpoint must be tagged with <code>@endpoint</code> &mdash; otherwise serverino would not
+know which functions to call.</p>
+
+<div class="note">
+   <p><strong>Endpoints run in separate processes.</strong> A global variable you set in one
+   request may or may not be there in the next: it belongs to that worker only. Anything that
+   must be shared belongs in a file, a database or a cache.</p>
+</div>
+
+<h2 id="routing">Routing and priority</h2>
+
+<p><code>@route</code> decides which requests reach an endpoint. With a string it is an exact
+match; with a delegate it is whatever you can express in D.</p>
+
+<pre class="sample" data-copy><code>@endpoint @route!"/about"
+void about(Request r, Output o) { o ~= "About us"; }
+
+@endpoint @route!(r =&gt; r.path.startsWith("/api/"))
+void api(Request r, Output o) { o.addHeader("content-type", "application/json"); o ~= "{}"; }</code></pre>
+
+<p>Endpoints are tried in descending <code>@priority</code> order (zero by default). The first
+one that writes something to the output ends the chain &mdash; unless it returns
+<code>Fallthrough.Yes</code>, which means "I am done, but keep going".</p>
+
+<pre class="sample" data-copy><code>@endpoint @priority(100)
+auto onlyGet(Request r, Output o)
+{
+   if (r.method == Request.Method.Get) return Fallthrough.Yes;   // let the others answer
+
+   o.status = 405;
+   return Fallthrough.No;                                        // stop here
+}</code></pre>
+
+<p>This is how you write authentication, logging or CORS: a high priority endpoint that either
+answers or steps aside. See the <a href="/examples#02_priority">priority example</a>.</p>
+
+<h2 id="request">The request</h2>
+
+<table>
+   <thead><tr><th>Member</th><th>What you get</th></tr></thead>
+   <tbody>
+      <tr><td><code>request.path</code></td><td>The requested path, decoded.</td></tr>
+      <tr><td><code>request.method</code></td><td><code>Request.Method.Get</code>, <code>.Post</code>, <code>.Put</code>, …</td></tr>
+      <tr><td><code>request.get</code></td><td>Query string parameters.</td></tr>
+      <tr><td><code>request.post</code></td><td>Fields of an urlencoded body.</td></tr>
+      <tr><td><code>request.form</code></td><td>Multipart fields and uploaded files.</td></tr>
+      <tr><td><code>request.body</code></td><td>The raw body and its content type.</td></tr>
+      <tr><td><code>request.header</code></td><td>Request headers, lowercase names.</td></tr>
+      <tr><td><code>request.cookie</code></td><td>Cookies sent by the client.</td></tr>
+      <tr><td><code>request.host</code>, <code>request.isSecure</code></td><td>Host, and whether the listener is TLS.</td></tr>
+      <tr><td><code>request.dump()</code></td><td>Everything above, formatted. Handy while developing.</td></tr>
+   </tbody>
+</table>
+
+<p>All of those give you the same small interface: <code>read(key, default)</code>,
+<code>has(key)</code> and <code>data</code> for the underlying associative array.</p>
+
+<pre class="sample" data-copy><code>if (request.get.has("page"))
+   page = request.get.read("page").to!uint;
+
+foreach(name, value; request.header.data)
+   info(name, ": ", value);</code></pre>
+
+<p>An uploaded file is a <code>FormData</code>: <code>filename</code>, <code>contentType</code> and
+<code>path</code>, the temporary file serverino saved for you.</p>
+
+<pre class="sample" data-copy><code>auto upload = request.form.read("avatar");
+
+if (upload.isFile)
+   copy(upload.path, "/var/www/avatars/" ~ upload.filename.baseName);</code></pre>
+
+<h2 id="output">The response</h2>
+
+<p><code>output ~= something</code> appends to the body; the default content type is
+<code>text/html</code>.</p>
+
+<pre class="sample" data-copy><code>output.status = 201;
+output.addHeader("content-type", "application/json");
+output.addHeader("cache-control", "public, max-age=3600");
+output.setCookie(Cookie("session", id).path("/").httpOnly.maxAge(1.hours));
+output ~= `{"ok": true}`;</code></pre>
+
+<p>Some headers are managed by serverino and cannot be set by hand:
+<code>content-length</code>, <code>date</code>, <code>server</code>, <code>status</code> and
+<code>transfer-encoding</code>.</p>
+
+<p>To send a file, use <code>serveFile</code>: it streams the file instead of loading it in memory,
+and picks the content type from the extension. It returns <code>false</code> if the file is not
+there &mdash; the 404 is up to you.</p>
+
+<pre class="sample" data-copy><code>@endpoint @route!"/manual.pdf"
+void manual(Request r, Output o)
+{
+   if (!o.serveFile("docs/manual.pdf"))
+      o.status = 404;
+}</code></pre>
+
+<div class="note">
+   <p><strong>Serving a whole directory?</strong> <code>serveFile</code> does not check the path
+   for you. Normalise what came from the request and make sure it is still inside your web root
+   before opening it &mdash; that is exactly what
+   <a href="https://github.com/trikko/serverino/blob/master/website/source/app.d" target="_blank" rel="noopener">this
+   website does</a>.</p>
+</div>
+
+<h2 id="config">Configuration</h2>
+
+<p>A function marked <code>@onServerInit</code> returns the configuration. It runs in the daemon,
+before anything is listening.</p>
+
+<pre class="sample" data-copy><code>@onServerInit
+ServerinoConfig configure()
+{
+   return ServerinoConfig
+      .create()
+      .addListener("0.0.0.0", 8080)
+      .setMaxWorkers(10)
+      .setMaxRequestTime(5.seconds)
+      .setMaxRequestSize(1024 * 1024);
+}</code></pre>
+
+<table>
+   <thead><tr><th>Setting</th><th>Meaning</th></tr></thead>
+   <tbody>
+      <tr><td><code>addListener(addr, port)</code></td><td>Where to listen. Call it more than once for more listeners.</td></tr>
+      <tr><td><code>setMaxWorkers</code>, <code>setMinWorkers</code></td><td>The size of the worker pool. Leave the minimum at zero and let serverino grow and shrink it.</td></tr>
+      <tr><td><code>setMaxRequestTime</code></td><td>How long an endpoint may take before its worker is killed.</td></tr>
+      <tr><td><code>setMaxRequestSize</code></td><td>Body size limit, uploads included.</td></tr>
+      <tr><td><code>setMaxWorkerLifetime</code>, <code>setMaxWorkerIdling</code></td><td>When to recycle a worker.</td></tr>
+      <tr><td><code>enableKeepAlive</code>, <code>setHttpTimeout</code></td><td>Connection handling.</td></tr>
+      <tr><td><code>setWorkerUser</code>, <code>setWorkerGroup</code></td><td>Drop privileges after binding a low port (POSIX).</td></tr>
+      <tr><td><code>setLogLevel</code>, <code>enableServerSignature</code></td><td>Logging, and whether to advertise the server.</td></tr>
+   </tbody>
+</table>
+
+<p>To read the command line, take it as a parameter &mdash; serverino passes it in:</p>
+
+<pre class="sample" data-copy><code>@onServerInit
+ServerinoConfig configure(string[] args) { /* getopt(args, ...) */ }</code></pre>
+
+<h2 id="lifecycle">Lifecycle hooks</h2>
+
+<table>
+   <thead><tr><th>Attribute</th><th>Runs</th></tr></thead>
+   <tbody>
+      <tr><td><code>@onServerInit</code></td><td>Once, in the daemon, to build the configuration.</td></tr>
+      <tr><td><code>@onDaemonStart</code> / <code>@onDaemonStop</code></td><td>In the daemon, around the server's life.</td></tr>
+      <tr><td><code>@onWorkerStart</code> / <code>@onWorkerStop</code></td><td>In every worker: open your database connection here.</td></tr>
+      <tr><td><code>@onWorkerException</code></td><td>When an endpoint throws.</td></tr>
+      <tr><td><code>@onWebSocketUpgrade</code></td><td>Before accepting an upgrade: return <code>false</code> to refuse it.</td></tr>
+      <tr><td><code>@onWebSocketStart</code> / <code>@onWebSocketStop</code></td><td>In the process dedicated to one WebSocket connection.</td></tr>
+      <tr><td><code>@requestScope</code></td><td>Marks state that must be reset between two requests.</td></tr>
+   </tbody>
+</table>
+
+<h2 id="websocket">WebSockets</h2>
+
+<p>Take a <code>WebSocket</code> instead of an <code>Output</code>. The upgrade handler decides
+whether the connection is accepted at all; after that, your function runs in a process of its own,
+for as long as the connection lasts.</p>
+
+<pre class="sample" data-copy><code>@onWebSocketUpgrade
+bool upgrade(Request request) { return request.path == "/echo"; }
+
+@endpoint @route!"/echo"
+void echo(Request request, WebSocket ws)
+{
+   while(true)
+      if (WebSocketMessage msg = ws.receiveMessage())
+         ws.send("you said: " ~ msg.asString);
+}</code></pre>
+
+<p>If you prefer callbacks to a loop, set <code>ws.onTextMessage</code>,
+<code>ws.onBinaryMessage</code> or <code>ws.onCloseMessage</code>. You can send strings, basic
+types and arrays of basic types; <code>ws.send()</code> with no argument flushes what is left in
+the buffer. Both styles are in the examples:
+<a href="/examples#05_websocket_echo">receive loop</a> and
+<a href="/examples#07_websocket_callback">callbacks</a>.</p>
+
+<h3>Keeping connections under control</h3>
+
+<p>An accepted upgrade is a process, and serverino does not cap how many of them may exist:
+that decision is yours, and <code>@onWebSocketUpgrade</code> is where you make it. Refusing is
+just returning <code>false</code> &mdash; the client gets a 403.</p>
+
+<pre class="sample" data-copy><code>@onWebSocketUpgrade
+bool upgrade(Request request)
+{
+   if (openConnections() &gt;= 24) return false;      // site-wide
+   return allow(request.header.read("x-remote-ip"));   // and per visitor
+}</code></pre>
+
+<p>Give the connection an end, too: a loop that runs forever keeps its process alive for as long
+as an abandoned tab stays open. Close it yourself when the time is up.</p>
+
+<pre class="sample" data-copy><code>immutable until = Clock.currTime + 10.minutes;
+
+while(Clock.currTime &lt; until)
+{
+   // ... receive, send, sleep ...
+}
+
+ws.sendClose();</code></pre>
+
+<div class="note">
+   <p>Counting the open connections needs a number that every worker agrees on, and workers share
+   no memory: keep it in a file, in a database, or count the processes themselves. This site
+   <a href="https://github.com/trikko/serverino/blob/master/website/source/limits.d"
+      target="_blank" rel="noopener">does the latter</a>.</p>
+</div>
+
+<h2 id="limits">Rate limiting</h2>
+
+<p>There is no rate limiter in serverino: a high priority endpoint is one, and it is a dozen
+lines. The only thing to remember is that workers are processes, so the count cannot live in a
+variable &mdash; a counter in memory would only ever see one worker's share of the traffic.</p>
+
+<pre class="sample" data-copy><code>@endpoint @priority(800)
+@route!(r =&gt; r.path.startsWith("/api/"))
+auto rateLimit(Request request, Output output)
+{
+   if (allow(request.header.read("x-remote-ip")))
+      return Fallthrough.Yes;      // out of the way, let the real endpoint answer
+
+   output.status = 429;
+   output.addHeader("retry-after", "1");
+   return Fallthrough.No;
+}</code></pre>
+
+<p>Enable <code>enableRemoteIp()</code> so the daemon adds the <code>x-remote-ip</code> header:
+unlike <code>x-forwarded-for</code>, the client cannot set it, so it is the one to trust when
+nothing is proxying in front of you.</p>
+
+<p>For the counter itself, appending a byte to a file per visitor and per time window is enough,
+and it has a property a read-modify-write does not: appends are atomic, so nothing is lost when
+several workers count at the same moment.</p>
+
+<h2 id="https">HTTPS and certificates</h2>
+
+<p>HTTPS is a build configuration (POSIX only, it links OpenSSL):</p>
+
+<pre class="sample">dub build --config=https</pre>
+
+<p>or, in your <code>dub.json</code>:</p>
+
+<pre class="sample">"subConfigurations": { "serverino": "https" }</pre>
+
+<p>A certificate belongs to a listener, so plain and encrypted listeners live happily in the same
+process, and <code>request.isSecure</code> tells them apart:</p>
+
+<pre class="sample" data-copy><code>sc.addListener("0.0.0.0", 80);
+sc.addListener("0.0.0.0", 443, Https("cert.pem", "key.pem"));</code></pre>
+
+<p>Certificates are reloaded without restarting anything and without dropping connections, either
+by calling <code>Daemon.reloadCertificates()</code> or by sending <code>SIGHUP</code>. That is
+enough to renew a Let's Encrypt certificate from inside the server itself: answer the ACME
+http-01 challenge on the plain listener, write the new files, reload. The
+<a href="/examples#13_letsencrypt">Let's Encrypt example</a> does exactly that.</p>
+
+<p>This website does none of it: it speaks plain http behind a reverse proxy, for the dullest of
+reasons &mdash; it shares a machine with other sites, so something has to hold port 443 and sort
+out who gets what. On a host of its own it would carry its own certificate, as the example does.
+Both arrangements are ordinary; the section below is about the second one.</p>
+
+<h2 id="reload">Hot reload</h2>
+
+<p>Rebuild your executable, then ask the daemon to restart its workers. Requests being served are
+finished first, and no connection is dropped.</p>
+
+<table>
+   <thead><tr><th>Platform</th><th>How</th></tr></thead>
+   <tbody>
+      <tr><td>POSIX</td><td><code>kill -SIGUSR1 &lt;daemon pid&gt;</code></td></tr>
+      <tr><td>Windows</td><td>Delete the canary file <code>serverino-&lt;pid&gt;-&lt;hash&gt;.canary</code> from the temp directory.</td></tr>
+   </tbody>
+</table>
+
+<h2 id="deploy">Deploying</h2>
+
+<p>A serverino application is one executable. Run it under systemd, give it the ports it needs and
+you are done:</p>
+
+<pre class="sample">[Service]
+ExecStart=/srv/myapp/myapp
+Restart=always
+AmbientCapabilities=CAP_NET_BIND_SERVICE</pre>
+
+<p>A reverse proxy is optional &mdash; with the https configuration serverino terminates TLS
+itself &mdash; but if you already have nginx or caddy, putting the application behind it is
+ordinary. This site does exactly that.</p>
+
+<h3>Behind nginx or caddy</h3>
+
+<p>Two things matter. The client address, because everything reaching your endpoints will
+otherwise come from the proxy and look like a single very busy visitor; and the WebSocket upgrade,
+which needs saying out loud in nginx.</p>
+
+<pre class="sample">location / {
+	proxy_pass http://127.0.0.1:8080;
+
+	proxy_set_header Host $host;
+	proxy_set_header X-Forwarded-For $remote_addr;   # overwrite, do not append
+	proxy_set_header X-Forwarded-Proto $scheme;
+
+	# WebSockets, and enough patience for a long lived one
+	proxy_http_version 1.1;
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+	proxy_read_timeout 900s;
+}</pre>
+
+<p>Caddy needs less said: <code>reverse_proxy 127.0.0.1:8080</code> forwards WebSockets and sets
+the forwarded headers on its own, and <code>header_up X-Forwarded-For {remote_host}</code> makes
+the address explicit.</p>
+
+<div class="note">
+   <p><strong>Which address to trust.</strong> Read the <em>last</em> entry of
+   <code>x-forwarded-for</code>: your proxy appends the address it really saw, and anything before
+   it came from the client, who may write whatever they like there. If you overwrite the header at
+   the proxy, as above, there is only ever one entry. With no proxy, use
+   <code>enableRemoteIp()</code> and read <code>x-remote-ip</code>, which the daemon fills in
+   itself and a client cannot set.</p>
+</div>
+
+<h2 id="architecture">How it works inside</h2>
+
+<p>One <strong>daemon</strong> process owns the listeners and the event loop (epoll on Linux,
+kqueue on the BSDs and macOS, select elsewhere). It never runs your code.</p>
+
+<p>A <strong>communicator</strong> pre-parses the request headers, applies the size and time
+limits, and only when a request is complete does it hand the socket to a
+<strong>worker</strong> &mdash; a separate process, which receives the file descriptor and runs
+your endpoint. Routing tables are built at compile time from the attributes on your functions.</p>
+
+<p>Because workers are processes, a crash costs one request: the daemon still owns the client
+socket, so when a worker dies holding a request it answers <code>500 Internal Server Error</code>
+in its place and starts a replacement. Because workers are pre-forked and reused, the cost of that
+isolation is paid once, not per request. WebSocket connections get a process of their own, so a
+thousand idle sockets never occupy the HTTP pool.</p>
+
+<p>The full write-up is in
+<a href="https://github.com/trikko/serverino/blob/master/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a>.</p>
+
+         </div>
+      </div>
+   </div>
+</section>
+
+</main>
+<footer class="site-footer">
+   <div class="wrap">
+      <div class="footer-grid">
+         <div>
+            <h4>Serverino</h4>
+            <ul>
+               <li><a href="/examples">Examples</a></li>
+               <li><a href="/docs">Documentation</a></li>
+               <li><a href="/llm">Working with an LLM</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Reference</h4>
+            <ul>
+               <li><a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a></li>
+               <li><a href="https://github.com/trikko/serverino/wiki/" target="_blank" rel="noopener">Wiki</a></li>
+               <li><a href="https://code.dlang.org/packages/serverino" target="_blank" rel="noopener">dub package</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Project</h4>
+            <ul>
+               <li><a href="https://github.com/trikko/serverino" target="_blank" rel="noopener">Source on GitHub</a></li>
+               <li><a href="https://github.com/trikko/serverino/issues" target="_blank" rel="noopener">Issues</a></li>
+            </ul>
+         </div>
+         <div class="beer">
+            <h4>Say thanks</h4>
+            <p>Serverino is free, and stays free.</p>
+            <a class="btn btn-small" href="https://paypal.me/andreafontana/5"
+               target="_blank" rel="noopener">🍺 Buy me a beer</a>
+         </div>
+      </div>
+      <div class="colophon">
+         Serverino is MIT licensed, © 2023-2026 Andrea Fontana.
+         This site is a serverino application: it serves its own pages and runs its own demos.
+         It speaks plain http behind a reverse proxy for one reason only: the machine hosts
+         other sites too.
+      </div>
+   </div>
+</footer>
+<script src="/js/dhighlight.js"></script>
+<script src="/js/site.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examples — serverino</title>
+<meta name="description" content="Live demos and the thirteen example programs shipped with serverino: routing, forms, sessions, WebSockets, HTTPS and Let's Encrypt.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="llms-txt" href="https://trikko.github.io/serverino/llms.txt">
+</head>
+<body>
+<header class="site-header">
+   <div class="wrap">
+      <div class="brandline">
+         <a class="brand" href="/"><img src="/img/logo.svg" alt=""> serverino</a>
+         <a class="version" id="version" href="https://github.com/trikko/serverino/releases"
+            target="_blank" rel="noopener" title="Latest release"></a>
+      </div>
+      <nav class="site-nav">
+         <a href="/">Home</a>
+         <a href="/examples" aria-current="page">Examples</a>
+         <a href="/docs">Docs</a>
+         <a href="/llm">With an LLM</a>
+         <a class="gh" href="https://github.com/trikko/serverino" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>GitHub</span>
+         </a>
+      </nav>
+   </div>
+</header>
+
+<main>
+<section>
+   <div class="wrap">
+      <div class="section-head">
+         <div class="eyebrow">Examples</div>
+         <h1>Try it here, then read the code</h1>
+         <p>
+            The demos below are endpoints of this website: breaking one of its worker processes,
+            watching it measure its own memory, talking to it over a WebSocket. The code next to
+            each one is cut out of the file that serves it, so it cannot say something different
+            from what runs.
+         </p>
+         <p>
+            They are on a leash, as a public site should be: 600 requests every ten seconds per
+            visitor, six WebSockets a minute, 24 open at once site-wide, and every connection
+            closed after a few minutes. That leash is
+            <a href="https://github.com/trikko/serverino/blob/master/website/source/limits.d"
+               target="_blank" rel="noopener">one short module</a>, and it is worth a read if you
+            are putting something of your own on the internet.
+         </p>
+      </div>
+
+      <article data-demo="hello"></article>
+      <article data-demo="footprint"></article>
+      <article data-demo="crash"></article>
+      <article data-demo="pool"></article>
+      <article data-demo="telemetry"></article>
+      <article data-demo="slow"></article>
+      <article data-demo="upload"></article>
+      <article data-demo="chat"></article>
+      <article data-demo="chain"></article>
+
+   </div>
+</section>
+
+<section>
+   <div class="wrap">
+      <div class="section-head">
+         <div class="eyebrow">In the repository</div>
+         <h2>Thirteen complete programs</h2>
+         <p>
+            Each one is a project you can build and run: <code>dub run --root=examples/01_hello_world</code>.
+            The sources below are read straight from the repository.
+         </p>
+      </div>
+
+      <div class="with-aside">
+         <nav class="toc">
+            <h4>Examples</h4>
+            <ol id="examples-toc"></ol>
+         </nav>
+         <div id="examples">
+            <p style="color:var(--muted)">Loading the examples…</p>
+         </div>
+      </div>
+   </div>
+</section>
+
+</main>
+<footer class="site-footer">
+   <div class="wrap">
+      <div class="footer-grid">
+         <div>
+            <h4>Serverino</h4>
+            <ul>
+               <li><a href="/examples">Examples</a></li>
+               <li><a href="/docs">Documentation</a></li>
+               <li><a href="/llm">Working with an LLM</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Reference</h4>
+            <ul>
+               <li><a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a></li>
+               <li><a href="https://github.com/trikko/serverino/wiki/" target="_blank" rel="noopener">Wiki</a></li>
+               <li><a href="https://code.dlang.org/packages/serverino" target="_blank" rel="noopener">dub package</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Project</h4>
+            <ul>
+               <li><a href="https://github.com/trikko/serverino" target="_blank" rel="noopener">Source on GitHub</a></li>
+               <li><a href="https://github.com/trikko/serverino/issues" target="_blank" rel="noopener">Issues</a></li>
+            </ul>
+         </div>
+         <div class="beer">
+            <h4>Say thanks</h4>
+            <p>Serverino is free, and stays free.</p>
+            <a class="btn btn-small" href="https://paypal.me/andreafontana/5"
+               target="_blank" rel="noopener">🍺 Buy me a beer</a>
+         </div>
+      </div>
+      <div class="colophon">
+         Serverino is MIT licensed, © 2023-2026 Andrea Fontana.
+         This site is a serverino application: it serves its own pages and runs its own demos.
+         It speaks plain http behind a reverse proxy for one reason only: the machine hosts
+         other sites too.
+      </div>
+   </div>
+</footer>
+<script src="/js/dhighlight.js"></script>
+<script src="/js/site.js"></script>
+
+</body>
+</html>
