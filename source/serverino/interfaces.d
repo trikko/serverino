@@ -931,6 +931,7 @@ struct Output
       ExpectationFailed = 417,
       UnprocessableEntity = 422,
       UpgradeRequired = 426,
+      TooManyRequests = 429,
       InternalServerError = 500,
       NotImplemented = 501,
       BadGateway = 502,
@@ -1253,8 +1254,9 @@ struct Output
 
             400 : "Bad Request", 401 : "Unauthorized", 402 : "Payment Required", 403 : "Forbidden", 404 : "Not Found", 405 : "Method Not Allowed",
             406 : "Not Acceptable", 407 : "Proxy Authentication Required", 408 : "Request Timeout", 409 : "Conflict", 410 : "Gone",
-            411 : "Lenght Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
-            416 : "Requested Range Not Satisfable", 417 : "Expectation Failed", 422 : "Unprocessable Content", 426 : "Upgrade Required",
+            411 : "Length Required", 412 : "Precondition Failed", 413 : "Request Entity Too Large", 414 : "Request-URI Too Long", 415 : "Unsupported Media Type",
+            416 : "Requested Range Not Satisfiable", 417 : "Expectation Failed", 422 : "Unprocessable Content", 426 : "Upgrade Required",
+            429 : "Too Many Requests",
 
             500 : "Internal Server Error", 501 : "Not Implemented", 502 : "Bad Gateway", 503 : "Service Unavailable", 504 : "Gateway Timeout", 505 : "HTTP Version Not Supported"
          ];
@@ -1399,7 +1401,7 @@ struct Output
 **/
 struct WebSocketMessage
 {
-   import std.traits : isSomeString, isBasicType, isArray;
+   import std.traits : isSomeString, isBasicType, isArray, Unqual;
    import std.range : ElementType;
 
    enum OpCode : ushort
@@ -1436,8 +1438,17 @@ struct WebSocketMessage
    this(T)(OpCode opcode, T payload)
    if (isArray!T && isBasicType!(ElementType!T)) { this(opcode, cast(ubyte[])payload);}
 
+   /++ Build an empty message with the given opcode, for the control frames
+    +  that carry no payload.
+    +
+    +  Without this overload `WebSocketMessage(OpCode.Close)` would pick the
+    +  generic single-argument constructor below and build a *binary* message
+    +  carrying the opcode as its payload, instead of a close frame.
+   +/
+   this(OpCode opcode) { this._opcode = opcode; }
+
    /// Ditto
-   this(T)(T payload) { this(OpCode.Binary, payload); }
+   this(T)(T payload) if (!is(Unqual!T == OpCode)) { this(OpCode.Binary, payload); }
 
    /// Ditto
    this(string payload) { this(OpCode.Text, payload); }
