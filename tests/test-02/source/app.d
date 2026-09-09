@@ -366,7 +366,10 @@ void test()
          data ~= buffer[0..read];
       }
 
-      assert(data.empty);
+      // The worker died holding this request. It used to mean a dropped
+      // connection and nothing else; the daemon now answers in its place,
+      // so the client is told what happened instead of guessing.
+      assert(data.startsWith("HTTP/1.0 500 Internal Server Error"));
    }
 
    info("Testing pipeline");
@@ -449,7 +452,8 @@ void test()
          data ~= buffer[0..read];
       }
 
-      assert(data.empty);
+      // Same as above: a worker that dies mid-request is answered for.
+      assert(data.startsWith("HTTP/1.0 500 Internal Server Error"));
    }
 
    // Testing partial sending

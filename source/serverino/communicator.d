@@ -256,6 +256,20 @@ package class Communicator
       else assert(false);
    }
 
+   /+ The worker died before writing anything: tell the client, instead of just
+    + hanging up on it.
+    +
+    + If part of the response is already on the wire there is nothing honest left
+    + to do: the status line has been sent, and it said 200. The caller closes the
+    + connection and the client sees a truncated answer, which is the truth.
+   +/
+   void sendServerError()
+   {
+      if (clientSkt is null || responseSent > 0) return;
+
+      sktSend("HTTP/1.0 500 Internal Server Error\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
+   }
+
    // Reset the communicator to the initial state and clear the requests queue
    void reset()
    {

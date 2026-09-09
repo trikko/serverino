@@ -377,13 +377,19 @@ package class WorkerInfo
       }
       else if (bytes == 0)
       {
-         // User closed socket.
+         // The worker is gone. If it went while serving a request, the client is
+         // still waiting: it deserves an answer rather than a dropped connection.
+         if (status == WorkerInfo.State.PROCESSING) communicator.sendServerError();
+
          communicator.reset();
          setStatus(WorkerInfo.State.STOPPED);
       }
       else
       {
          debug warning("Worker #" ~ pi.id.to!string  ~ " exited/terminated/killed (socket error).");
+
+         if (status == WorkerInfo.State.PROCESSING) communicator.sendServerError();
+
          communicator.reset();
          setStatus(WorkerInfo.State.STOPPED);
       }
