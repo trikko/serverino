@@ -51,6 +51,9 @@ pre { tab-size: 3; -moz-tab-size: 3; }
 
 .wrap { max-width: var(--page); margin: 0 auto; padding: 0 24px; }
 .narrow { max-width: 780px; }
+/* Le demo non sono prosa: il codice accanto al pannello ha bisogno di piu'
+   spazio di quanto sia comodo leggere un paragrafo. */
+.wide { max-width: 1280px; }
 
 /* ---------------------------------------------------------------- header */
 
@@ -177,7 +180,11 @@ section + section { border-top: 1px solid var(--line); }
 .demo-title p { margin: 0; color: var(--muted); font-size: .88rem; }
 .demo-title .lines { margin-left: auto; font-family: var(--mono); font-size: .75rem; color: var(--muted); }
 
-.demo-body { display: grid; grid-template-columns: 1fr 1fr; }
+/* La colonna del codice si dimensiona sul proprio contenuto, cosi. ogni demo
+   prende la larghezza che le serve invece di una meta. uguale per tutte; il
+   pannello a fianco ha un minimo sotto il quale non scende, e si tiene il
+   resto. Se il codice fosse cosi. largo da non stare, torna a scorrere lui. */
+.demo-body { display: grid; grid-template-columns: minmax(0, max-content) minmax(360px, 1fr); }
 .demo-source { border-right: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .demo-source pre { margin: 0; padding: 18px; overflow-x: auto; line-height: 1.6; }
 .demo-live { padding: 18px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -224,7 +231,9 @@ section + section { border-top: 1px solid var(--line); }
 .says .say:not([disabled]):hover { border-color: var(--accent); color: var(--accent-dark); }
 
 .console { display: flex; flex-direction: column; gap: 5px; }
-.console .line { font-family: var(--mono); font-size: .8rem; }
+/* Senza questo le righe si comprimono l.una sull.altra invece di uscire dal
+   riquadro, e la chat diventa illeggibile appena si riempie. */
+.console .line { flex: 0 0 auto; font-family: var(--mono); font-size: .8rem; }
 .console .line.out { color: var(--deep); }
 .console .line.in { color: var(--ok); }
 .console .line.sys { color: var(--muted); font-style: italic; }
