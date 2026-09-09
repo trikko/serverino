@@ -1,6 +1,6 @@
 # Serverino
 
-> Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D programming language. It uses a daemon/worker process model (epoll on Linux, kqueue on macOS/BSD, select elsewhere) for resilience against crashes and slow-client attacks, and a UDA-based API for routing and configuration. Version 0.7.21.
+> Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D programming language. It uses a daemon/worker process model (epoll on Linux, kqueue on macOS/BSD, select elsewhere) for resilience against crashes and slow-client attacks, and a UDA-based API for routing and configuration. Version 0.8.0.
 
 Endpoints are plain functions annotated with `@endpoint`; the server is started by mixing in `ServerinoMain`. Workers are separate processes, not threads: no application state is shared between requests.
 

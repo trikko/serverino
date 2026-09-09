@@ -145,8 +145,8 @@ alias CoarseTime = MonoTimeImpl!(ClockType.coarse);
 
 // Serverino version
 public enum SERVERINO_MAJOR = 0;
-public enum SERVERINO_MINOR = 7;
-public enum SERVERINO_REVISION = 21;
+public enum SERVERINO_MINOR = 8;
+public enum SERVERINO_REVISION = 0;
 
 package string simpleNotSecureCompileTimeHash(string seed = "") @safe nothrow
 {

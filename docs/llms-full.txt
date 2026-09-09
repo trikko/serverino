@@ -1,6 +1,6 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.7.21 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.0 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
