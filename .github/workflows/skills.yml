@@ -42,7 +42,12 @@ jobs:
         run: |
           cp -r examples/* build/serverino/examples/
 
-      - name: Generate SKILL.md (English version)
+      - name: Copy the rules
+        run: |
+          # One source for the rules: the same file the website serves at /AGENTS.md.
+          cp docs/AGENTS.md build/serverino/
+
+      - name: Generate SKILL.md
         run: |
           cat << 'EOF' > build/serverino/SKILL.md
           ---
@@ -52,62 +57,24 @@ jobs:
 
           # Serverino - HTTP/WebSocket Server for D
 
-          Serverino is a high-performance, multi-process, zero-dependency HTTP and WebSocket server library for the D programming language (dlang).
+          Serverino is a zero-dependency, multi-process HTTP and WebSocket server library for the D
+          programming language (dlang).
 
           **Asset directory**: `${CLAUDE_SKILL_DIR}`
 
-          ## Locally Available Resources
-          All the information needed to understand and write correct Serverino code is saved within this skill. Use these as your single source of truth:
+          Everything needed to write correct Serverino code is in this skill. Read from it rather
+          than recalling: the library is small enough to be rare in training data, and a guess
+          usually comes out looking like vibe.d or Node.
 
-          1. **Core Documentation & Consolidated API Reference**:
-             - `llms.txt` - High-level overview, main modules, and quick-start.
-             - `llms-full.txt` - Detailed API reference for configuration, routing (UDAs), interfaces (Request, Output, FormData), and complete examples (GET, POST, JSON API, File Upload, WebSockets).
+          1. `AGENTS.md` - the rules that are easiest to get wrong. Start here.
+          2. `llms-full.txt` - the complete API in one file: configuration, UDAs, `Request`,
+             `Output`, `FormData`, WebSockets, worked examples. `llms.txt` is the short overview.
+          3. `wiki/` - recipes: authorization, docker, systemd, redirects, sessions, reading a
+             posted file, running a thread beside serverino, multiple source files.
+          4. `examples/` - complete programs, one directory each, from hello world to a server
+             that renews its own Let's Encrypt certificate.
 
-          2. **Specific Use Cases & Recipes (Wiki)**:
-             Available in the `./wiki/` directory:
-             - `Tips:-authorization.md` - How to implement authentication.
-             - `Tips:-docker.md` - Docker configurations.
-             - `Tips:-filter-requests-with-@route.md` - Advanced routing examples using the `@route` UDA.
-             - `Tips:-init-your-workers.md` - Initializing worker processes.
-             - `Tips:-mute-output.md` - Muting/configuring log outputs.
-             - `Tips:-passing-params-from-main-process-(daemon)-to-workers.md` - Parameter sharing between master (daemon) and workers.
-             - `Tips:-read-a-posted-file.md` - Reading files sent via POST.
-             - `Tips:-redirect.md` - How to execute HTTP redirects.
-             - `Tips:-run-serverino-as-systemd-service.md` - Running as a Systemd service.
-             - `Tips:-running-a-thread-in-parallel-to-serverino.md` - Running parallel threads.
-             - `Tips:-serverino-with-multiple-source-file.md` - Multi-file compilation.
-
-          3. **Official Codebase Examples**:
-             Available in the subfolders of the `./examples/` directory:
-             - `01_hello_world` - Basic server.
-             - `02_priority` - Endpoint priority management.
-             - `03_form` - HTML form handling (GET/POST).
-             - `04_html_dom` - Generating HTML responses.
-             - `05_websocket_echo` - Basic WebSocket echo server.
-             - `06_websocket_noise_stream` - Generating WebSocket streams.
-             - `07_websocket_callback` - Advanced WebSocket callbacks.
-             - `08_cmdline_args` - Command-line arguments.
-             - `09_simple_session` - Session management via cookies.
-             - `10_diet_ng_templates` - Integration with Diet templates.
-             - `11_elemi_integration` - HTML generation with Elemi.
-             - `12_https` - HTTPS configuration.
-             - `13_letsencrypt` - Let's Encrypt certificate and renewal from inside serverino.
-
-          ## Essential Coding Rules
-          1. **Correct Parameter Access**:
-             - **NEVER** access query or POST parameters as associative arrays (e.g., `request.get["name"]` is WRONG).
-             - **ALWAYS** use `.read` or `.has` (e.g., `string name = request.get.read("name", "Default");` or `if (request.get.has("admin"))`).
-          2. **Output Handling**:
-             - Append data to response body: `output ~= "data"`.
-             - Set status code: `output.status = 200`.
-             - Add headers: `output.addHeader("Name", "Value")`.
-             - `serveFile` takes its disposal action as a **template** parameter: `output.serveFile!(OnFileServed.DeleteFile)("/tmp/f.pdf")`, NOT `serveFile(path, OnFileServed.DeleteFile)`.
-          3. **WebSockets**:
-             - A single `@onWebSocketUpgrade bool(Request)` function is **required**: without it every upgrade is rejected.
-             - The handler is an `@endpoint` taking `(Request, WebSocket)`, and it normally loops forever.
-             - `@onWebSocketStart` and `@onWebSocketStop` take **no arguments**: they cannot be used to receive the WebSocket.
-          4. **Local Docs First**:
-             - When asked a specific question, read local files `llms.txt`, `llms-full.txt`, `./wiki/*`, or `./examples/*` first to ensure correct syntax.
+          When an answer depends on a signature, check it against `llms-full.txt` before writing it.
           EOF
 
       - name: Zip the Skill folder
