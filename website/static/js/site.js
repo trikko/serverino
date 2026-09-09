@@ -64,10 +64,10 @@
       slow: {
          title: "An endpoint that never finishes",
          desc: "It sleeps for a minute. It is given fifty milliseconds.",
-         kind: "http", method: "GET", path: "/demo/slow", hideTiming: true,
-         note: "The worker is killed and recycled. What you get back is a 504, and the moment "
-            + "it arrives says nothing about the fifty milliseconds: it is when the daemon "
-            + "noticed and reaped the worker."
+         kind: "http", method: "GET", path: "/demo/slow",
+         note: "The worker is killed and recycled, and what you get back is a 504. It does not "
+            + "arrive after fifty milliseconds but when the daemon noticed and reaped the "
+            + "worker, which is a second or so later."
       },
       upload: {
          title: "Uploads, and a 64 KB limit",
@@ -145,20 +145,18 @@
       /* The bar keeps its place from the start, with a quiet placeholder: a row
          that appears out of nowhere would push everything below it. */
       const status = h("span", { class: "status", text: "no answer yet" });
-      const timing = h("span", { class: "timing" });
       const ctype = h("span", { class: "ctype" });
-      const bar = h("div", { class: "respbar idle" }, status, timing, ctype);
+      const bar = h("div", { class: "respbar idle" }, status, ctype);
       const out = h("div", { class: "output empty", text: placeholder });
 
       live.append(bar, out);
 
       return {
-         bar: bar, status: status, timing: timing, ctype: ctype, out: out,
-         show: (code, ok, ms, type) => {
+         bar: bar, status: status, ctype: ctype, out: out,
+         show: (code, ok, type) => {
             bar.classList.remove("idle");
             status.textContent = code;
             status.className = "status" + (ok ? "" : " err");
-            timing.innerHTML = ms === null ? "" : "in <b>" + ms.toFixed(1) + "</b> ms";
             ctype.textContent = type || "";
          },
          text: t => { out.classList.remove("empty"); out.textContent = t; },
@@ -193,12 +191,12 @@
 
    const showError = (res, err) => {
       if (err && err.limited) {
-         res.show("429 Too Many Requests", false, null, "");
+         res.show("429 Too Many Requests", false, "");
          res.text(err.message + (err.retry ? "\n\nTry again in " + err.retry + " seconds." : ""));
          return;
       }
 
-      res.show("failed", false, null, "");
+      res.show("failed", false, "");
       res.text(failureHint(err));
    };
 
@@ -259,11 +257,8 @@
          run.disabled = true;
          res.text("…");
 
-         const t0 = performance.now();
-
          fetch(target()).then(r => r.text().then(body => {
             res.show(r.status + " " + r.statusText, r.ok,
-               demo.hideTiming ? null : performance.now() - t0,
                (r.headers.get("content-type") || "").split(";")[0]);
             const wait = r.status === 429 ? r.headers.get("retry-after") : null;
 
@@ -296,17 +291,15 @@
          run.disabled = over.disabled = true;
          res.text("…");
 
-         const t0 = performance.now();
-
          fetch(demo.path, { method: "POST", body: fd }).then(r => r.text().then(body => {
-            res.show(r.status + " " + r.statusText, r.ok, performance.now() - t0, "");
+            res.show(r.status + " " + r.statusText, r.ok, "");
             res.text(r.status === 413
                ? body.trim() + "\n\nRefused by the daemon before any worker was involved:\n"
                   + "setMaxRequestSize(64 * 1024) in the configuration."
                : (body.trim() || "(empty body)"));
          })).catch(err => {
             // An oversized body is often cut short: the browser reports a network error.
-            res.show("refused", false, null, "");
+            res.show("refused", false, "");
             res.text("The connection was closed before the body was accepted.\n\n" +
                "That is the 64 KB limit at work (" + err.message + ").");
          }).finally(() => { run.disabled = over.disabled = false; });
@@ -335,7 +328,7 @@
          run.disabled = true;
 
          readJson(demo.path).then(d => {
-            res.show("200 OK", true, null, "application/json");
+            res.show("200 OK", true, "application/json");
             res.node(h("div", null,
                tiles([
                   { value: mb(d.memory_kb) + " MB", label: "memory, whole server" },
@@ -377,7 +370,6 @@
          const before = readJson("/demo/footprint").catch(() => null);
 
          before.then(startStats => {
-            const t0 = performance.now();
             const jobs = [];
 
             for (let i = 0; i < n; i++)
@@ -386,14 +378,13 @@
                   .catch(() => null));
 
             return Promise.all(jobs).then(answers => {
-               const ms = performance.now() - t0;
                const done = answers.filter(Boolean);
                const ok = done.filter(a => a.status === 200);
                const limited = done.filter(a => a.status === 429).length;
                const workers = new Set(ok.map(a => a.body));
 
                return readJson("/demo/footprint").catch(() => null).then(endStats => {
-                  res.show(ok.length + "/" + n + " answered", ok.length === n, null, "");
+                  res.show(ok.length + "/" + n + " answered", ok.length === n, "");
                   res.node(h("div", null,
                      tiles([
                         { value: String(workers.size), label: "workers shared the batch" },
@@ -432,7 +423,7 @@
       run.addEventListener("click", () => {
          run.disabled = true;
          log.length = 0;
-         res.show("running", true, null, "");
+         res.show("running", true, "");
 
          let victim = null, before = 0;
 
@@ -465,7 +456,7 @@
                   step("one worker went down.");
 
                step("The page you are reading never went down, and no other request was touched.");
-               res.show("still up", true, null, "");
+               res.show("still up", true, "");
             });
          }).catch(err => showError(res, err))
             .finally(() => { run.disabled = false; });
