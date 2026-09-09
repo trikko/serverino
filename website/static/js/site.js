@@ -53,7 +53,7 @@
       },
       pool: {
          title: "Where the workers come from",
-         desc: "Sixty requests at once, the way a page load asks for its assets.",
+         desc: "Sixty requests, and you decide how many travel together.",
          kind: "pool", path: "/demo/ping"
       },
       crash: {
@@ -352,57 +352,78 @@
 
    const BURST = 60;
 
+   /* Runs n tasks with at most `atOnce` of them in flight. With atOnce = 1 it
+      is a plain sequence, which is the point of the control on the panel. */
+   function pool(n, atOnce, task) {
+      let next = 0;
+      const answers = new Array(n);
+
+      const lane = async () => {
+         while (next < n) { const i = next++; answers[i] = await task(); }
+      };
+
+      return Promise.all(Array.from({ length: Math.min(atOnce, n) }, lane)).then(() => answers);
+   }
+
    function buildPool(live, demo) {
-      const run = h("button", { class: "btn btn-primary", type: "button" },
-         "Ask for " + BURST + " at once");
+      const atOnce = h("select");
+      [["1", "one after another"], ["6", "6 at a time"], ["20", "20 at a time"],
+         [String(BURST), "all " + BURST + " at once"]].forEach(pair => {
+         const o = h("option", { value: pair[0] }, pair[1]);
+         if (pair[0] === "20") o.selected = true;
+         atOnce.append(o);
+      });
+
+      const run = h("button", { class: "btn btn-primary", type: "button" }, "Send " + BURST + " requests");
 
       live.append(h("div", { class: "demo-controls" },
+         h("div", { class: "field" }, h("label", { text: "in parallel" }), atOnce),
          h("div", { class: "field" }, h("label", { text: " " }), run)));
 
-      const res = responseArea(live, "One click, " + BURST + " requests, no waiting in between.");
+      const res = responseArea(live, "Sixty requests, as many at a time as you choose.");
 
       run.addEventListener("click", () => {
-         const n = BURST;
+         const lanes = parseInt(atOnce.value, 10);
 
          run.disabled = true;
-         res.text("asking…");
+         res.text("sending " + BURST + " requests, " + lanes + " at a time…");
 
-         const before = readJson("/demo/footprint").catch(() => null);
+         readJson("/demo/footprint").catch(() => null).then(startStats =>
+            pool(BURST, lanes, () => fetch(demo.path)
+               .then(r => r.text().then(body => ({ status: r.status, body: body.trim() })))
+               .catch(() => null)).then(answers => {
 
-         before.then(startStats => {
-            const jobs = [];
-
-            for (let i = 0; i < n; i++)
-               jobs.push(fetch(demo.path)
-                  .then(r => r.text().then(body => ({ status: r.status, body: body.trim() })))
-                  .catch(() => null));
-
-            return Promise.all(jobs).then(answers => {
                const done = answers.filter(Boolean);
                const ok = done.filter(a => a.status === 200);
                const limited = done.filter(a => a.status === 429).length;
                const workers = new Set(ok.map(a => a.body));
 
                return readJson("/demo/footprint").catch(() => null).then(endStats => {
-                  res.show(ok.length + "/" + n + " answered", ok.length === n, "");
+                  res.show(ok.length + "/" + BURST + " answered", ok.length === BURST, "");
                   res.node(h("div", null,
                      tiles([
-                        { value: String(workers.size), label: "workers shared the batch" },
-                        { value: (startStats ? startStats.processes + " → " : "") +
+                        { value: String(lanes), label: "sent at a time" },
+                        { value: String(workers.size), label: "workers that answered" },
+                        { value: (startStats ? startStats.processes + " \u2192 " : "") +
                            (endStats ? String(endStats.processes) : "?"), label: "processes" },
-                        { value: (startStats ? mb(startStats.memory_kb) + " → " : "") +
-                           (endStats ? mb(endStats.memory_kb) : "?") + " MB", label: "memory" },
                         { value: String(limited), label: "turned away (rate limit)" }
                      ]),
                      h("p", { class: "tiles-note", text:
-                        "Requests are handed to whichever worker is free, and the daemon starts a " +
-                        "few more when they are all busy. Ten seconds after the last request the " +
-                        "extra ones retire by themselves — the demo below draws that, if you leave " +
-                        "it connected. Nothing here is a benchmark: your browser opens a handful of " +
-                        "connections at a time, and the site limits what one visitor may ask for." })));
+                        (lanes === 1
+                           ? "One after another: the next request only leaves when the previous " +
+                             "one has come back, so a single worker can serve all sixty and the " +
+                             "pool has no reason to grow. "
+                           : "Your browser and the proxy in front decide how many of these really " +
+                             "travel together, so asking for sixty rarely means sixty. ") +
+                        (workers.size === 1
+                           ? "And here one worker answered every one of them: a request to this " +
+                             "endpoint takes well under a millisecond, so they never overlapped. " +
+                             "The pool grows when work overlaps, not when requests are merely many."
+                           : "The daemon hands each request to a free worker and starts another " +
+                             "one when they are all busy; a minute after the last request the " +
+                             "extra ones retire by themselves.") })));
                });
-            });
-         }).finally(() => { run.disabled = false; });
+            })).finally(() => { run.disabled = false; });
       });
    }
 
@@ -594,6 +615,18 @@
       setState(false, "not connected");
       requestAnimationFrame(draw);
 
+      /* The bitmap is sized in device pixels when it is drawn. Without this,
+         a canvas that is laid out again after the first draw — which is what
+         happens while the page settles — keeps the old bitmap and has it
+         stretched to the new box, which is why the labels looked smeared
+         before anyone pressed Connect. */
+      if (window.ResizeObserver)
+         new ResizeObserver(() => { if (!ws) draw(); }).observe(canvas);
+
+      // Anche a mano: le colonne vengono allineate dopo il caricamento, e il
+      // canvas cambia larghezza quando il disegno e. gia. stato fatto.
+      window.addEventListener("resize", () => { if (!ws) draw(); });
+
       connect.addEventListener("click", () => {
          if (ws) {
             connect.textContent = "disconnecting…";
@@ -725,6 +758,10 @@
 
          document.documentElement.style.setProperty("--code-col",
             Math.min(widest, Math.max(360, room)) + "px");
+
+         // Il canvas della telemetria e. gia. stato disegnato: ora e. largo
+         // diversamente, e il suo bitmap va rifatto o viene stirato.
+         window.dispatchEvent(new Event("resize"));
       })).catch(() => {});
    }
 

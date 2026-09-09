@@ -184,7 +184,13 @@ section + section { border-top: 1px solid var(--line); }
    js la misura e la scrive in --code-col, cosi. nessun blocco scorre e i
    divisori restano allineati scendendo. Senza js si dimensiona sul proprio
    contenuto, che e. il comportamento corretto per un blocco solo. */
-.demo-body { display: grid; grid-template-columns: minmax(0, var(--code-col, max-content)) minmax(360px, 1fr); }
+.demo-body {
+   display: grid;
+   grid-template-columns: minmax(0, var(--code-col, max-content)) minmax(360px, 1fr);
+   /* Uno snippet di otto righe lascerebbe al pannello accanto meno spazio di
+      quanto gliene serve, e a scorrere sarebbe lui. */
+   min-height: 440px;
+}
 .demo-source { border-right: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .demo-source pre { margin: 0; padding: 18px; overflow-x: auto; line-height: 1.6; }
 .demo-live { padding: 18px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -192,6 +198,10 @@ section + section { border-top: 1px solid var(--line); }
 .demo-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 650; }
+.field select {
+   font: inherit; font-size: .9rem; padding: 7px 10px;
+   border: 1px solid var(--line-strong); border-radius: 7px; background: #fff; color: var(--ink);
+}
 .field input[type=text], .field input[type=file] {
    font: inherit; font-size: .9rem; padding: 7px 10px;
    border: 1px solid var(--line-strong); border-radius: 7px; background: #fff; color: var(--ink);

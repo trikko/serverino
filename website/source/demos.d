@@ -94,9 +94,9 @@ void slow(Request request, Output output)
 @endpoint @route!"/demo/ping"
 void ping(Request request, Output output)
 {
-   // Nothing to it: the point is who answers. Ask for a handful
-   // of these at once and the pool grows a worker or two, the
-   // way it does when a page asks for all of its assets.
+   // Nothing to it: the point is who answers. The panel
+   // sends sixty of these, as many at a time as you pick,
+   // and the pool grows only if they really overlap.
    output ~= thisProcessID.to!string;
 }
 
