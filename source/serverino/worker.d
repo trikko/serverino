@@ -707,7 +707,16 @@ struct Worker
 
                   WorkerPayload.Flags flags = (output._internal._keepAlive?WorkerPayload.Flags.HTTP_KEEP_ALIVE:WorkerPayload.Flags.init);
 
-                  if (output._internal._sendFile.length == 0)
+                  /+ A HEAD that asked for a file gets the headers and nothing else.
+                   + The content-length in them is already the size of the file, and
+                   + the daemon is not told to open it: the send buffer carries the
+                   + file *name*, and the scope(exit) below empties it for a HEAD,
+                   + which used to leave the daemon opening "" and answering 404.
+                   +
+                   + Note that serveFile!(OnFileServed.DeleteFile) does not delete on
+                   + a HEAD: nothing was served, so nothing is consumed.
+                  +/
+                  if (output._internal._sendFile.length == 0 || output._internal._doNotSendBody)
                   {
                      if(output._internal._sendBuffer.length > 1024*1024)
                         warning("Sending a big response. Consider using `serveFile` to avoid memory issues.");
