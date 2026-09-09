@@ -66,8 +66,8 @@
          desc: "It sleeps for a minute. It is given fifty milliseconds.",
          kind: "http", method: "GET", path: "/demo/slow",
          note: "The worker is killed and recycled, and what you get back is a 504. It does not "
-            + "arrive after fifty milliseconds but when the daemon noticed and reaped the "
-            + "worker, which is a second or so later."
+            + "arrive after fifty milliseconds, but when the daemon noticed and reaped the "
+            + "worker."
       },
       upload: {
          title: "Uploads, and a 64 KB limit",
@@ -411,17 +411,16 @@
                      h("p", { class: "tiles-note", text:
                         (lanes === 1
                            ? "One after another: the next request only leaves when the previous " +
-                             "one has come back, so a single worker can serve all sixty and the " +
+                             "one has come back, so a single worker can serve them all and the " +
                              "pool has no reason to grow. "
-                           : "Your browser and the proxy in front decide how many of these really " +
-                             "travel together, so asking for sixty rarely means sixty. ") +
+                           : "") +
                         (workers.size === 1
-                           ? "And here one worker answered every one of them: a request to this " +
-                             "endpoint takes well under a millisecond, so they never overlapped. " +
-                             "The pool grows when work overlaps, not when requests are merely many."
-                           : "The daemon hands each request to a free worker and starts another " +
-                             "one when they are all busy; a minute after the last request the " +
-                             "extra ones retire by themselves.") })));
+                           ? "One worker answered every one of them: these requests are over too " +
+                             "quickly to overlap, and the pool grows when work overlaps, not when " +
+                             "requests are merely many."
+                           : "The daemon hands each request to a free worker, and starts another " +
+                             "one when they are all busy. The extra ones retire by themselves " +
+                             "once there is nothing left for them to do.") })));
                });
             })).finally(() => { run.disabled = false; });
       });
@@ -469,12 +468,9 @@
                   (now === victim ? " (same one: it survived, try again)" : ", a new process"));
                step("");
 
-               if (died > 1)
-                  step(died + " workers went down, not one: your browser quietly retried the " +
-                     "request it saw drop, " + (died - 1) + " time(s), and each retry took " +
-                     "another worker with it.");
-               else
-                  step("one worker went down.");
+               step(died > 1
+                  ? died + " workers went down: every request that reached the endpoint took one."
+                  : "one worker went down.");
 
                step("The page you are reading never went down, and no other request was touched.");
                res.show("still up", true, "");
@@ -504,8 +500,8 @@
          canvas,
          h("p", { class: "demo-note", text:
             "One measure at a time, so the scale means something. Leave this connected and run " +
-            "the demo above: the line climbs as workers are started for the batch, then drops " +
-            "back about ten seconds after the last request, when they retire on their own." }));
+            "the demo above: the line climbs as workers are started for the batch, and drops " +
+            "back when they retire, once there is nothing left to serve." }));
 
       const MEMORY = "#31a3e1", WORKERS = "#254c6b", AXIS = "#537193";
       const SLOTS = 60;                     // how many readings the chart holds

@@ -155,7 +155,8 @@ void telemetry(Request request, WebSocket ws)
    ws.socket.blocking = false;
 
    // Nothing here runs forever either: an abandoned tab would hold
-   // the process until the browser gives up. Say goodbye and go.
+   // this process for as long as the connection lingers. Say
+   // goodbye and go.
    immutable until = Clock.currTime + TELEMETRY_LIFETIME;
 
    while(Clock.currTime < until && !WebSocket.killRequested)
@@ -176,7 +177,9 @@ void telemetry(Request request, WebSocket ws)
       Thread.sleep(500.msecs);
    }
 
-   ws.send(`{"bye": "connections are capped at three minutes"}`);
+   // Il numero viene dalla costante: scritto a mano, prima o poi mentirebbe.
+   ws.send(format!`{"bye": "connections here are capped at %d minutes"}`(
+      TELEMETRY_LIFETIME.total!"minutes"));
    ws.sendClose();
 }
 // snippet-end
