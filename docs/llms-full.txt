@@ -271,7 +271,7 @@ beyond the endpoint call.
 | Member | Type | Notes |
 |---|---|---|
 | `method` | `Request.Method` | `Get`, `Post`, `Head`, `Put`, `Delete`, `Connect`, `Options`, `Patch`, `Trace`, `Unknown`. |
-| `path` | `string` | E.g. `/index.html`. |
+| `path` | `string` | E.g. `/index.html`. Already normalized (`.` and `..` collapsed), **not** percent-decoded. See pitfall 11. |
 | `host` | `string` | Requested host. |
 | `get` | `SafeAccess!string` | Query-string parameters. |
 | `post` | `SafeAccess!string` | URL-encoded body fields. |
@@ -642,7 +642,9 @@ void staticFiles(Request r, Output o) {
     import std.path : buildNormalizedPath, buildPath;
     import std.algorithm : startsWith;
 
-    // Normalize and confine the path to avoid directory traversal.
+    // r.path is already normalized by serverino, but it is still
+    // percent-encoded: never decodeComponent() it here. Confine the result
+    // anyway, so anything you concatenate stays under www/.
     auto p = buildNormalizedPath(buildPath("www", r.path[1 .. $]));
     if (!p.startsWith("www/")) { o.status = Output.Status.Forbidden; return; }
 
@@ -689,3 +691,14 @@ void report(Request r, Output o) {
    re-run by a worker hot reload.
 10. **Uploaded files are temporary.** Copy `FormData.path` elsewhere before the
     endpoint returns.
+11. **`request.path` is already normalized — and must not be decoded.** The
+    worker collapses `.` and `..` before dispatching (`normalize()` in
+    `worker.d`), so the path you receive cannot walk upwards. It does *not*
+    percent-decode it, and that order is what matters: `/%2e%2e/%2e%2e/etc/passwd`
+    passes normalization untouched (the segments aren't `..` yet) and turns into
+    `/../../etc/passwd` if you call `decodeComponent` on it afterwards. So
+    `decodeComponent(request.path)` doesn't harden anything — it *undoes* the
+    only protection you had. Match and route on the encoded path; if you really
+    need the decoded form (an upload name, a unicode slug), normalize or confine
+    it again after decoding. Note the asymmetry: `request.get` and `request.post`
+    *are* decoded for you, `request.path` is not.

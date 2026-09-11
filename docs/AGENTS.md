@@ -50,6 +50,11 @@ of them must be tagged, or the untagged ones are never called.
   `.path`, the temporary file the daemon already saved.
 - `request.path`, `request.method` (`Request.Method.Get`, `.Post`, …),
   `request.host`, `request.isSecure`, `request.dump()`.
+- `request.path` arrives **already normalized**: serverino collapses `.` and
+  `..` before your endpoint sees it. It is **not** percent-decoded — and you
+  must not decode it, because `/%2e%2e/%2e%2e/etc/passwd` survives the
+  normalization encoded and becomes a traversal the moment you decode it. If
+  you need a decoded path, normalize or confine it *again* after decoding.
 
 ## Responses
 
@@ -60,7 +65,9 @@ of them must be tagged, or the untagged ones are never called.
   managed by serverino and cannot be set.
 - `output.serveFile("path")` streams a file and guesses its content type. It
   returns `false` when the file is missing — there is no automatic 404 — and it
-  does **not** protect against path traversal: normalise the path yourself.
+  does **not** check the path it is given: whatever you build from user input
+  (after decoding, joining, or reading a form field) must be confined yourself,
+  e.g. `buildNormalizedPath` plus a `startsWith` on your root.
   The disposal action is a **template** parameter:
   `output.serveFile!(OnFileServed.DeleteFile)("/tmp/x.pdf")`.
 
