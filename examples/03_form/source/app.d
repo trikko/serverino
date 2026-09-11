@@ -2,7 +2,7 @@ module app;
 
 import std;
 
-// Docs: https://trikko.github.io/serverino/
+// Docs: https://serverino.dev
 // Tips and tricks: https://github.com/trikko/serverino/wiki/
 import serverino;
 

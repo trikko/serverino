@@ -16,7 +16,7 @@ void hello(Request request, Output output) {
 
 ## Docs
 
-- [Consolidated reference for LLMs](https://trikko.github.io/serverino/llms-full.txt): Complete API reference, patterns and pitfalls in a single file. Start here.
+- [Consolidated reference for LLMs](https://serverino.dev/llms-full.txt): Complete API reference, patterns and pitfalls in a single file. Start here.
 - [serverino.config](https://trikko.github.io/serverino/serverino/config.html): UDAs (`@endpoint`, `@route`, `@priority`, lifecycle hooks) and the `ServerinoConfig` fluent API.
 - [serverino.interfaces](https://trikko.github.io/serverino/serverino/interfaces.html): `Request`, `Output`, `Cookie`, `WebSocket`, `WebSocketMessage`, `ServerinoProcess`.
 - [API index](https://trikko.github.io/serverino/): Generated ddox documentation.

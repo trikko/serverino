@@ -29,10 +29,11 @@ void simple(Request request, Output output) { output ~= request.dump(); }
 > No `@endpoint` needed here: when your app has exactly one handler, serverino picks it up automatically. As soon as you add a second one, tag them all with `@endpoint`.
 
 ## Documentation you need
-* [Serverino docs](https://trikko.github.io/serverino/) - Serverino reference, generated from code
+* [serverino.dev](https://serverino.dev) - The website: guides, live demos and runnable examples
+* [API reference](https://trikko.github.io/serverino/) - Serverino reference, generated from code
 * [Examples](https://github.com/trikko/serverino/tree/master/examples) - Some ready-to-try examples
 * [Tips](https://github.com/trikko/serverino/wiki/) - Some snippets you want to read
-* [llms.txt](https://trikko.github.io/serverino/llms.txt) - Documentation for AI agents (Claude, Gemini, ...), following the [llms.txt](https://llmstxt.org) convention. The full reference is in [llms-full.txt](https://trikko.github.io/serverino/llms-full.txt)
+* [llms.txt](https://serverino.dev/llms.txt) - Documentation for AI agents (Claude, Gemini, ...), following the [llms.txt](https://llmstxt.org) convention. The full reference is in [llms-full.txt](https://serverino.dev/llms-full.txt)
 
 ## Defining more than one endpoint
 > [!IMPORTANT]

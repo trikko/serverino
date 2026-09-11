@@ -3,4 +3,4 @@ Allow: /
 
 # LLM-Friendly Documentation
 Sitemap: https://trikko.github.io/serverino/sitemap.xml
-llms-txt: https://trikko.github.io/serverino/llms.txt
+llms-txt: https://serverino.dev/llms.txt

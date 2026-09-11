@@ -2,7 +2,7 @@ module app;
 
 import std;
 
-// Docs: https://trikko.github.io/serverino/
+// Docs: https://serverino.dev
 // Tips and tricks: https://github.com/trikko/serverino/wiki/
 import serverino;
 
@@ -20,8 +20,8 @@ void example(Request request, Output output)
 	if (request.path != "/")
 		return;
 
-	// Read the query parameter, default to "https://trikko.github.io/serverino"
-	auto query = request.get.read("query", "https://trikko.github.io/serverino");
+	// Read the query parameter, default to "https://serverino.dev"
+	auto query = request.get.read("query", "https://serverino.dev");
 
 	// Parse the html
 	Document doc = Document(readText("html/index.html"));

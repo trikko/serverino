@@ -3,10 +3,10 @@ immutable example =
 
 import std;
 
-// Docs: https://trikko.github.io/serverino/
+// Docs: https://serverino.dev
 // Tips and tricks: https://github.com/trikko/serverino/wiki/
 // Examples: https://github.com/trikko/serverino/tree/master/examples
-// LLM-Friendly Documentation: https://trikko.github.io/serverino/llms-full.txt
+// LLM-Friendly Documentation: https://serverino.dev/llms-full.txt
 
 import serverino;
 
