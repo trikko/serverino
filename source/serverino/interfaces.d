@@ -279,7 +279,14 @@ struct Request
    /// Cookies received from user
    @safe @nogc @property nothrow public auto cookie() const { return SafeAccess!string(_internal._cookie); }
 
-   /// The path requested by user
+   /++ The path requested by user.
+
+      It is already normalized: `.` and `..` segments are collapsed away, so it
+      can't escape upwards. It is **not** percent-decoded, though: don't decode
+      it yourself, or a request like `/%2e%2e/%2e%2e/etc/passwd` turns back into
+      a traversal *after* the normalization that would have stopped it. If you
+      need a decoded path, normalize (or confine) it again afterwards.
+   +/
    @safe @nogc @property nothrow public const(string) path() const { return _internal._path; }
 
    deprecated("Use `request.path` instead") alias uri = path;
