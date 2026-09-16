@@ -289,7 +289,22 @@ struct Request
    +/
    @safe @nogc @property nothrow public const(string) path() const { return _internal._path; }
 
-   deprecated("Use `request.path` instead") alias uri = path;
+   /++
+      The raw, original Request-Target (URI) exactly as received from the client.
+      Includes the query string.
+      Attention: Do not use directly for file system paths without sanitization!
+   +/
+   @safe @nogc @property nothrow public string rawUri() const
+   {
+      import std.string : indexOf;
+      ptrdiff_t start = _internal._rawRequestLine.indexOf(' ');
+      assert(start != -1);
+      
+      ptrdiff_t end = _internal._rawRequestLine.indexOf(' ', start + 1);
+      assert(end != -1);
+      
+      return _internal._rawRequestLine[start + 1 .. end];
+   }
 
    /// Which worker is processing this request?
    @safe @nogc @property nothrow public auto worker() const { return _internal._worker; }

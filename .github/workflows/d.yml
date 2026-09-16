@@ -54,6 +54,7 @@ jobs:
           brew install openssl
           echo "CPATH=$(brew --prefix openssl)/include" >> $GITHUB_ENV
           echo "LIBRARY_PATH=$(brew --prefix openssl)/lib" >> $GITHUB_ENV
+          echo "$(brew --prefix openssl)/bin" >> $GITHUB_PATH
           
       - name: Run test-01
         run: dub run --root=tests/test-01
