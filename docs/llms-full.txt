@@ -300,7 +300,8 @@ There is no `opIndex`.
 // CORRECT:
 string name = request.get.read("name", "Guest");  // value or default
 bool   isAdmin = request.get.has("admin");        // presence check
-auto   all = request.get.data;                    // the underlying string[string]
+auto   range = request.get.readAll("name");       // a lazy range for duplicate keys
+auto   all = request.get.data;                    // the underlying array of tuples (SafeAccessParam)
 ```
 
 `read` never throws: a missing key yields the default (`T.init` if omitted).
