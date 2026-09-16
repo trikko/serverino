@@ -298,10 +298,14 @@ There is no `opIndex`.
 //   request.get("name")
 
 // CORRECT:
-string name = request.get.read("name", "Guest");  // value or default
+string name = request.get.read("name", "Guest");  // first value or default
 bool   isAdmin = request.get.has("admin");        // presence check
-auto   range = request.get.readAll("name");       // a lazy range for duplicate keys
-auto   all = request.get.data;                    // the underlying array of tuples (SafeAccessParam)
+
+// To iterate over all values of a specific key (e.g. ?tag=a&tag=b):
+foreach(val; request.get.readAll("tag")) { }
+
+// To iterate over all keys and values:
+foreach(k, v; request.get) { }
 ```
 
 `read` never throws: a missing key yields the default (`T.init` if omitted).
