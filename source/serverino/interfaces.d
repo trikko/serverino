@@ -518,10 +518,10 @@ struct Request
          static string myPID;
          if (myPID.length == 0) myPID = thisProcessID().to!string;
 
-         foreach(ref h; _rawHeaders.newlineSplitter.dropOne)
+         foreach(h; _rawHeaders.idup.newlineSplitter.dropOne)
          {
             auto colon = h.indexOf(":");
-            _header ~= SafeAccessParam!(string)(h[0..colon].idup, h[colon+1..$].idup);
+            _header ~= SafeAccessParam!(string)(h[0..colon], h[colon+1..$]);
          }
 
          _worker = myPID;
