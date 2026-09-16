@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Request.cookie</title>
+		<title>Function Request.isSecure</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,15 +47,23 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.cookie</h1><p>Cookies received from user
+				<h1>Function Request.isSecure</h1><p>Is this request coming from a TLS (https) listener?
+ The flag is set by the daemon on its private channel to the worker, so a client can't forge it.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
-						<div class="single-prototype"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(string) <span class="pln">cookie</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">pure nothrow @property @nogc @safe const</span><span class="pun">;</span>
+						<div class="single-prototype"><span class="typ">bool</span> <span class="pln">isSecure</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">nothrow @property @nogc @safe const</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				
+				<section><pre class="code"><code class="lang-d"><span class="pun">@</span><span class="pln">endpoint </span><span class="typ">void </span><span class="pln">forceHttps</span><span class="pun">(<a href="../../serverino/interfaces/Request.html"></span><span class="typ">Request</span></a><span class="pln"> request</span><span class="pun">, <a href="../../serverino/interfaces/Output.html"></span><span class="typ">Output</span></a><span class="pln"> output</span><span class="pun">)
+{
+   </span><span class="kwd">if </span><span class="pun">(</span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">isSecure</span><span class="pun">) </span><span class="kwd">return</span><span class="pun">;
+   </span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">status </span><span class="pun">= </span><span class="lit">301</span><span class="pun">;
+   </span><span class="pln">output<wbr/></span><span class="pun">.</span><span class="pln">addHeader</span><span class="pun">(</span><span class="str">"location"</span><span class="pun">, </span><span class="str">"https://" </span><span class="pun">~ </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">host </span><span class="pun">~ </span><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">path</span><span class="pun">);
+}</span></code></pre>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">

@@ -47,7 +47,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.path</h1><p>The path requested by user
+				<h1>Function Request.path</h1><p>The path requested by user.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -55,7 +55,14 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 					</code>
 				</div>
-				
+				<section><p>It is already normalized: <code class="lang-d"><wbr/><span class="pun">.</span></code> and <code class="lang-d"><span class="pun">..</span></code> segments are collapsed away, so it
+      can't escape upwards. It is **not** percent-decoded, though: don't decode
+      it yourself, or a request like <code class="lang-d"><span class="pun">/%</span><span class="lit">2e</span><span class="pun">%</span><span class="lit">2e</span><span class="pun">/%</span><span class="lit">2e</span><span class="pun">%</span><span class="lit">2e</span><span class="pun">/</span><span class="pln">etc</span><span class="pun">/</span><span class="pln">passwd</span></code> turns back into
+      a traversal *after* the normalization that would have stopped it. If you
+      need a decoded path, normalize (or confine) it again afterwards.
+</p>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">

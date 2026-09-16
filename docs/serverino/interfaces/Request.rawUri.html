@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Request.SafeAccess.data</title>
+		<title>Function Request.rawUri</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,15 +47,20 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.SafeAccess.data</h1><p>Return the underlying AA
+				<h1>Function Request.rawUri</h1><p>The raw, original Request-Target (URI) exactly as received from the client.
+      Includes the query string.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
-						<div class="single-prototype"><span class="kwd">auto</span> <span class="pln">data</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">const nothrow @nogc @property @safe</span><span class="pun">;</span>
+						<div class="single-prototype"><span class="typ">string</span> <span class="pln">rawUri</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">nothrow @property @nogc @safe const</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				
+				<section><h2>Attention</h2>
+<p>Do not use directly for file system paths without sanitization!
+</p>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">

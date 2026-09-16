@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Request.SafeAccess.read</title>
+		<title>Function Https.opOpAssign</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -28,12 +28,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 				<ul class="tree-view">
 					<li>
-						<div class="module ">
+						<div class="module selected">
 							<a href="../../serverino/config.html">config</a>
 						</div>
 					</li>
 					<li>
-						<div class="module selected">
+						<div class="module ">
 							<a href="../../serverino/interfaces.html">interfaces</a>
 						</div>
 					</li>
@@ -47,23 +47,25 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.SafeAccess.read</h1><p>Read a value. Return defaultValue if k does not exist.
+				<h1>Function Https.opOpAssign</h1><p>Append a certificate, or another set of certificates.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">auto</span> <span class="pln">read</span><span class="pun">(</span>
-				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">key</span><span class="pun">,</span>
+				<span class="kwd">ref </span><a href="../../serverino/config/Https.html"><span class="typ">Https</span></a> <span class="pln">opOpAssign</span>(<span class="typ">string</span> op<span class="pln"> </span><span class="pun">: </span><span class="str">"~"</span>)<span class="pun">(</span>
+				<br/>&nbsp;&nbsp;<a href="../../serverino/config/Https.Certificate.html"><span class="typ">Https<wbr/></span><span class="pun">.<wbr/></span><span class="typ">Certificate</span></a> <span class="pln">certificate</span>
 				<br/>
-				&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">defaultValue</span> <span class="pun">=</span> <span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">init</span>
+				<span class="pun">)</span><span class="pun">;</span>
 				<br/>
-				<span class="pun">)</span><span class="pln"> </span><span class="kwd">const nothrow @nogc @safe</span><span class="pun">;</span>
+				<br/>
+				<span class="kwd">ref </span><a href="../../serverino/config/Https.html"><span class="typ">Https</span></a> <span class="pln">opOpAssign</span>(<span class="typ">string</span> op<span class="pln"> </span><span class="pun">: </span><span class="str">"~"</span>)<span class="pun">(</span>
+				<br/>&nbsp;&nbsp;<a href="../../serverino/config/Https.html"><span class="typ">Https</span></a> <span class="pln">other</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				<section><pre class="code"><code class="lang-d"><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"user"</span><span class="pun">, </span><span class="str">"anonymous"</span><span class="pun">);</span></code></pre>
-</section>
-
+				
 			</div>
 			<footer>
 				<div id="license-info">

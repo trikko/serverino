@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function ServerinoConfig.addListener</title>
+		<title>ServerinoConfig.addListener - multiple declarations</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,7 +47,21 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function ServerinoConfig.addListener</h1><p>Add a new listener.
+				<h1>ServerinoConfig.addListener - multiple declarations</h1>
+				<nav class="page-nav">
+					<ul>
+						<li>
+							<a href="#0">
+								Function <code>ServerinoConfig.addListener</code>
+							</a>
+						</li>
+						<li>
+							<a href="#1">
+								Function <code>ServerinoConfig.addListener</code>
+							</a>
+						</li>
+					</ul>
+				</nav><h2 id="0">Function ServerinoConfig.addListener</h2><p>Add a new listener. Plain HTTP.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -60,7 +74,27 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 					</code>
 				</div>
-				
+				<h2 id="1">Function ServerinoConfig.addListener</h2><p>Add a new HTTPS listener, using the certificates provided.
+ Plain and encrypted listeners can live together in the same process.
+ Requires the <code class="lang-d"><span class="pln">https</span></code> subconfiguration of serverino (POSIX only).
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">addListener</span>(<a href="../../serverino/config/ServerinoConfig.ListenerProtocol.html"><span class="typ">ServerinoConfig<wbr/></span><span class="pun">.<wbr/></span><span class="typ">ListenerProtocol</span></a> p<span class="pln"> </span><span class="pun">= </span><span class="typ">ListenerProtocol<wbr/></span><span class="pun">.</span><span class="pln">IPV4</span>)<span class="pun">(</span>
+				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">address</span><span class="pun">,</span>
+				<br/>&nbsp;&nbsp;<span class="typ">ushort</span> <span class="pln">port</span><span class="pun">,</span>
+				<br/>&nbsp;&nbsp;<a href="../../serverino/config/Https.html"><span class="typ">Https</span></a> <span class="pln">certificates</span>
+				<br/>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">@safe</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><pre class="code"><code class="lang-d"><a href="../../serverino/config/ServerinoConfig.create.html"><span class="typ">ServerinoConfig<wbr/></span><span class="pun">.</span><span class="pln">create</span></a><span class="pun">()
+   <wbr/>.</span><span class="pln">addListener</span><span class="pun">(</span><span class="str">"0.0.0.0"</span><span class="pun">, </span><span class="lit">80</span><span class="pun">)                                     </span><span class="com">// plain http
+   <wbr/></span><span class="pun">.</span><span class="pln">addListener</span><span class="pun">(</span><span class="str">"0.0.0.0"</span><span class="pun">, </span><span class="lit">443</span><span class="pun">, <a href="../../serverino/config/Https.html"></span><span class="typ">Https</span></a><span class="pun">(</span><span class="str">"fullchain.pem"</span><span class="pun">, </span><span class="str">"privkey.pem"</span><span class="pun">));</span></code></pre>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">

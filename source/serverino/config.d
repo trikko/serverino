@@ -135,23 +135,6 @@ public alias route(string path) = route!(r => comparePath!path(r));
 // Catch involuntarily use of `@route("...")`
 public void route(string s) { assert(false, "Do not use `@route(\"" ~ s ~ "\")`: try `@route!\"" ~ s ~ "\"` instead."); }
 
-/++
-   Struct used to setup serverino.
-   You must return this struct from a function with @onServerInit UDA attached.
----
-@onServerInit
-auto configure()
-{
-   // You can chain methods
-   ServerinoConfig config =
-      ServerinoConfig.create()
-      .setWorkers(5)
-      .enableKeepAlive();
-
-   return config;
-}
----
-++/
 /++ A set of TLS certificates, to be attached to a listener.
  +
  + The set is accumulable and can be built from a range, so certificates don't
@@ -255,6 +238,23 @@ struct Https
    string[]       _errors;
 }
 
+/++
+   Struct used to setup serverino.
+   You must return this struct from a function with @onServerInit UDA attached.
+---
+@onServerInit
+auto configure()
+{
+   // You can chain methods
+   ServerinoConfig config =
+      ServerinoConfig.create()
+      .setWorkers(5)
+      .enableKeepAlive();
+
+   return config;
+}
+---
+++/
 struct ServerinoConfig
 {
 

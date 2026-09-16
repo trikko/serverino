@@ -364,16 +364,7 @@ struct Request
       InvalidRequest          ///
    }
 
-   /++ Simple structure to safely access data from an associative array.
-   + ---
-   + // request.cookie returns a SafeAccess!string
-   + // get a cookie named "user", default to "anonymous"
-   + auto user = request.cookie.read("user", "anonymous");
-   +
-   + // Access the underlying AA
-   + auto data = request.cookie.data;
-   + foreach(k,v; data) info(k, " => ", v);
-   + ---
+   /++ A single key-value parameter inside SafeAccess.
    +/
    struct SafeAccessParam(T)
    {
@@ -381,6 +372,8 @@ struct Request
       T value;
    }
 
+   /++ Range returned by readAll to iterate over all parameters with the same key.
+   +/
    struct SafeAccessReadAllRange(T)
    {
       const(SafeAccessParam!T)[] data;
@@ -411,6 +404,17 @@ struct Request
       }
    }
 
+   /++ Simple structure to safely access data from an associative array.
+   + ---
+   + // request.cookie returns a SafeAccess!string
+   + // get a cookie named "user", default to "anonymous"
+   + auto user = request.cookie.read("user", "anonymous");
+   +
+   + // Access the underlying AA
+   + auto data = request.cookie.data;
+   + foreach(k,v; data) info(k, " => ", v);
+   + ---
+   +/
    struct SafeAccess(T)
    {
       public:

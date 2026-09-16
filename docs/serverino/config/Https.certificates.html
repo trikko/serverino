@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function ServerinoConfig.addHttpsCertificate</title>
+		<title>Function Https.certificates</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,16 +47,11 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function ServerinoConfig.addHttpsCertificate</h1><p>Add an HTTPS certificate to the server.
+				<h1>Function Https.certificates</h1><p>The certificates, in insertion order. The first one is the default one.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
-						<div class="single-prototype">
-				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">addHttpsCertificate</span><span class="pun">(</span>
-				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">certPath</span><span class="pun">,</span>
-				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">keyPath</span>
-				<br/>
-				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
+						<div class="single-prototype"><span class="kwd">const</span><span class="pun">(</span><a href="../../serverino/config/Https.Certificate.html"><span class="typ">Https<wbr/></span><span class="pun">.<wbr/></span><span class="typ">Certificate</span></a><span class="pun">)</span><span class="pun">[]</span> <span class="pln">certificates</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">nothrow @nogc @safe const</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>

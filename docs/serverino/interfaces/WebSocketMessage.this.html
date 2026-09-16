@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function WebSocketMessage.this</title>
+		<title>WebSocketMessage.this - multiple declarations</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,7 +47,21 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function WebSocketMessage.this</h1><p>Build a WebSocket message.
+				<h1>WebSocketMessage.this - multiple declarations</h1>
+				<nav class="page-nav">
+					<ul>
+						<li>
+							<a href="#0">
+								Function <code>WebSocketMessage.this</code>
+							</a>
+						</li>
+						<li>
+							<a href="#1">
+								Function <code>WebSocketMessage.this</code>
+							</a>
+						</li>
+					</ul>
+				</nav><h2 id="0">Function WebSocketMessage.this</h2><p>Build a WebSocket message.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
@@ -73,12 +87,27 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 				<span class="pun">)</span>
 				<br/>
 				<span class="kwd">if</span> <span class="pun">(</span><span class="pln">isSomeString</span><span class="pun">!</span><span class="pln">T</span><span class="pun">);</span>
+						</div>
+					</code>
+				</div>
+				<h2 id="1">Function WebSocketMessage.this</h2><p>Build an empty message with the given opcode, for the control frames
+  that carry no payload.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="pln">this</span><span class="pun">(</span>
+				<br/>&nbsp;&nbsp;<span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">WebSocketMessage<wbr/></span><span class="pun">.</span><span class="typ">OpCode</span> <span class="pln">opcode</span>
+				<br/>
+				<span class="pun">)</span><span class="pun">;</span>
 				<br/>
 				<br/>
 				<span class="pln">this</span>(T)<span class="pun">(</span>
 				<br/>&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">payload</span>
 				<br/>
-				<span class="pun">)</span><span class="pun">;</span>
+				<span class="pun">)</span>
+				<br/>
+				<span class="kwd">if</span> <span class="pun">(</span><span class="pun">!</span><span class="kwd">is</span><span class="pun">(</span><span class="typ">Unqual</span><span class="pun">!</span><span class="pln">T </span><span class="pun">== </span><span class="typ">OpCode</span><span class="pun">)</span><span class="pun">);</span>
 				<br/>
 				<br/>
 				<span class="pln">this</span><span class="pun">(</span>
@@ -88,7 +117,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 					</code>
 				</div>
-				
+				<section><p>Without this overload <code class="lang-d"><a href="../../serverino/interfaces/WebSocketMessage.html"><span class="typ">WebSocketMessage</span></a><span class="pun">(</span><span class="typ">OpCode<wbr/></span><span class="pun">.</span><span class="typ">Close</span><span class="pun">)</span></code> would pick the
+  generic single-argument constructor below and build a *binary* message
+  carrying the opcode as its payload, instead of a close frame.
+</p>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">

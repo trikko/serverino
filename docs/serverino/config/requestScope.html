@@ -71,7 +71,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 
 @<a href="../../serverino/config/endpoint.html"></span><span class="pln">endpoint</span></a><span class="pln">
 </span><span class="typ">void </span><span class="pln">handler</span><span class="pun">(</span><span class="typ">Request </span><span class="pln">r</span><span class="pun">, </span><span class="typ">Output </span><span class="pln">o</span><span class="pun">) {
-   </span><span class="pln">currentUser<wbr/></span><span class="pun">.</span><span class="pln">name </span><span class="pun">= </span><span class="pln">r<wbr/></span><span class="pun">.</span><span class="pln">get</span><span class="pun">(</span><span class="str">"name"</span><span class="pun">);  </span><span class="com">// reset at start of each request
+   </span><span class="pln">currentUser<wbr/></span><span class="pun">.</span><span class="pln">name </span><span class="pun">= </span><span class="pln">r<wbr/></span><span class="pun">.</span><span class="pln">get<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"name"</span><span class="pun">);  </span><span class="com">// reset at start of each request
    </span><span class="pln">o </span><span class="pun">~= </span><span class="pln">currentUser<wbr/></span><span class="pun">.</span><span class="pln">name</span><span class="pun">;
 }</span></code></pre>
 </section>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
+		<title>Struct Https</title>
+		<link rel="stylesheet" href="../../css/style.min.css"/>
+		<script type="text/javascript" src="../../js/script.min.js"></script>
+	</head>
+	<body onload="setupDdox();">
+		<header></header>
+		<nav id="main-nav">
+			<div>
+				<noscript>
+					<p style="color: red">The search functionality needs JavaScript enabled</p>
+				</noscript>
+				<div id="symbolSearchPane" style="display: none">
+					<form action="#" method="GET">
+						<input id="symbolSearch" type="text" name="q" placeholder="Search for symbols" autocomplete="off" onchange="performSymbolSearch(24);" onkeypress="this.onchange();" onpaste="this.onchange();" oninput="this.onchange();" autofocus/>
+					</form>
+					<ul id="symbolSearchResults" class="symbolList" style="display: none"></ul><script type="application/javascript" src="../../symbols.js"></script><script type="application/javascript">var symbolSearchRootDir = "../../";
+document.getElementById('symbolSearchPane').style.display = 'block';</script>
+				</div>
+				<ul class="tree-view">
+					<li class="tree-view ">
+						<div class="package ">
+							<a href="../../serverino.html">serverino</a>
+						</div>
+				<ul class="tree-view">
+					<li>
+						<div class="module selected">
+							<a href="../../serverino/config.html">config</a>
+						</div>
+					</li>
+					<li>
+						<div class="module ">
+							<a href="../../serverino/interfaces.html">interfaces</a>
+						</div>
+					</li>
+				</ul>
+					</li>
+				</ul>
+			</div>
+			<p id="main-nav-footer">
+				Built with<a href="https://github.com/MartinNowak/scod">scod</a>
+			</p>
+		</nav>
+		<div id="main-contents">
+			<div>
+				<h1>Struct Https</h1><p>A set of TLS certificates, to be attached to a listener.
+</p>
+				<div class="prototype">
+					<code class="lang-d">
+						<div class="single-prototype">
+				<span class="kwd">struct</span> <span class="typ">Https</span><span class="pun">;</span>
+						</div>
+					</code>
+				</div>
+				<section><p>The set is accumulable and can be built from a range, so certificates don't
+ need to be known at compile time: they can come from a directory, from the
+ command line or from a configuration file.
+</p>
+<pre class="code"><code class="lang-d"><span class="com">// A single certificate, known upfront
+</span><span class="pln">config<wbr/></span><span class="pun">.</span><span class="pln">addListener</span><span class="pun">(</span><span class="str">"0.0.0.0"</span><span class="pun">, </span><span class="lit">443</span><span class="pun">, </span><span class="typ">Https</span><span class="pun">(</span><span class="str">"fullchain.pem"</span><span class="pun">, </span><span class="str">"privkey.pem"</span><span class="pun">));
+
+</span><span class="com">// Every certificate found in a directory
+</span><span class="kwd">auto </span><span class="pln">certs </span><span class="pun">= </span><span class="typ">Https</span><span class="pun">();
+</span><span class="kwd">foreach</span><span class="pun">(</span><span class="pln">f</span><span class="pun">; </span><span class="pln">dirEntries</span><span class="pun">(</span><span class="pln">dir</span><span class="pun">, </span><span class="str">"*.crt"</span><span class="pun">, </span><span class="typ">SpanMode<wbr/></span><span class="pun">.</span><span class="pln">shallow</span><span class="pun">))
+   </span><span class="pln">certs<wbr/></span><span class="pun">.</span><span class="pln">add</span><span class="pun">(</span><span class="pln">f<wbr/></span><span class="pun">.</span><span class="pln">name</span><span class="pun">, </span><span class="pln">f<wbr/></span><span class="pun">.</span><span class="pln">name<wbr/></span><span class="pun">.</span><span class="pln">setExtension</span><span class="pun">(</span><span class="str">".key"</span><span class="pun">));
+
+</span><span class="pln">config<wbr/></span><span class="pun">.</span><span class="pln">addListener</span><span class="pun">(</span><span class="str">"0.0.0.0"</span><span class="pun">, </span><span class="lit">443</span><span class="pun">, </span><span class="pln">certs</span><span class="pun">);</span></code></pre>
+<p> The first certificate of the set is the default one, the others are picked using SNI.
+</p>
+</section>
+
+				<section><h2>Constructors</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.this.html" class="public">
+									<code>this</code>
+								</a>
+								<span class="tableEntryAnnotation">(paths)</span>
+							</td>
+							<td>Build a set from an even number of paths, in cert/key order.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.this.html" class="public">
+									<code>this</code>
+								</a>
+								<span class="tableEntryAnnotation">(certificates)</span>
+							</td>
+							<td>Build a set from a range of <code class="lang-d"><a href="../../serverino/config/Https.Certificate.html"><span class="typ">Https<wbr/></span><span class="pun">.</span><span class="typ">Certificate</span></a></code>, or of anything indexable
+ with two elements (<code class="lang-d"><span class="typ">string</span><span class="pun">[</span><span class="lit">2</span><span class="pun">]</span></code>, <code class="lang-d"><span class="typ">Tuple</span><span class="pun">!(</span><span class="typ">string</span><span class="pun">, </span><span class="typ">string</span><span class="pun">)</span></code>, ...)
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Methods</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.add.html" class="public">
+									<code>add</code>
+								</a>
+								<span class="tableEntryAnnotation">(certPath, keyPath)</span>
+							</td>
+							<td>Add a certificate to the set. Chainable.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.add.html" class="public">
+									<code>add</code>
+								</a>
+								<span class="tableEntryAnnotation">(paths)</span>
+							</td>
+							<td>Add an even number of paths, in cert/key order. Chainable.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.certificates.html" class="public">
+									<code>certificates</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>The certificates, in insertion order. The first one is the default one.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.empty.html" class="public">
+									<code>empty</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>Is this set empty?
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.length.html" class="public">
+									<code>length</code>
+								</a>
+								<span class="tableEntryAnnotation">()</span>
+							</td>
+							<td>How many certificates are in this set?
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.opOpAssign.html" class="public">
+									<code>opOpAssign</code>
+								</a>
+								<span class="tableEntryAnnotation">(certificate)</span>
+							</td>
+							<td>Append a certificate, or another set of certificates.
+</td>
+						</tr>
+					</table>
+				</section>
+				<section><h2>Inner structs</h2>
+					<table>
+						<col class="caption"/>
+						<tr>
+							<th>Name</th><th>Description</th>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/config/Https.Certificate.html" class="public">
+									<code>Certificate</code>
+								</a>
+							</td>
+							<td>A certificate and its private key. Both must be PEM encoded.
+</td>
+						</tr>
+					</table>
+				</section>
+			</div>
+			<footer>
+				<div id="license-info">
+					
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>ServerinoConfig.enableHTTPS - multiple declarations</title>
+		<title>Variable Https.Certificate.certPath</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,52 +47,28 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>ServerinoConfig.enableHTTPS - multiple declarations</h1>
-				<nav class="page-nav">
-					<ul>
-						<li>
-							<a href="#0">
-								Function <code>ServerinoConfig.enableHTTPS</code>
-							</a>
-						</li>
-						<li>
-							<a href="#1">
-								Function <code>ServerinoConfig.enableHTTPS</code>
-							</a>
-						</li>
-					</ul>
-				</nav><h2 id="0">Function ServerinoConfig.enableHTTPS</h2><p>Enable HTTPS on the server.
+				<h1>Variable Https.Certificate.certPath</h1><p>Path of the certificate (PEM)
 </p>
 				<div class="prototype">
 					<code class="lang-d">
 						<div class="single-prototype">
-				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">enableHTTPS</span><span class="pun">(</span>
+				<span class="kwd">struct</span> <a href="../../serverino/config/Https.Certificate.html"><span class="typ">Https.Certificate</span></a>
 				<br/>
-				&nbsp;&nbsp;<span class="typ">bool</span> <span class="pln">enable</span> <span class="pun">=</span> <span class="kwd">true</span>
+				<span class="pun">
+					{
+					<br/>
+				</span>
+				&nbsp;&nbsp;<span class="com">// ...</span>
 				<br/>
-				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
+				&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">certPath</span><span class="pun">;</span>
+				<br/>
+				&nbsp;&nbsp;<span class="com">// ...</span>
+				<br/>
+				<span class="pun">}</span>
 						</div>
 					</code>
 				</div>
-				<h2 id="1">Function ServerinoConfig.enableHTTPS</h2><p>Backward compatibility for enableHTTPS(cert, key)
-</p>
-				<div class="prototype">
-					<code class="lang-d">
-						<div class="single-prototype">
-				<span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">enableHTTPS</span><span class="pun">(</span>
-				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">certPath</span><span class="pun">,</span>
-				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">keyPath</span>
-				<br/>
-				<span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
-						</div>
-					</code>
-				</div>
-				<section></section>
-<section><h3>Deprecated</h3>
-<p>use enableHTTPS() and addHttpsCertificate(cert, key) instead.
-</p>
-</section>
-
+				
 			</div>
 			<footer>
 				<div id="license-info">

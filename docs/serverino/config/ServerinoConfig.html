@@ -78,12 +78,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
-								<a href="../../serverino/config/ServerinoConfig.addHttpsCertificate.html" class="public">
-									<code>addHttpsCertificate</code>
+								<a href="../../serverino/config/ServerinoConfig.addListener.html" class="public">
+									<code>addListener</code>
 								</a>
-								<span class="tableEntryAnnotation">(certPath, keyPath)</span>
+								<span class="tableEntryAnnotation">(address, port)</span>
 							</td>
-							<td>Add an HTTPS certificate to the server.
+							<td>Add a new listener. Plain HTTP.
 </td>
 						</tr>
 						<tr>
@@ -91,9 +91,11 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<a href="../../serverino/config/ServerinoConfig.addListener.html" class="public">
 									<code>addListener</code>
 								</a>
-								<span class="tableEntryAnnotation">(address, port)</span>
+								<span class="tableEntryAnnotation">(address, port, certificates)</span>
 							</td>
-							<td>Add a new listener.
+							<td>Add a new HTTPS listener, using the certificates provided.
+ Plain and encrypted listeners can live together in the same process.
+ Requires the <code class="lang-d"><span class="pln">https</span></code> subconfiguration of serverino (POSIX only).
 </td>
 						</tr>
 						<tr>
@@ -104,16 +106,6 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Create a new instance of ServerinoConfig
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/config/ServerinoConfig.disableHTTPS.html" class="public">
-									<code>disableHTTPS</code>
-								</a>
-								<span class="tableEntryAnnotation">()</span>
-							</td>
-							<td>Disable HTTPS on the server.
 </td>
 						</tr>
 						<tr>
@@ -163,26 +155,6 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 								<span class="tableEntryAnnotation">()</span>
 							</td>
 							<td>Automatic hot reload of workers when the main executable is modified. Be careful: daemon is not reloaded and its code (eg: config) is not updated.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/config/ServerinoConfig.enableHTTPS.html" class="public">
-									<code>enableHTTPS</code>
-								</a>
-								<span class="tableEntryAnnotation">(enable)</span>
-							</td>
-							<td>Enable HTTPS on the server.
-</td>
-						</tr>
-						<tr>
-							<td>
-								<a href="../../serverino/config/ServerinoConfig.enableHTTPS.html" class="public">
-									<code>enableHTTPS</code>
-								</a>
-								<span class="tableEntryAnnotation">(certPath, keyPath)</span>
-							</td>
-							<td>Backward compatibility for enableHTTPS(cert, key)
 </td>
 						</tr>
 						<tr>
