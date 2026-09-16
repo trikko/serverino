@@ -153,7 +153,7 @@ struct Request
       if (!get.data.empty)
       {
          output ~= "\nQuery Params:\n";
-         foreach(k,v; get.data)
+         foreach(k,v; get)
          {
             output ~= format(" • %s => %s\n", k, v);
          }
@@ -165,7 +165,7 @@ struct Request
       if (!post.data.empty)
       {
          output ~= "\nPost Params:\n";
-         foreach(k,v; post.data)
+         foreach(k,v; post)
          {
             output ~= format(" • %s => %s\n", k, v);
          }
@@ -174,7 +174,7 @@ struct Request
       if (!form.data.empty)
       {
          output ~= "\nForm Data:\n";
-         foreach(k,v; form.data)
+         foreach(k,v; form)
          {
             import std.file : getSize;
 
@@ -186,14 +186,14 @@ struct Request
       if (!cookie.data.empty)
       {
          output ~= "\nCookies:\n";
-         foreach(k,v; cookie.data)
+         foreach(k,v; cookie)
          {
             output ~= format(" • %s => %s\n", k, v);
          }
       }
 
       output ~= "\nHeaders:\n";
-      foreach(k,v; header.data)
+      foreach(k,v; header)
       {
          output ~= format(" • %s => %s\n", k, v);
       }
@@ -360,39 +360,112 @@ struct Request
    + foreach(k,v; data) info(k, " => ", v);
    + ---
    +/
+   struct SafeAccessParam(T)
+   {
+      string key;
+      T value;
+   }
+
+   struct SafeAccessReadAllRange(T)
+   {
+      const(SafeAccessParam!T)[] data;
+      string key;
+
+      @safe @nogc nothrow:
+
+      this(const(SafeAccessParam!T)[] data, string key) {
+         this.data = data;
+         this.key = key;
+         advance();
+      }
+
+      @property bool empty() const { return data.length == 0; }
+      @property const(T) front() const { 
+          return data[0].value;
+           
+      }
+      void popFront() {
+         data = data[1..$];
+         advance();
+      }
+
+      private void advance() {
+         while (data.length > 0 && data[0].key != key) {
+            data = data[1..$];
+         }
+      }
+   }
+
    struct SafeAccess(T)
    {
       public:
+      alias Param = SafeAccessParam!T;
 
       /++
-         Read a value. Return defaultValue if k does not exist.
+         Read a value. Return defaultValue if key does not exist.
          ---------
          request.cookie.read("user", "anonymous");
          ---------
       +/
       @safe @nogc nothrow auto read(string key, T defaultValue = T.init) const
       {
-         auto v = key in _data;
-
-         if (v == null) return defaultValue;
-         return *v;
+         foreach(ref p; _data)
+         {
+            if (p.key == key) {
+                return p.value;
+                
+            }
+         }
+         return defaultValue;
       }
 
       /// Check if value exists
       @safe @nogc nothrow bool has(string key) const
       {
-         return (key in _data) != null;
+         foreach(ref p; _data)
+         {
+            if (p.key == key) return true;
+         }
+         return false;
       }
 
-      /// Return the underlying AA
+      /// Read all values for a given key, returns a @nogc range
+      @safe @nogc nothrow auto readAll(string key) const
+      {
+         return SafeAccessReadAllRange!T(_data, key);
+      }
+
+      /// Return the underlying array
       @safe @nogc nothrow @property auto data() const { return _data; }
 
-      auto toString() const { return _data.to!string; }
+      auto toString() const { import std.conv: to; return _data.to!string; }
+
+      int opApply(scope int delegate(string key, ref const(T) value) @safe dg) const @safe
+      {
+         int result = 0;
+         foreach (ref p; _data)
+         {
+            result = dg(p.key, p.value);
+            if (result) break;
+         }
+         return result;
+      }
+
+      int opApply(scope int delegate(string key, ref const(T) value) dg) const
+      {
+         int result = 0;
+         foreach (ref p; _data)
+         {
+            result = dg(p.key, p.value);
+            if (result) break;
+         }
+         return result;
+      }
 
       private:
 
-      @safe @nogc nothrow this(const ref T[string] data) { _data = data; }
-      const T[string] _data;
+      @safe @nogc nothrow this(const ref Param[] data) { _data = data; }
+      const Param[] _data;
    }
 
    /++ Data sent through multipart/form-data.
@@ -414,6 +487,12 @@ struct Request
    package struct RequestImpl
    {
 
+      pragma(inline, true)
+      private string getHeader(string key) {
+         foreach(item; _header) if (item.key == key) return item.value;
+         return null;
+      }
+
       void process()
       {
          import std.algorithm : splitter;
@@ -427,12 +506,12 @@ struct Request
          foreach(ref h; _rawHeaders.newlineSplitter.dropOne)
          {
             auto colon = h.indexOf(":");
-            _header[h[0..colon]] = h[colon+1..$];
+            _header ~= SafeAccessParam!(string)(h[0..colon].idup, h[colon+1..$].idup);
          }
 
          _worker = myPID;
 
-         if ("host" in _header) _host = _header["host"];
+         if (auto h = getHeader("host")) _host = h;
          else if (_httpVersion == HttpVersion.HTTP11)
          {
             // Host header is required in HTTP/1.1
@@ -455,8 +534,9 @@ struct Request
             {
                auto contentType = "application/octet-stream";
 
-               if ("content-type" in _header && !_header["content-type"].empty)
-                  contentType = _header["content-type"];
+               if (auto ct = getHeader("content-type")) {
+                  if (!ct.empty) contentType = ct;
+               }
 
                auto cSplitted = contentType.splitter(";");
 
@@ -604,7 +684,7 @@ struct Request
                            write(path, chunk);
                         }
 
-                        _form[fd.name] = fd;
+                        _form ~= SafeAccessParam!(FormData)(fd.name, fd);
 
                      }
 
@@ -626,14 +706,13 @@ struct Request
          catch (Exception e) { _parsingStatus = ParsingStatus.InvalidBody; }
 
          // Read cookies
-         if ("cookie" in _header)
-            parseArgsString!true(_header["cookie"], _cookie);
+         if (auto c = getHeader("cookie"))
+            parseArgsString!true(c, _cookie);
 
-         if ("authorization" in _header)
+         if (auto auth = getHeader("authorization"))
          {
             import std.base64 : Base64, Base64Exception;
             import std.string : indexOf;
-            auto auth = _header["authorization"];
 
             if (auth.length > 6 && auth[0..6].toLower == "basic ")
             {
@@ -666,8 +745,8 @@ struct Request
 
       void clearFiles() {
          import std.file : remove, exists;
-         foreach(f; _form)
-            try {if (exists(f.path)) remove(f.path); } catch(Exception e) { }
+         foreach(item; _form)
+            try {if (exists(item.value.path)) remove(item.value.path); } catch(Exception e) { }
       }
 
       ~this() { clearFiles(); }
@@ -686,20 +765,20 @@ struct Request
          buffer.append((_isSecure ? "1" : "0") ~ "\n");
 
          buffer.append(_header.length.to!string ~ "\n");
-         foreach(k,v; _header)
-            buffer.append(k ~ "\n" ~ v ~ "\n");
+         foreach(item; _header)
+            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
 
          buffer.append(_cookie.length.to!string ~ "\n");
-         foreach(k,v; _cookie)
-            buffer.append(k ~ "\n" ~ v ~ "\n");
+         foreach(item; _cookie)
+            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
 
          buffer.append(_get.length.to!string ~ "\n");
-         foreach(k,v; _get)
-            buffer.append(k ~ "\n" ~ v ~ "\n");
+         foreach(item; _get)
+            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
 
          buffer.append(_post.length.to!string ~ "\n");
-         foreach(k,v; _post)
-            buffer.append(k ~ "\n" ~ v ~ "\n");
+         foreach(item; _post)
+            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
 
          return cast(string)buffer.array;
       }
@@ -726,7 +805,7 @@ struct Request
 
          for(size_t i = 0; i < headerLength; i++)
          {
-            _header[lines[index]] = lines[index + 1];
+            _header ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
             index += 2;
          }
 
@@ -735,7 +814,7 @@ struct Request
 
          for(size_t i = 0; i < cookieLength; i++)
          {
-            _cookie[lines[index]] = lines[index + 1];
+            _cookie ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
             index += 2;
          }
 
@@ -744,7 +823,7 @@ struct Request
 
          for(size_t i = 0; i < getLength; i++)
          {
-            _get[lines[index]] = lines[index + 1];
+            _get ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
             index += 2;
          }
 
@@ -753,13 +832,13 @@ struct Request
 
          for(size_t i = 0; i < postLength; i++)
          {
-            _post[lines[index]] = lines[index + 1];
+            _post ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
             index += 2;
          }
       }
 
       pragma(inline, true)
-      private void parseArgsString(bool isCookie = false)(in char[] s, ref string[string] output)
+      private void parseArgsString(bool isCookie = false)(in char[] s, ref SafeAccessParam!(string)[] output)
       {
          import std.uri : decodeComponent;
          import std.string : translate, split, strip;
@@ -774,12 +853,12 @@ struct Request
          searchKey:
             if (curIdx >= s.length)
             {
-               if (curIdx != lastIdx) output[s[lastIdx..curIdx].decodeComponent] = "";
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(s[lastIdx..curIdx].decodeComponent, "");
                return;
             }
             else if(isSeparator(s[curIdx]))
             {
-               if (curIdx != lastIdx) output[s[lastIdx..curIdx].decodeComponent] = "";
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(s[lastIdx..curIdx].decodeComponent, "");
 
                curIdx++;
                lastIdx = curIdx;
@@ -801,14 +880,14 @@ struct Request
          searchValue:
             if (curIdx >= s.length)
             {
-               if (curIdx != lastIdx) output[key] = translate(s[lastIdx..curIdx],['+':' ']).decodeComponent;
-               else output[key] = "";
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, translate(s[lastIdx..curIdx],['+':' ']).decodeComponent);
+               else output ~= SafeAccessParam!(string)(key, "");
                return;
             }
             else if(isSeparator(s[curIdx]))
             {
-               if (curIdx != lastIdx) output[key] = translate(s[lastIdx..curIdx],['+':' ']).decodeComponent;
-               else output[key] = "";
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, translate(s[lastIdx..curIdx],['+':' ']).decodeComponent);
+               else output ~= SafeAccessParam!(string)(key, "");
 
                curIdx++;
                lastIdx = curIdx;
@@ -822,10 +901,10 @@ struct Request
       }
 
       char[] _data;
-      string[string]  _get;
-      string[string]  _post;
-      string[string]  _header;
-      string[string]  _cookie;
+      SafeAccessParam!(string)[]  _get;
+      SafeAccessParam!(string)[]  _post;
+      SafeAccessParam!(string)[]  _header;
+      SafeAccessParam!(string)[]  _cookie;
 
       string _path;
       string _method;
@@ -847,7 +926,7 @@ struct Request
 
       bool _isSecure = false;
 
-      FormData[string]   _form;
+      SafeAccessParam!(FormData)[] _form;
       ParsingStatus      _parsingStatus = ParsingStatus.OK;
 
       void clear()
