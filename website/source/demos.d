@@ -203,7 +203,7 @@ void upload(Request request, Output output)
 
    output.addHeader("content-type", "text/plain");
 
-   foreach(name, field; request.form.data)
+   foreach(name, field; request.form)
    {
       output ~= name ~ ": ";
 

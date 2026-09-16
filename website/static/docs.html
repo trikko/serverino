@@ -148,12 +148,12 @@ answers or steps aside. See the <a href="/examples#02_priority">priority example
 </table>
 
 <p>All of those give you the same small interface: <code>read(key, default)</code>,
-<code>has(key)</code> and <code>data</code> for the underlying associative array.</p>
+<code>readAll(key)</code>, <code>has(key)</code> and <code>data</code> for the underlying array of tuples.</p>
 
 <pre class="sample" data-copy><code>if (request.get.has("page"))
    page = request.get.read("page").to!uint;
 
-foreach(name, value; request.header.data)
+foreach(name, value; request.header)
    info(name, ": ", value);</code></pre>
 
 <p>An uploaded file is a <code>FormData</code>: <code>filename</code>, <code>contentType</code> and
