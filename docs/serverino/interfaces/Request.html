@@ -79,28 +79,28 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 							<td>
 								<a href="../../serverino/interfaces/Request.cookie.html" class="public property"><code>cookie</code></a><span class="tableEntryAnnotation">[get]</span>
 							</td>
-							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(string)</code></td><td>Cookies received from user
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Cookies received from user
 </td>
 						</tr>
 						<tr>
 							<td>
 								<a href="../../serverino/interfaces/Request.form.html" class="public property"><code>form</code></a><span class="tableEntryAnnotation">[get]</span>
 							</td>
-							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(serverino.interfaces.Request.FormData)</code></td><td>The fields from a form. Only if content-type is "multipart/form-data".
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(serverino.interfaces.Request.FormData)</code></td><td>The fields from a form. Only if content-type is "multipart/form-data".
 </td>
 						</tr>
 						<tr>
 							<td>
 								<a href="../../serverino/interfaces/Request.get.html" class="public property"><code>get</code></a><span class="tableEntryAnnotation">[get]</span>
 							</td>
-							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(string)</code></td><td>Params from query string
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Params from query string
 </td>
 						</tr>
 						<tr>
 							<td>
 								<a href="../../serverino/interfaces/Request.header.html" class="public property"><code>header</code></a><span class="tableEntryAnnotation">[get]</span>
 							</td>
-							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(string)</code></td><td>Http headers, always lowercase
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Http headers, always lowercase
 </td>
 						</tr>
 						<tr>
@@ -150,7 +150,7 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 							<td>
 								<a href="../../serverino/interfaces/Request.post.html" class="public property"><code>post</code></a><span class="tableEntryAnnotation">[get]</span>
 							</td>
-							<td class="typecol"><code class="prettyprint lang-d"><span class="pln">serverino<wbr/></span><span class="pun">.</span><span class="pln">interfaces<wbr/></span><span class="pun">.</span><span class="typ">Request<wbr/></span><span class="pun">.</span><span class="typ">SafeAccess</span>!(string)</code></td><td>Params from post if content-type is "application/x-www-form-urlencoded"
+							<td class="typecol"><code class="prettyprint lang-d"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string)</code></td><td>Params from post if content-type is "application/x-www-form-urlencoded"
 </td>
 						</tr>
 						<tr>
@@ -236,11 +236,29 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccess.html" class="public">
+									<code>SafeAccess</code>
+								</a>
+							</td>
+							<td>Simple structure to safely access data from an associative array.
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/interfaces/Request.SafeAccessParam.html" class="public">
 									<code>SafeAccessParam</code>
 								</a>
 							</td>
-							<td>Simple structure to safely access data from an associative array.
+							<td>A single key-value parameter inside SafeAccess.
+</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="../../serverino/interfaces/Request.SafeAccessReadAllRange.html" class="public">
+									<code>SafeAccessReadAllRange</code>
+								</a>
+							</td>
+							<td>Range returned by readAll to iterate over all parameters with the same key.
 </td>
 						</tr>
 					</table>

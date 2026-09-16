@@ -117,7 +117,13 @@
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.rawUri.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.requestLine.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.route.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.data.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.has.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.read.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccess.readAll.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccessParam.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/interfaces/Request.SafeAccessReadAllRange.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.toString.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.user.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/interfaces/Request.worker.html</loc></url>

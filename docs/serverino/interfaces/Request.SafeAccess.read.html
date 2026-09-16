@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Request.cookie</title>
+		<title>Function Request.SafeAccess.read</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -47,15 +47,23 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.cookie</h1><p>Cookies received from user
+				<h1>Function Request.SafeAccess.read</h1><p>Read a value. Return defaultValue if key does not exist.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
-						<div class="single-prototype"><a href="../../serverino/interfaces/Request.SafeAccess.html"><span class="typ">Request<wbr/></span><span class="pun">.<wbr/></span><span class="typ">SafeAccess</span></a>!(string) <span class="pln">cookie</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">pure nothrow @property @nogc @safe const</span><span class="pun">;</span>
+						<div class="single-prototype">
+				<span class="kwd">auto</span> <span class="pln">read</span><span class="pun">(</span>
+				<br/>&nbsp;&nbsp;<span class="typ">string</span> <span class="pln">key</span><span class="pun">,</span>
+				<br/>
+				&nbsp;&nbsp;<span class="pln">T</span> <span class="pln">defaultValue</span> <span class="pun">=</span> <span class="pln">T<wbr/></span><span class="pun">.</span><span class="pln">init</span>
+				<br/>
+				<span class="pun">)</span><span class="pln"> </span><span class="kwd">const nothrow @nogc @safe</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				
+				<section><pre class="code"><code class="lang-d"><span class="pln">request<wbr/></span><span class="pun">.</span><span class="pln">cookie<wbr/></span><span class="pun">.</span><span class="pln">read</span><span class="pun">(</span><span class="str">"user"</span><span class="pun">, </span><span class="str">"anonymous"</span><span class="pun">);</span></code></pre>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">
