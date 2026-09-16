@@ -44,7 +44,7 @@ of them must be tagged, or the untagged ones are never called.
 
 - `request.get`, `request.post`, `request.form`, `request.header`,
   `request.cookie` are **not** associative arrays. Use `.read("key", "default")`
-  and `.has("key")`; `.data` gives the underlying map for iteration.
+  and `.has("key")`. Use `.readAll("key")` to iterate duplicate keys, or `.data` to access the underlying array of tuples.
 - Multipart fields **and** uploaded files are in `request.form`, never in
   `request.post`. A `FormData` has `.isFile`, `.filename`, `.contentType` and
   `.path`, the temporary file the daemon already saved.
