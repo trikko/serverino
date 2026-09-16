@@ -178,10 +178,10 @@ void json(Request r, Output o)
 
    JSONValue v = parseJSON("{}");
 
-   v.object["get"] = r.get.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
-   v.object["post"] = r.post.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
-   v.object["cookie"] = r.cookie.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
-   v.object["headers"] = r.header.data.byKeyValue.map!(x => x.key ~ ":" ~ x.value).array;
+   v.object["get"] = r.get.data.map!(x => x.key ~ ":" ~ x.value).array;
+   v.object["post"] = r.post.data.map!(x => x.key ~ ":" ~ x.value).array;
+   v.object["cookie"] = r.cookie.data.map!(x => x.key ~ ":" ~ x.value).array;
+   v.object["headers"] = r.header.data.map!(x => x.key ~ ":" ~ x.value).array;
    v.object["method"] = r.method.to!string.toUpper;
    v.object["host"] = r.host;
    v.object["path"] = r.path;
@@ -193,7 +193,7 @@ void json(Request r, Output o)
    v.object["form-file"] = JSONValue[].init;
    v.object["form-data"] = JSONValue[].init;
 
-   foreach(k,val; r.form.data)
+   foreach(k,val; r.form)
    {
       if (val.isFile) v.object["form-file"].array ~= JSONValue("%s,%s,%s,%s".format(k, val.filename, val.contentType, readText(val.path)));
       else v.object["form-data"].array ~= JSONValue("%s,%s,%s".format(k, val.contentType, cast(const char[])val.data));
