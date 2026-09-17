@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — serverino</title>
+<meta name="description" content="What this site does with your data: no cookies, no analytics, no third parties. What the demos receive, and how long any of it lives. English and Italian.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/site.css">
+<link rel="llms-txt" href="https://serverino.dev/llms.txt">
+</head>
+<body>
+<header class="site-header">
+   <div class="wrap">
+      <div class="brandline">
+         <a class="brand" href="/"><img src="/img/logo.svg" alt=""> serverino</a>
+         <a class="version" id="version" href="https://github.com/trikko/serverino/releases"
+            target="_blank" rel="noopener" title="Latest release"></a>
+      </div>
+      <nav class="site-nav">
+         <a href="/">Home</a>
+         <a href="/examples">Examples</a>
+         <a href="/docs">Docs</a>
+         <a href="/llm">With an LLM</a>
+         <a class="gh" href="https://github.com/trikko/serverino" target="_blank" rel="noopener">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>GitHub</span>
+         </a>
+      </nav>
+   </div>
+</header>
+
+<main>
+<section id="en" lang="en">
+   <div class="wrap narrow prose">
+      <div class="section-head">
+         <div class="langbar">
+            <div class="eyebrow">Privacy &middot; English</div>
+            <a href="#it" lang="it">Questa pagina in italiano &darr;</a>
+         </div>
+         <h1>Nothing here wants your data</h1>
+         <p>
+            <em>Last updated: September 17, 2026.</em>
+            This is the documentation site of a server library. It has no accounts, no
+            newsletter and no comment box, and the demos on it are there to be poked at,
+            not to learn who is poking. What follows is the short list of what still
+            reaches the server anyway &mdash; and, since this site is
+            <a href="https://github.com/trikko/serverino/tree/master/website" target="_blank"
+               rel="noopener">a serverino application whose source is public</a>, every
+            claim below is one you can go and check.
+         </p>
+      </div>
+
+      <h2>Cookies and tracking</h2>
+
+      <p>
+         The site sets no cookies, uses no analytics (no Google Analytics, no pixels, no
+         tags), and does not follow you from one site to the next. There is no cookie
+         banner because there is nothing to ask consent for.
+      </p>
+
+      <p>
+         Nothing on these pages is loaded from somewhere else either: fonts, stylesheets,
+         scripts and images all come from this domain, and so does every request the pages
+         make while you read them &mdash; down to the release number in the header, which is
+         built into the server itself. Your browser never talks to anyone but this host.
+      </p>
+
+      <h2>What the demos receive</h2>
+
+      <p>
+         The <a href="/examples">Examples</a> page runs real endpoints of this very
+         process, so a few things do travel over the wire. They are short-lived by
+         design:
+      </p>
+
+      <ul>
+         <li>
+            <strong>The upload demo</strong> takes whatever file you hand it, up to 64 KB
+            &mdash; larger requests are refused by the daemon and never reach any code. The
+            file is written to a temporary file so that the endpoint can report its name
+            and size back to you, and serverino deletes it as soon as the response is
+            sent. It is never copied, opened, or looked at by anyone.
+         </li>
+         <li>
+            <strong>The chat demo</strong> only accepts a fixed list of canned phrases:
+            anything else your client sends is ignored rather than relayed, so there is
+            no way to publish free text into the room. Your nickname is invented from the
+            process id handling your connection. The last few lines of the room live in a
+            temporary file and scroll away within minutes.
+         </li>
+         <li>
+            <strong>The other demos</strong> (crash, pool, telemetry, footprint, slow)
+            report on the server's own processes &mdash; memory, worker count, timings. They
+            read nothing about you.
+         </li>
+      </ul>
+
+      <h2>Keeping the demos on a leash</h2>
+
+      <p>
+         Because those demos invite you to flood the server, requests are counted per
+         visitor: a few hundred every ten seconds, and a handful of WebSockets a minute.
+         Counting needs to tell visitors apart, so it starts from your IP address &mdash; but
+         the address itself is never written down. It is hashed together with the current
+         time window, and only the hash becomes the name of a small counter file, which
+         is thrown away a few minutes later. Nothing in it can be turned back into an
+         address, and nothing in it survives the afternoon.
+      </p>
+
+      <h2>Server logs</h2>
+
+      <p>
+         The site runs on a server managed directly by the controller, behind a reverse
+         proxy. Like any web server, that software records some data about each request
+         for technical and security reasons: date and time, the page requested, the
+         outcome. The IP address is recorded only in anonymized form, and logs are kept
+         for at most 14 days before being deleted automatically. They are not used to
+         identify or profile you.
+      </p>
+
+      <h2>Links off this site</h2>
+
+      <p>
+         These pages link out to GitHub, the dub registry, the API reference and a
+         donation page. Once you follow one of those links, the site at the other end
+         applies its own privacy policy, over which this one has no control. Nothing is
+         loaded from them until you click.
+      </p>
+
+      <h2>Controller and contacts</h2>
+
+      <p>
+         The data controller is Andrea Fontana. For anything concerning this policy you
+         can write to the mailbox set aside for privacy: compose the address from the
+         word <em>privacy</em>, then the at sign (@), then this site's domain.
+      </p>
+
+      <h2>Your rights</h2>
+
+      <p>
+         Under the General Data Protection Regulation (GDPR, Articles 15&ndash;22) you have the
+         right to access, rectify, erase or restrict the processing of your personal
+         data, as well as the right to data portability, the right to object, and the
+         right not to be subject to automated decision-making. In practice there is very
+         little here to exercise them on: with no accounts, no persistent storage and no
+         identifying logs, the server holds nothing that could be linked back to you once
+         a request is served.
+      </p>
+
+      <h2>Right to complain</h2>
+
+      <p>
+         If you believe your data is being processed in breach of data protection law, you
+         have the right to lodge a complaint with a supervisory authority &mdash; in Italy, the
+         Garante per la protezione dei dati personali, through
+         <a href="https://www.garanteprivacy.it" target="_blank" rel="noopener">www.garanteprivacy.it</a>
+         or <a href="https://www.gdpr.it" target="_blank" rel="noopener">www.gdpr.it</a>.
+      </p>
+
+      <h2>Changes</h2>
+
+      <p>
+         If the site changes &mdash; a new demo that collects something, say &mdash; this page is
+         updated with it, and the date at the top changes too.
+      </p>
+   </div>
+</section>
+
+<section id="it" lang="it">
+   <div class="wrap narrow prose">
+      <div class="section-head">
+         <div class="langbar">
+            <div class="eyebrow">Privacy &middot; Italiano</div>
+            <a href="#en" lang="en">This page in English &uarr;</a>
+         </div>
+         <h1>Qui nessuno vuole i tuoi dati</h1>
+         <p>
+            <em>Ultimo aggiornamento: 17 settembre 2026.</em>
+            Questo &egrave; il sito di documentazione di una libreria per scrivere server. Non ha
+            account, non ha newsletter e non ha un box per i commenti, e le demo che ci
+            trovi sono l&agrave; per essere pestate, non per sapere chi le pesta. Quello che
+            segue &egrave; l&apos;elenco, breve, di ci&ograve; che arriva al server lo stesso &mdash; e, dato che
+            questo sito &egrave;
+            <a href="https://github.com/trikko/serverino/tree/master/website" target="_blank"
+               rel="noopener">un&apos;applicazione serverino con il sorgente pubblico</a>, ogni
+            affermazione qui sotto &egrave; una di quelle che puoi andare a verificare.
+         </p>
+      </div>
+
+      <h2>Cookie e tracciamento</h2>
+
+      <p>
+         Il sito non installa cookie, non usa strumenti di analisi statistica (niente
+         Google Analytics, niente pixel, niente tag) e non ti segue da un sito all&apos;altro.
+         Non compare alcun banner cookie perch&eacute; non c&apos;&egrave; nulla per cui chiedere consenso.
+      </p>
+
+      <p>
+         Nemmeno una risorsa di queste pagine arriva da altrove: font, fogli di stile,
+         script e immagini vengono tutti da questo dominio, e cos&igrave; ogni richiesta che le
+         pagine fanno mentre le leggi &mdash; compreso il numero di versione nell&apos;intestazione,
+         che &egrave; compilato dentro il server stesso. Il tuo browser non parla mai con
+         nessuno che non sia questo host.
+      </p>
+
+      <h2>Cosa ricevono le demo</h2>
+
+      <p>
+         La pagina <a href="/examples">Examples</a> esegue endpoint veri di questo stesso
+         processo, quindi qualcosa in effetti viaggia sul filo. &Egrave; roba che dura poco, e
+         per scelta:
+      </p>
+
+      <ul>
+         <li>
+            <strong>La demo di upload</strong> prende il file che le dai, fino a 64 KB &mdash;
+            le richieste pi&ugrave; grandi vengono rifiutate dal daemon e non raggiungono alcun
+            codice. Il file viene scritto in un file temporaneo perch&eacute; l&apos;endpoint possa
+            risponderti con nome e dimensione, e serverino lo cancella appena la risposta
+            &egrave; stata inviata. Non viene copiato, n&eacute; aperto, n&eacute; guardato da nessuno.
+         </li>
+         <li>
+            <strong>La demo di chat</strong> accetta soltanto un elenco fisso di frasi
+            preconfezionate: qualsiasi altra cosa mandi il tuo client viene ignorata
+            invece che ritrasmessa, quindi non c&apos;&egrave; modo di pubblicare testo libero nella
+            stanza. Il tuo nome viene inventato a partire dal pid del processo che
+            gestisce la connessione. Le ultime righe della stanza vivono in un file
+            temporaneo e scorrono via nel giro di qualche minuto.
+         </li>
+         <li>
+            <strong>Le altre demo</strong> (crash, pool, telemetry, footprint, slow)
+            raccontano i processi del server stesso &mdash; memoria, numero di worker, tempi.
+            Di te non leggono nulla.
+         </li>
+      </ul>
+
+      <h2>Le demo al guinzaglio</h2>
+
+      <p>
+         Visto che quelle demo ti invitano a sommergere il server di richieste, le
+         richieste vengono contate per visitatore: qualche centinaio ogni dieci secondi, e
+         una manciata di WebSocket al minuto. Per contare bisogna distinguere i
+         visitatori, e il punto di partenza &egrave; il tuo indirizzo IP &mdash; ma l&apos;indirizzo non
+         viene mai scritto da nessuna parte. Viene messo sotto hash insieme alla finestra
+         temporale corrente, e solo l&apos;hash diventa il nome di un piccolo file contatore,
+         buttato via qualche minuto dopo. Da quel file non si torna a un indirizzo, e
+         quel file non arriva a sera.
+      </p>
+
+      <h2>Log del server</h2>
+
+      <p>
+         Il sito gira su un server gestito direttamente dal titolare, dietro un reverse
+         proxy. Come ogni server web, per motivi tecnici e di sicurezza quel software
+         registra nei log alcuni dati di ciascuna richiesta: data e ora, pagina
+         richiesta, esito. L&apos;indirizzo IP viene registrato solo in forma anonimizzata e i
+         log sono conservati per un massimo di 14 giorni, poi cancellati automaticamente.
+         Non vengono usati per identificarti o profilarti.
+      </p>
+
+      <h2>Collegamenti fuori da qui</h2>
+
+      <p>
+         Queste pagine rimandano a GitHub, al registro dub, alla documentazione delle API
+         e a una pagina di donazione. Una volta che apri uno di quei link, il sito
+         dall&apos;altra parte applica la propria informativa, sulla quale questa non ha
+         controllo. Finch&eacute; non clicchi, da quei siti non viene caricato nulla.
+      </p>
+
+      <h2>Titolare e contatti</h2>
+
+      <p>
+         Titolare del trattamento &egrave; Andrea Fontana. Per qualsiasi richiesta relativa a
+         questa informativa puoi scrivere alla casella di posta dedicata alla privacy:
+         componi l&apos;indirizzo usando la parola <em>privacy</em>, poi il simbolo della
+         chiocciola (@) e infine il dominio di questo sito.
+      </p>
+
+      <h2>I tuoi diritti</h2>
+
+      <p>
+         Ai sensi del Regolamento Generale sulla Protezione dei Dati (GDPR, articoli
+         15&ndash;22) hai il diritto di accedere, rettificare, cancellare o limitare il
+         trattamento dei tuoi dati personali, oltre al diritto alla portabilit&agrave; dei dati,
+         al diritto di opporti al trattamento e al diritto di non essere sottoposto a
+         decisioni automatizzate. In pratica, qui c&apos;&egrave; ben poco su cui esercitarli: senza
+         account, senza archiviazione persistente e senza log identificativi, una volta
+         servita la richiesta il server non conserva nulla che possa essere ricondotto a
+         te.
+      </p>
+
+      <h2>Diritto di reclamo</h2>
+
+      <p>
+         Se ritieni che i tuoi dati siano trattati in violazione delle norme sulla
+         protezione dei dati personali, hai il diritto di proporre reclamo a
+         un&apos;autorit&agrave; di controllo: in Italia il Garante per la protezione dei dati
+         personali, tramite
+         <a href="https://www.garanteprivacy.it" target="_blank" rel="noopener">www.garanteprivacy.it</a>
+         o <a href="https://www.gdpr.it" target="_blank" rel="noopener">www.gdpr.it</a>.
+      </p>
+
+      <h2>Modifiche</h2>
+
+      <p>
+         Se il sito dovesse cambiare &mdash; mettiamo, una nuova demo che raccoglie qualcosa &mdash;
+         questa pagina verr&agrave; aggiornata di conseguenza, e con essa la data in cima.
+      </p>
+   </div>
+</section>
+</main>
+
+<footer class="site-footer">
+   <div class="wrap">
+      <div class="footer-grid">
+         <div>
+            <h4>Serverino</h4>
+            <ul>
+               <li><a href="/examples">Examples</a></li>
+               <li><a href="/docs">Documentation</a></li>
+               <li><a href="/llm">Working with an LLM</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Reference</h4>
+            <ul>
+               <li><a href="https://trikko.github.io/serverino/" target="_blank" rel="noopener">API reference</a></li>
+               <li><a href="https://github.com/trikko/serverino/wiki/" target="_blank" rel="noopener">Wiki</a></li>
+               <li><a href="https://code.dlang.org/packages/serverino" target="_blank" rel="noopener">dub package</a></li>
+            </ul>
+         </div>
+         <div>
+            <h4>Project</h4>
+            <ul>
+               <li><a href="https://github.com/trikko/serverino" target="_blank" rel="noopener">Source on GitHub</a></li>
+               <li><a href="https://github.com/trikko/serverino/issues" target="_blank" rel="noopener">Issues</a></li>
+               <li><a href="/privacy">Privacy</a></li>
+            </ul>
+         </div>
+         <div class="beer">
+            <h4>Say thanks</h4>
+            <p>Serverino is free, and stays free.</p>
+            <a class="btn btn-small" href="https://paypal.me/andreafontana/5"
+               target="_blank" rel="noopener">🍺 Buy me a beer</a>
+         </div>
+      </div>
+      <div class="colophon">
+         Serverino is MIT licensed, © 2023-2026 Andrea Fontana.
+         This site is a serverino application: it serves its own pages and runs its own demos.
+         It speaks plain http behind a reverse proxy for one reason only: the machine hosts
+         other sites too.
+      </div>
+   </div>
+</footer>
+<script src="/js/dhighlight.js"></script>
+<script src="/js/site.js"></script>
+
+</body>
+</html>

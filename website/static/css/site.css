@@ -310,6 +310,16 @@ canvas.plot { width: 100%; flex: 1 1 0; min-height: 150px; max-height: 380px; di
    background: var(--surface); border-radius: 0 7px 7px 0; color: var(--deep); }
 .prose blockquote p:last-child { margin-bottom: 0; }
 
+/* A language switch that belongs to the page, not to the section under it:
+   its own rule above the heading, with the other language on the far side. */
+.langbar {
+   display: flex; align-items: baseline; gap: 18px;
+   padding-bottom: 10px; margin-bottom: 18px; border-bottom: 1px solid var(--line);
+}
+.langbar .eyebrow { margin-bottom: 0; }
+.langbar a { margin-left: auto; font-size: .82rem; font-weight: 550; color: var(--muted); }
+.langbar a:hover { color: var(--accent-dark); }
+
 /* The one thing on the page you are meant to take away with you. */
 .promptbox { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 1.4em;
    padding: 18px 20px; border: 1px solid var(--line-strong); border-left: 3px solid var(--accent);
