@@ -109,6 +109,45 @@ package class ProtoRequest
 
    Connection  connection = Connection.Unknown;
    HttpVersion httpVersion = HttpVersion.Unknown;
+
+   private static ProtoRequest freeList = null;
+
+   static ProtoRequest acquire()
+   {
+      if (freeList is null) return new ProtoRequest();
+
+      ProtoRequest r = freeList;
+      freeList = r.next;
+      r.recycle();
+      return r;
+   }
+
+   static void release(ProtoRequest r)
+   {
+      if (r is null) return;
+
+      r.next = freeList;
+      freeList = r;
+   }
+
+   private void recycle()
+   {
+      isValid        = false;
+      expect100      = false;
+      isSecure       = false;
+      contentLength  = 0;
+      headersLength  = 0;
+      method         = null;
+      uri            = null;
+      next           = null;
+      connection     = Connection.Unknown;
+      httpVersion    = HttpVersion.Unknown;
+
+      // Keep the capacity of `data`, just reset it to the reserved header room.
+      data.length = DaemonToWorkerHeader.sizeof;
+      data.assumeSafeAppend();
+      data[] = 0;
+   }
 }
 
 /*
@@ -321,6 +360,7 @@ package class Communicator
          auto tmp = requestToProcess;
          requestToProcess = requestToProcess.next;
          tmp.next = null;
+         ProtoRequest.release(tmp);
       }
 
       requestToProcess = null;
@@ -415,13 +455,39 @@ package class Communicator
       // We fill the first bytes of the data with the daemon-to-worker header
       DaemonToWorkerHeader header;
       header.length = cast(uint)(current.data.length - DaemonToWorkerHeader.sizeof);
+      header.bodyLength = cast(uint)current.contentLength;
       header.requestFlags = current.isSecure ? DaemonToWorkerHeader.Flags.SECURE : DaemonToWorkerHeader.Flags.NONE;
       *(cast(DaemonToWorkerHeader*)(current.data.ptr)) = header;
 
       isKeepAlive = current.connection == ProtoRequest.Connection.KeepAlive;
-      worker.unixSocket.send(current.data);
 
+      // A signal could block the send, so we loop until all the data is sent or an error occurs
+      {
+         size_t offset = 0;
+
+         while(offset < current.data.length)
+         {
+            immutable written = worker.unixSocket.send(current.data[offset..$]);
+
+            if (written > 0) offset += written;
+            else
+            {
+               version(Posix)
+               {
+                  import core.stdc.errno : errno, EINTR;
+                  if (written < 0 && errno == EINTR) continue;
+               }
+
+               warning("Can't send the request to the worker. [REASON: socket error]");
+               break;
+            }
+         }
+      }
+
+      auto sent = requestToProcess;
       requestToProcess = requestToProcess.next;
+      ProtoRequest.release(sent);
+
       lastRequest = now;
    }
 
@@ -786,14 +852,14 @@ package class Communicator
       if (status == State.PAIRED || status == State.KEEP_ALIVE)
       {
          // Queue a new request
-         if (requestToProcess is null) requestToProcess = new ProtoRequest();
+         if (requestToProcess is null) requestToProcess = ProtoRequest.acquire();
          else
          {
             ProtoRequest tmp = requestToProcess;
             while(tmp.next !is null)
                tmp = tmp.next;
 
-            tmp.next = new ProtoRequest();
+            tmp.next = ProtoRequest.acquire();
             requestToProcess = tmp.next;
          }
 
@@ -1131,7 +1197,7 @@ package class Communicator
             if (hasMoreDataToParse)
             {
                // There's a (partial) new request in the buffer, we need to create a new request
-               request.next = new ProtoRequest();
+               request.next = ProtoRequest.acquire();
                request = request.next;
                status = State.READING_HEADERS;
 
