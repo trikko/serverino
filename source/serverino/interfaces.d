@@ -335,7 +335,7 @@ struct Request
    @safe @nogc @property nothrow public auto password() const { return _internal._password; }
 
    /// The sequence of endpoints called so far
-   @safe @nogc @property nothrow public auto route() const { return _internal._route; }
+   @safe @nogc @property nothrow public auto route() const { return _internal._route[0.._internal._routeLength]; }
 
 	/// HTTP method
    @safe @property @nogc nothrow public Method method() const
@@ -512,6 +512,14 @@ struct Request
          return null;
       }
 
+      void addRoute(string name)
+      {
+         if (_routeLength < _route.length) _route[_routeLength] = name;
+         else _route ~= name;
+
+         _routeLength++;
+      }
+
       void process()
       {
          import std.algorithm : splitter;
@@ -522,7 +530,11 @@ struct Request
          static string myPID;
          if (myPID.length == 0) myPID = thisProcessID().to!string;
 
-         foreach(h; _rawHeaders.idup.newlineSplitter.dropOne)
+         _headersCopy.clear();
+         _headersCopy.append(_rawHeaders);
+         immutable headersCopy = cast(string) _headersCopy.array;
+
+         foreach(h; headersCopy.newlineSplitter.dropOne)
          {
             auto colon = h.indexOf(":");
             _header ~= SafeAccessParam!(string)(h[0..colon], h[colon+1..$]);
@@ -856,6 +868,36 @@ struct Request
          }
       }
 
+      // Fast path for decoding query string and cookies. Avoids unnecessary allocations.
+      private static string decodeArg(bool plusAsSpace)(in char[] s)
+      {
+         import std.uri : decodeComponent;
+
+         bool hasPlus = false;
+         bool hasPercent = false;
+
+         foreach(c; s)
+         {
+            if (c == '%') hasPercent = true;
+            else if (c == '+') hasPlus = true;
+         }
+
+         static if (plusAsSpace)
+         {
+            if (hasPlus)
+            {
+               char[] tmp = s.dup;
+               foreach(ref c; tmp) if (c == '+') c = ' ';
+
+               if (hasPercent) return decodeComponent(tmp);
+               else return () @trusted { return cast(string) tmp; }();
+            }
+         }
+
+         if (hasPercent) return decodeComponent(s);
+         else return s.idup;
+      }
+
       pragma(inline, true)
       private void parseArgsString(bool isCookie = false)(in char[] s, ref SafeAccessParam!(string)[] output)
       {
@@ -872,12 +914,12 @@ struct Request
          searchKey:
             if (curIdx >= s.length)
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(s[lastIdx..curIdx].decodeComponent, "");
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(decodeArg!false(s[lastIdx..curIdx]), "");
                return;
             }
             else if(isSeparator(s[curIdx]))
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(s[lastIdx..curIdx].decodeComponent, "");
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(decodeArg!false(s[lastIdx..curIdx]), "");
 
                curIdx++;
                lastIdx = curIdx;
@@ -885,7 +927,7 @@ struct Request
             }
             else if (s[curIdx] == '=')
             {
-               key = s[lastIdx..curIdx].decodeComponent;
+               key = decodeArg!false(s[lastIdx..curIdx]);
                curIdx++;
                lastIdx = curIdx;
                goto searchValue;
@@ -899,13 +941,13 @@ struct Request
          searchValue:
             if (curIdx >= s.length)
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, translate(s[lastIdx..curIdx],['+':' ']).decodeComponent);
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!true(s[lastIdx..curIdx]));
                else output ~= SafeAccessParam!(string)(key, "");
                return;
             }
             else if(isSeparator(s[curIdx]))
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, translate(s[lastIdx..curIdx],['+':' ']).decodeComponent);
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!true(s[lastIdx..curIdx]));
                else output ~= SafeAccessParam!(string)(key, "");
 
                curIdx++;
@@ -939,7 +981,10 @@ struct Request
       string _rawHeaders;
       string _rawRequestLine;
 
+      DataBuffer!char _headersCopy;
+
       string[]  _route;
+      size_t    _routeLength;
 
       HttpVersion _httpVersion;
 
@@ -952,12 +997,15 @@ struct Request
       {
          clearFiles();
 
-         _form    = null;
+         // Keep the capacity of the per-request arrays: assigning null would throw it
+         // away and make every request start from a fresh allocation.
+         _form.length = 0;   _form.assumeSafeAppend();
+         _get.length = 0;    _get.assumeSafeAppend();
+         _post.length = 0;   _post.assumeSafeAppend();
+         _header.length = 0; _header.assumeSafeAppend();
+         _cookie.length = 0; _cookie.assumeSafeAppend();
+
          _data    = null;
-         _get     = null;
-         _post    = null;
-         _header  = null;
-         _cookie  = null;
          _path    = string.init;
 
          _method        = string.init;
@@ -975,14 +1023,30 @@ struct Request
 
          _parsingStatus = ParsingStatus.OK;
 
-         _route.length = 0;
-         _route.reserve(10);
+         // The endpoints are always visited in the same compile-time order, so slot i
+         // always holds the same name: keep the array and just rewind the cursor.
+         _routeLength = 0;
 
          _requestId = 0;
       }
    }
 
    package RequestImpl* _internal;
+}
+
+// Render an unsigned value into a caller-supplied stack buffer. Used on the hot path
+// instead of to!string, which would allocate a new string for every response.
+package char[] uintToChars(size_t N)(return scope ref char[N] buffer, size_t value) @safe @nogc nothrow pure
+{
+   size_t idx = N;
+
+   do
+   {
+      buffer[--idx] = cast(char)('0' + (value % 10));
+      value /= 10;
+   } while (value > 0 && idx > 0);
+
+   return buffer[idx..N];
 }
 
 /++ A response to user. Default content-type is "text/html".
@@ -1064,7 +1128,9 @@ struct Output
    {
       string k = key.toLower;
 
-      if (["content-length", "date", "server", "status", "transfer-encoding"].assumeSorted.contains(k))
+      static immutable string[] reservedHeaders = ["content-length", "date", "server", "status", "transfer-encoding"];
+
+      if (reservedHeaders.assumeSorted.contains(k))
       {
          warning("You can't set `", key, "` header. It's managed by serverino internally.");
          if (k == "status") warning("Use `output.status = XXX` instead.");
@@ -1379,7 +1445,7 @@ struct Output
 
          _headersBuffer.clear();
 
-         if (_status == 200) _headersBuffer.append(_httpVersion ~ " 200 OK\r\n");
+         if (_status == 200) _headersBuffer.append(_httpVersion, " 200 OK\r\n");
          else
          {
             string statusDescription;
@@ -1387,23 +1453,28 @@ struct Output
             if (item != null) statusDescription = *item;
             else statusDescription = "Unknown";
 
-            _headersBuffer.append(_httpVersion ~ " " ~ _status.to!string ~ " " ~ statusDescription ~ "\r\n");
+            char[8] statusDigits = void;
+            _headersBuffer.append(_httpVersion, " ", uintToChars(statusDigits, _status), " ", statusDescription, "\r\n");
          }
 
          version(SERVERINO_TESTS) { }
          else
          {
             import std.datetime : SysTime, seconds, Clock;
-            static SysTime _lastDate;
-            static string _cachedDate;
+            import serverino.common : CoarseTime;
 
-            auto _now = Clock.currTime!(ClockType.coarse);
-            if (_lastDate == SysTime.init || _now - _lastDate >= 1.seconds)
+            // The date changes at most once per second: keep the whole header line cached
+            // and use the (much cheaper) monotonic clock to know when it went stale.
+            static CoarseTime _lastDate = CoarseTime.zero;
+            static string _cachedDateLine;
+
+            immutable _now = CoarseTime.currTime;
+            if (_cachedDateLine.length == 0 || _now - _lastDate >= 1.seconds)
             {
-               _cachedDate = Output.toHTTPDate(_now);
+               _cachedDateLine = "date: " ~ Output.toHTTPDate(Clock.currTime!(ClockType.coarse)) ~ "\r\n";
                _lastDate = _now;
             }
-            _headersBuffer.append("date: " ~ _cachedDate ~ "\r\n");
+            _headersBuffer.append(_cachedDateLine);
          }
 
          // These headers are ignored if we are sending a websocket response
@@ -1416,10 +1487,15 @@ struct Output
             {
                import std.file : getSize;
                size_t fs = _sendFile.getSize().to!size_t;
-               _headersBuffer.append("content-length: " ~ fs.to!string ~ "\r\n");
+               char[24] fsDigits = void;
+               _headersBuffer.append("content-length: ", uintToChars(fsDigits, fs), "\r\n");
             }
             else if (_zeroBody) _headersBuffer.append("content-length: 0\r\n");
-            else _headersBuffer.append("content-length: " ~ _sendBuffer.length.to!string ~ "\r\n");
+            else
+            {
+               char[24] clDigits = void;
+               _headersBuffer.append("content-length: ", uintToChars(clDigits, _sendBuffer.length), "\r\n");
+            }
 
             if (_signature)
             {
@@ -1431,7 +1507,7 @@ struct Output
          // send user-defined headers
          foreach(const ref header;_headers)
          {
-            _headersBuffer.append(header.key ~ ": " ~ header.value ~ "\r\n");
+            _headersBuffer.append(header.key, ": ", header.value, "\r\n");
             if (header.key == "content-type") has_content_type = true;
          }
 
@@ -1479,8 +1555,8 @@ struct Output
          _httpVersion = HttpVersion.HTTP10;
          _dirty = false;
          _status = 200;
-         _cookies = null;
-         _headers = null;
+         _cookies = null;   // Cookie has no default ctor, so its capacity can't be kept
+         _headers.length = 0; _headers.assumeSafeAppend();
          _keepAlive = false;
          _flushed = false;
          _headersBuffer.clear();

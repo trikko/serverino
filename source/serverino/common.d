@@ -212,6 +212,8 @@ package struct DaemonToWorkerHeader
 	}
 
 	uint	length = 0;		// Bytes following this header
+	uint	bodyLength = 0;	// Of those bytes, how many are body: the daemon already parsed
+							// content-length, the worker would otherwise scan the headers again.
 
 	version(serverino_enable_https) uint flags = 0;
 
@@ -228,8 +230,8 @@ package struct DaemonToWorkerHeader
 	}
 }
 
-version(serverino_enable_https) static assert(DaemonToWorkerHeader.sizeof == 8);
-else static assert(DaemonToWorkerHeader.sizeof == 4);
+version(serverino_enable_https) static assert(DaemonToWorkerHeader.sizeof == 12);
+else static assert(DaemonToWorkerHeader.sizeof == 8);
 
 // An implementation of unix domain sockets for Windows
 version(Windows)

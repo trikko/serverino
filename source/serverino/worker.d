@@ -49,6 +49,19 @@ struct Worker
 {
    static:
 
+   void sendPayload(ref WorkerPayload wp)
+   {
+      import serverino.databuffer : DataBuffer;
+      static DataBuffer!char packet;
+
+      packet.clear();
+      packet.append((cast(char*)&wp)[0..wp.sizeof]);
+      packet.append(output._internal._headersBuffer.array);
+      packet.append(output._internal._sendBuffer.array);
+
+      channel.send(packet.array);
+   }
+
    void wake(Modules...)()
    {
 
@@ -204,7 +217,7 @@ struct Worker
             atomicStore(processedStartedAt, CoarseTime.zero);
             wp.contentLength = output._internal._headersBuffer.array.length + output._internal._sendBuffer.array.length;
 
-            channel.send((cast(char*)&wp)[0..wp.sizeof] ~ output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
+            sendPayload(wp);
          }
 
          channel.close();
@@ -228,6 +241,7 @@ struct Worker
 
          uint size;
          uint requestFlags;
+         uint bodyLength;
          bool sizeRead = false;
          ptrdiff_t recv = -1;
          static DataBuffer!ubyte data;
@@ -275,6 +289,7 @@ struct Worker
                   auto hdr = *(cast(DaemonToWorkerHeader*)(header.array.ptr));
                   size = hdr.length;
                   requestFlags = hdr.requestFlags;
+                  bodyLength = hdr.bodyLength;
                   data.reserve(size);
                   data.append(header.array[DaemonToWorkerHeader.sizeof..$]);
                   header.clear();
@@ -298,18 +313,18 @@ struct Worker
 
          WorkerPayload wp = WorkerPayload
          (
-            parseHttpRequest!Modules(config, data.array, requestFlags),
+            parseHttpRequest!Modules(config, data.array, requestFlags, bodyLength),
             output._internal._sendBuffer.array.length + output._internal._headersBuffer.array.length
          );
 
          if (cas(&justSent, false, true))
-            channel.send((cast(char*)&wp)[0..wp.sizeof] ~  output._internal._headersBuffer.array ~ output._internal._sendBuffer.array);
+            sendPayload(wp);
       }
 
 
    }
 
-   typeof(WorkerPayload.flags) parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data, uint requestFlags)
+   typeof(WorkerPayload.flags) parseHttpRequest(Modules...)(WorkerConfigPtr config, ubyte[] data, uint requestFlags, uint bodyLength)
    {
 
       scope(exit) {
@@ -358,7 +373,9 @@ struct Worker
                fields.popFront;
                httpVersion = fields.front;
 
-               if (["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"].assumeSorted.contains(method) == false)
+               static immutable string[] knownMethods = ["CONNECT", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT", "TRACE"];
+
+               if (knownMethods.assumeSorted.contains(method) == false)
                {
                   debug warning("HTTP method unknown: ", method);
                   output._internal._httpVersion = (httpVersion == "HTTP/1.1")?HttpVersion.HTTP11:HttpVersion.HTTP10;
@@ -370,20 +387,7 @@ struct Worker
 
             headersLines.popFront;
 
-            foreach(const ref l; headersLines)
-            {
-               enum CONTENT_LENGTH = "content-length:".length;
-
-               if (l.length > CONTENT_LENGTH && l[0..CONTENT_LENGTH] == "content-length:")
-               {
-                  auto value = l[CONTENT_LENGTH..$];
-
-                  foreach (c; value)
-                     contentLength = contentLength * 10 + (c - '0');
-
-                  break;
-               }
-            }
+            contentLength = bodyLength;
 
             // If no content-length, we don't read body.
             if (contentLength == 0)
@@ -459,6 +463,13 @@ struct Worker
             // GET /../../non_public_file
             auto normalize(string uri)
             {
+               // Fast path for simple URIs without dots. 
+               if (uri.indexOf('.') < 0)
+               {
+                  if (uri.startsWith("/")) return uri;
+                  else return "/" ~ uri;
+               }
+
                import std.range : retro, join;
                import std.algorithm : filter;
                import std.array : array;
@@ -969,7 +980,7 @@ struct Worker
                   }
                   else enum willLaunch = true;
 
-                  request._internal._route ~= ff.mod ~ "." ~ ff.name;
+                  request._internal.addRoute(ff.mod ~ "." ~ ff.name);
 
                   if (willLaunch)
                   {
@@ -1027,7 +1038,7 @@ struct Worker
                   else static if (__traits(compiles, f(request))) f(request);
                   else f(output);
 
-                  request._internal._route ~= untaggedHandlers[0].mod ~ "." ~ untaggedHandlers[0].name;
+                  request._internal.addRoute(untaggedHandlers[0].mod ~ "." ~ untaggedHandlers[0].name);
                }
             }
          }

@@ -37,7 +37,7 @@ package struct DataBuffer(T)
    void append(E...)(scope const E new_data) @trusted
    {
       static foreach(e; E)
-         static if (!is(e : T[]))
+         static if (!is(e : const(T)[]))
             static assert(false, "DataBuffer.append: `" ~ e.stringof ~ "` is not a `" ~ T[].stringof ~ "`");
 
       size_t total_length = _length;
