@@ -922,6 +922,16 @@ struct Worker
       static immutable taggedHandlers = getTaggedHandlers();
       static immutable untaggedHandlers = getUntaggedHandlers();
 
+      // The fully qualified names used by `request.route` only serve debugging purposes:
+      // build them once at compile time instead of concatenating them on every request.
+      static immutable(string)[] buildRouteNames(immutable FunctionPriority[] handlers)
+      {
+         string[] names;
+         names.reserve(handlers.length);
+         foreach(ff; handlers) names ~= ff.mod ~ "." ~ ff.name;
+         return names.idup;
+      }
+
 
       static if (taggedHandlers !is null && taggedHandlers.length>0)
       {
@@ -980,7 +990,7 @@ struct Worker
                   }
                   else enum willLaunch = true;
 
-                  request._internal.addRoute(ff.mod ~ "." ~ ff.name);
+                  request._internal.addRoute();
 
                   if (willLaunch)
                   {
@@ -1017,7 +1027,10 @@ struct Worker
             return false;
          }
 
-        callUntilIsDirty!taggedHandlers;
+         static immutable routeNames = buildRouteNames(taggedHandlers);
+         request._internal.setRouteNames(routeNames);
+
+         callUntilIsDirty!taggedHandlers;
       }
       else static if (untaggedHandlers !is null)
       {
@@ -1038,7 +1051,9 @@ struct Worker
                   else static if (__traits(compiles, f(request))) f(request);
                   else f(output);
 
-                  request._internal.addRoute(untaggedHandlers[0].mod ~ "." ~ untaggedHandlers[0].name);
+                  static immutable routeNames = buildRouteNames(untaggedHandlers);
+                  request._internal.setRouteNames(routeNames);
+                  request._internal.addRoute();
                }
             }
          }

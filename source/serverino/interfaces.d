@@ -335,7 +335,7 @@ struct Request
    @safe @nogc @property nothrow public auto password() const { return _internal._password; }
 
    /// The sequence of endpoints called so far
-   @safe @nogc @property nothrow public auto route() const { return _internal._route[0.._internal._routeLength]; }
+   @safe @nogc @property nothrow public auto route() const { return _internal._routeNames[0.._internal._routeLength]; }
 
 	/// HTTP method
    @safe @property @nogc nothrow public Method method() const
@@ -512,13 +512,8 @@ struct Request
          return null;
       }
 
-      void addRoute(string name)
-      {
-         if (_routeLength < _route.length) _route[_routeLength] = name;
-         else _route ~= name;
-
-         _routeLength++;
-      }
+      @safe @nogc nothrow void setRouteNames(immutable(string)[] names) { _routeNames = names; }
+      @safe @nogc nothrow void addRoute() { _routeLength++; }
 
       void process()
       {
@@ -983,8 +978,8 @@ struct Request
 
       DataBuffer!char _headersCopy;
 
-      string[]  _route;
-      size_t    _routeLength;
+      immutable(string)[]  _routeNames;
+      size_t               _routeLength;
 
       HttpVersion _httpVersion;
 
@@ -1023,8 +1018,8 @@ struct Request
 
          _parsingStatus = ParsingStatus.OK;
 
-         // The endpoints are always visited in the same compile-time order, so slot i
-         // always holds the same name: keep the array and just rewind the cursor.
+         // The endpoints are always visited in the same compile-time order, so the name
+         // table stays valid: just rewind the cursor.
          _routeLength = 0;
 
          _requestId = 0;
