@@ -31,7 +31,7 @@ import serverino.interfaces;
 import std.experimental.logger : log, warning, fatal, critical;
 import std.process : environment;
 import std.stdio : FILE;
-import std.socket : Socket, AddressFamily, SocketType, SocketOption, SocketOptionLevel, SocketShutdown;
+import std.socket : Socket, AddressFamily, SocketType, SocketOption, SocketOptionLevel, SocketShutdown, wouldHaveBlocked;
 import std.datetime : seconds;
 import std.string : toStringz, indexOf, strip, toLower;
 import std.algorithm : splitter, startsWith, map;
@@ -277,19 +277,32 @@ struct Worker
                // Ok, data received
                if (recv >= 0) break;
 
+               // receive() returns -1 for any error: only a timeout (or a signal) means
+               // that we just have to keep waiting.
+               bool interrupted = false;
+               version(Posix)
+               {
+                  import core.stdc.errno : errno, EINTR;
+                  interrupted = (errno == EINTR);
+               }
+
                // Recv timeout, check if we need to kill the worker
-               if (recv == -1)
+               if (wouldHaveBlocked || interrupted)
                {
                   immutable tm = CoarseTime.currTime;
 
                   if (tm - idlingAt > config.maxWorkerIdling) log("Shutting down worker. [REASON: maxWorkerIdling]");
                   else if (tm - startedAt > config.maxWorkerLifetime) log("Shutting down worker. [REASON: maxWorkerLifetime]");
                   else if (isDynamic && tm - idlingAt > config.maxDynamicWorkerIdling) log("Shutting down worker. [REASON: cooling down]");
+
+                  // Its end of the socket could outlive it (on Windows a child process can
+                  // inherit it): don't wait for the socket to tell us.
+                  else if (daemonProcess.isTerminated()) log("Killing worker. [REASON: daemon is not running]");
                   else continue; // Nothing received, but still waiting for data
                }
 
                // Socket error
-               else if (recv < 0) warning("Killing worker. [REASON: socket error]");
+               else warning("Killing worker. [REASON: socket error]");
 
                // Exit the worker
                tryUninit!Modules();
