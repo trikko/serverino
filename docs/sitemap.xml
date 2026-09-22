@@ -39,12 +39,14 @@
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableLoggerOverride.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableRemoteIp.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableServerSignature.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableWorkerBacklog.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.disableWorkersAutoReload.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableKeepAlive.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableLoggerOverride.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableRemoteIp.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableServerSignature.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableWorkerBacklog.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.enableWorkersAutoReload.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.ListenerProtocol.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setDaemonInstances.html</loc></url>

@@ -1,7 +1,7 @@
 # Serverino
 
 Serverino is a zero-dependency HTTP and WebSocket server library for the D
-programming language. Version 0.8.0.
+programming language. Version 0.8.3.
 
 Read the reference before writing serverino code. It is two files:
 
@@ -109,9 +109,9 @@ of them must be tagged, or the untagged ones are never called.
 One `@onServerInit` function returning a `ServerinoConfig`. Common settings:
 `addListener(address, port)` (call it more than once for more listeners),
 `setMaxWorkers`, `setMinWorkers`, `setMaxDynamicWorkerIdling`,
-`setMaxRequestTime`, `setMaxRequestSize`, `enableKeepAlive`, `enableRemoteIp`,
-`setWorkerUser`/`setWorkerGroup`. Take `string[] args` as a parameter to read
-the command line.
+`setMaxRequestTime`, `setMaxRequestSize`, `enableKeepAlive`,
+`enableWorkerBacklog`, `enableRemoteIp`, `setWorkerUser`/`setWorkerGroup`.
+Take `string[] args` as a parameter to read the command line.
 
 ## HTTPS
 

@@ -1,6 +1,6 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.8.0 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.3 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
@@ -162,6 +162,7 @@ and turned into an exception during validation, listing every failed listener.
 | `.setMaxDynamicWorkerIdling(dur)` | `60.seconds` | Applies only to workers above `minWorkers`. |
 | `.setMaxRequestTime(dur)` | `5.seconds` | Worker handling the request is **killed** past this. Override per request with `output.setMaxRequestTime()`. |
 | `.setDaemonInstances(n)` | `1` | Number of accept/event loops. Must be 1 on Windows. |
+| `.enableWorkerBacklog(depth = 4)` | disabled | When no worker is idle and none can be started, queue up to `depth` requests behind a busy worker (at most 32 KiB in flight per worker; bigger requests wait for a free worker). Good for many short requests, bad if a request can be slow: a queued request waits for the one in front of it. `.disableWorkerBacklog()` turns it off. |
 | `.enableWorkersAutoReload(bool)` | disabled | Reload workers when the executable changes. The daemon is *not* reloaded, so daemon-side code (including this config) is not updated. |
 
 ### 4.3 Security & metadata

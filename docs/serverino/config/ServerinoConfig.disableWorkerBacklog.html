@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0"/>
-		<title>Function Request.route</title>
+		<title>Function ServerinoConfig.disableWorkerBacklog</title>
 		<link rel="stylesheet" href="../../css/style.min.css"/>
 		<script type="text/javascript" src="../../js/script.min.js"></script>
 	</head>
@@ -28,12 +28,12 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</div>
 				<ul class="tree-view">
 					<li>
-						<div class="module ">
+						<div class="module selected">
 							<a href="../../serverino/config.html">config</a>
 						</div>
 					</li>
 					<li>
-						<div class="module selected">
+						<div class="module ">
 							<a href="../../serverino/interfaces.html">interfaces</a>
 						</div>
 					</li>
@@ -47,15 +47,24 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 		</nav>
 		<div id="main-contents">
 			<div>
-				<h1>Function Request.route</h1><p>The sequence of endpoints called so far
+				<h1>Function ServerinoConfig.disableWorkerBacklog</h1><p>Lets the daemon queue up to <code class="lang-d"><span class="pln">depth</span></code> requests on a worker that is still busy.
 </p>
 				<div class="prototype">
 					<code class="lang-d">
-						<div class="single-prototype"><span class="kwd">immutable</span><span class="pun">(</span><span class="typ">char</span><span class="pun">[]</span><span class="pun">)</span><span class="pun">[]</span> <span class="pln">route</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">pure nothrow @property @nogc @safe const</span><span class="pun">;</span>
+						<div class="single-prototype"><span class="kwd">ref </span><a href="../../serverino/config/ServerinoConfig.html"><span class="typ">ServerinoConfig</span></a> <span class="pln">disableWorkerBacklog</span><span class="pun">(</span><span class="pun">)</span><span class="pln"> </span><span class="kwd">return @safe</span><span class="pun">;</span>
 						</div>
 					</code>
 				</div>
-				
+				<section><p>Requests go to an idle worker first, then to a worker that can be started;
+ only when neither is available they are queued behind a busy one. A queued
+ request waits for the ones in front of it, so this helps when all the workers
+ are busy with fast requests (the time a worker spends waiting for the next one
+ is what it saves), and hurts when a request can be slow.
+ A worker never has more than 32 KiB of requests in flight: a request that doesn't
+ fit waits for a free worker. Disabled by default.
+</p>
+</section>
+
 			</div>
 			<footer>
 				<div id="license-info">
