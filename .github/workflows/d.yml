@@ -69,34 +69,43 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: dub run --root=tests/test-04
 
-      - name: Run test-05
-        run: dub run --root=tests/test-05
+      # The same binary runs several times: it's built once, since on Windows an exe
+      # can't be relinked while its workers are still running.
+      - name: Build test-05
+        run: dub build --root=tests/test-05
 
-      - name: Run test-05 (two workers)
-        env:
-          SERVERINO_TEST_WORKERS: 2
-        run: dub run --root=tests/test-05
+      - name: Run test-05 (1-2 workers, with and without worker backlog)
+        shell: bash
+        run: |
+          # The workers of a run can outlive it for a moment: wait for them before the next one
+          wait_workers() {
+            for i in $(seq 1 30); do
+              if [ "$RUNNER_OS" = "Windows" ]; then
+                tasklist //FI "IMAGENAME eq test-05.exe" | grep -q test-05.exe || return 0
+              else
+                pgrep -x test-05 > /dev/null || return 0
+              fi
+              sleep 1
+            done
+            echo "::warning::test-05 processes still running 30s after the end of the test"
+          }
 
-      - name: Run test-05 (worker backlog)
-        env:
-          SERVERINO_TEST_BACKLOG: 1
-        run: dub run --root=tests/test-05
+          for workers in 1 2; do
+            for backlog in 0 1; do
+              echo "== workers: $workers, backlog: $backlog"
+              SERVERINO_TEST_WORKERS=$workers SERVERINO_TEST_BACKLOG=$backlog ./tests/test-05/test-05
+              wait_workers
+            done
+          done
 
-      - name: Run test-05 (two workers, worker backlog)
-        env:
-          SERVERINO_TEST_WORKERS: 2
-          SERVERINO_TEST_BACKLOG: 1
-        run: dub run --root=tests/test-05
-
+      # Already built by the steps above
       - name: Run test-01 (worker backlog)
-        env:
-          SERVERINO_TEST_BACKLOG: 1
-        run: dub run --root=tests/test-01
+        shell: bash
+        run: SERVERINO_TEST_BACKLOG=1 ./tests/test-01/test-01
 
       - name: Run test-02 (worker backlog)
-        env:
-          SERVERINO_TEST_BACKLOG: 1
-        run: dub run --root=tests/test-02
+        shell: bash
+        run: SERVERINO_TEST_BACKLOG=1 ./tests/test-02/test-02
 
       - name: Build examples
         run: dub build --build=release --root=examples/01_hello_world/
