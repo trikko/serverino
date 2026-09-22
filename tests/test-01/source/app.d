@@ -263,13 +263,19 @@ void fallthrough4(Request r, Output o)
 @onServerInit
 ServerinoConfig conf()
 {
-   return ServerinoConfig
+   auto config = ServerinoConfig
       .create()
       .setMaxRequestTime(1.seconds)
       .setMaxRequestSize(2000)
       .addListener("0.0.0.0", 8080)
       .addListener("0.0.0.0", 8081)
       .setWorkers(4);
+
+   // The same tests, with requests queued behind busy workers
+   if (environment.get("SERVERINO_TEST_BACKLOG", "0") == "1")
+      config.enableWorkerBacklog();
+
+   return config;
 }
 
 void test()

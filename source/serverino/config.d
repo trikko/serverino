@@ -293,6 +293,8 @@ struct ServerinoConfig
 
       sc.disableRemoteIp();
 
+      sc.disableWorkerBacklog();
+
       sc.enableLoggerOverride();
 
       sc.disableServerSignature();
@@ -374,6 +376,21 @@ struct ServerinoConfig
 
    /// Ditto
    @safe ref ServerinoConfig disableKeepAlive() return { enableKeepAlive(false); return this; }
+
+   /++ Lets the daemon queue up to `depth` requests on a worker that is still busy.
+    +
+    + Requests go to an idle worker first, then to a worker that can be started;
+    + only when neither is available they are queued behind a busy one. A queued
+    + request waits for the ones in front of it, so this helps when all the workers
+    + are busy with fast requests (the time a worker spends waiting for the next one
+    + is what it saves), and hurts when a request can be slow.
+    + A worker never has more than 32 KiB of requests in flight: a request that doesn't
+    + fit waits for a free worker. Disabled by default.
+    +/
+   @safe ref ServerinoConfig enableWorkerBacklog(size_t depth = 4) return { daemonConfig.workerBacklog = depth; return this; }
+
+   /// Ditto
+   @safe ref ServerinoConfig disableWorkerBacklog() return { return enableWorkerBacklog(0); }
 
    /// Add a x-remote-ip header
    @safe ref ServerinoConfig enableRemoteIp(bool enable = true) return { daemonConfig.withRemoteIp = enable; return this; }
@@ -579,6 +596,7 @@ package struct DaemonConfig
    size_t      daemonInstances;
    size_t      minWorkers;
    size_t      maxWorkers;
+   size_t      workerBacklog;
    int         listenerBacklog;
    bool        withRemoteIp;
    bool        overrideLogger;

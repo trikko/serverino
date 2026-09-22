@@ -246,11 +246,30 @@ struct Worker
          ptrdiff_t recv = -1;
          static DataBuffer!ubyte data;
          static DataBuffer!ubyte header;
+         static DataBuffer!ubyte carry;
          data.clear();
          header.clear();
 
+         // With the worker backlog the daemon can send the next request while we are
+         // still busy with this one: whatever came after it has been kept aside.
+         header.append(carry.array);
+         carry.clear();
+
          while(sizeRead == false || size > data.length)
          {
+            if (sizeRead == false && header.length >= DaemonToWorkerHeader.sizeof)
+            {
+               auto hdr = *(cast(DaemonToWorkerHeader*)(header.array.ptr));
+               size = hdr.length;
+               requestFlags = hdr.requestFlags;
+               bodyLength = hdr.bodyLength;
+               data.reserve(size);
+               data.append(header.array[DaemonToWorkerHeader.sizeof..$]);
+               header.clear();
+               sizeRead = true;
+               continue;
+            }
+
             while(true)
             {
                recv = channel.receive(buffer);
@@ -279,24 +298,16 @@ struct Worker
             }
 
             if (recv == 0) break;
-            else if (sizeRead == false)
-            {
-               // The header is tiny, but on a stream socket it could still be split across two reads
-               header.append(buffer[0..recv]);
 
-               if (header.length >= DaemonToWorkerHeader.sizeof)
-               {
-                  auto hdr = *(cast(DaemonToWorkerHeader*)(header.array.ptr));
-                  size = hdr.length;
-                  requestFlags = hdr.requestFlags;
-                  bodyLength = hdr.bodyLength;
-                  data.reserve(size);
-                  data.append(header.array[DaemonToWorkerHeader.sizeof..$]);
-                  header.clear();
-                  sizeRead = true;
-               }
-            }
+            // The header is tiny, but on a stream socket it could still be split across two reads
+            else if (sizeRead == false) header.append(buffer[0..recv]);
             else data.append(buffer[0..recv]);
+         }
+
+         if (sizeRead && data.length > size)
+         {
+            carry.append(data.array[size..$]);
+            data.length = size;
          }
 
          if(data.array.length == 0)

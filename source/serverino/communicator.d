@@ -412,10 +412,15 @@ package class Communicator
 
       hasBuffer = false;
 
-      if (this.worker !is null && this.worker.communicator is this)
+      // With the backlog the worker is freed by its own responses, not by the clients:
+      // if ours hasn't come yet, it will be dropped.
+      if (this.worker !is null && config.workerBacklog > 0) this.worker.orphan(this);
+      else if (this.worker !is null && this.worker.communicator is this)
       {
          this.worker.communicator = null;
-         this.worker.setStatus(WorkerInfo.State.IDLING);
+
+         // The worker waits for the end of the request before taking a new one.
+         if (this.worker.responseCompleted) this.worker.setStatus(WorkerInfo.State.IDLING);
       }
 
       if (file.isOpen)
@@ -447,10 +452,16 @@ package class Communicator
    void setWorker(WorkerInfo worker)
    {
       this.worker = worker;
-      worker.communicator = this;
+      auto current = requestToProcess;
+
+      if (config.workerBacklog > 0) worker.enqueue(this, current.data.length);
+      else
+      {
+         worker.communicator = this;
+         worker.responseStarted();
+      }
 
       worker.setStatus(WorkerInfo.State.PROCESSING);
-      auto current = requestToProcess;
 
       // We fill the first bytes of the data with the daemon-to-worker header
       DaemonToWorkerHeader header;
@@ -1146,7 +1157,7 @@ package class Communicator
                      requestDataReceived = false; // Request completed, we can reset the timeout
                      hasMoreDataToParse = leftover.length > 0;
 
-                     if(request == requestToProcess)
+                     if(request == requestToProcess && worker is null)
                         pushToWaitingList(this);
 
                      if (request.connection == ProtoRequest.Connection.KeepAlive) status = State.KEEP_ALIVE;
@@ -1183,7 +1194,7 @@ package class Communicator
                   request.data = request.data[0..request.headersLength + request.contentLength];
                   request.isValid = true;
 
-                  if(request == requestToProcess)
+                  if(request == requestToProcess && worker is null)
                      pushToWaitingList(this);
 
                   hasMoreDataToParse = leftover.length > 0;

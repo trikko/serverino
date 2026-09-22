@@ -69,6 +69,35 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
         run: dub run --root=tests/test-04
 
+      - name: Run test-05
+        run: dub run --root=tests/test-05
+
+      - name: Run test-05 (two workers)
+        env:
+          SERVERINO_TEST_WORKERS: 2
+        run: dub run --root=tests/test-05
+
+      - name: Run test-05 (worker backlog)
+        env:
+          SERVERINO_TEST_BACKLOG: 1
+        run: dub run --root=tests/test-05
+
+      - name: Run test-05 (two workers, worker backlog)
+        env:
+          SERVERINO_TEST_WORKERS: 2
+          SERVERINO_TEST_BACKLOG: 1
+        run: dub run --root=tests/test-05
+
+      - name: Run test-01 (worker backlog)
+        env:
+          SERVERINO_TEST_BACKLOG: 1
+        run: dub run --root=tests/test-01
+
+      - name: Run test-02 (worker backlog)
+        env:
+          SERVERINO_TEST_BACKLOG: 1
+        run: dub run --root=tests/test-02
+
       - name: Build examples
         run: dub build --build=release --root=examples/01_hello_world/
               && dub build --root=examples/02_priority/
