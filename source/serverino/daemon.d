@@ -1034,6 +1034,15 @@ package:
          }
 
          listener.socket = new TcpSocket(listener.address.addressFamily);
+
+         // Windows lets child processes inherit handles: a worker would keep the port
+         // busy, even after the daemon is gone.
+         version(Windows)
+         {
+            import core.sys.windows.winbase : SetHandleInformation, HANDLE_FLAG_INHERIT;
+            import core.sys.windows.windef : HANDLE;
+            SetHandleInformation(cast(HANDLE) listener.socket.handle, HANDLE_FLAG_INHERIT, 0);
+         }
          listener.socket.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
 
          if (listener.socket.addressFamily == AddressFamily.INET6)

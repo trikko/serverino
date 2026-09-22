@@ -97,13 +97,10 @@ jobs:
 
               # DIAGNOSTICS: who is still alive, and who owns port 8080, after the test ends?
               if [ "$RUNNER_OS" = "Windows" ]; then
-                for when in 2 30; do
-                  sleep $(( when == 2 ? 2 : 28 ))
-                  echo "---- ${when}s after the end of the test"
-                  powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='test-05.exe'\" | Select-Object ProcessId,ParentProcessId,CreationDate,@{n='Args';e={\$_.CommandLine.Length}} | Format-Table -AutoSize | Out-String -Width 200"
-                  netstat -ano | grep -E ':8080 ' || echo "nothing on 8080"
-                done
-                exit 1
+                sleep 2
+                echo "---- 2s after the end of the test"
+                powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='test-05.exe'\" | Select-Object ProcessId,ParentProcessId,CreationDate | Format-Table -AutoSize | Out-String -Width 200"
+                netstat -ano | grep -E ':8080 .*LISTENING' || echo "nobody listening on 8080"
               fi
 
               wait_workers
