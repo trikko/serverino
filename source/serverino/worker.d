@@ -62,6 +62,25 @@ struct Worker
       channel.send(packet.array);
    }
 
+   /+ On Windows, close the channel only once the daemon has read what we sent. If there are
+    + requests queued for us (worker backlog) we never read, closing the socket resets the
+    + connection and the daemon can lose the data it has not read yet: the 504, for example.
+    + On FIN the daemon closes its end, so the wait is short. (RCVTIMEO bounds it anyway)
+    + On POSIX the daemon reads what we sent before seeing the reset: nothing to wait for.
+    +/
+   void closeChannelGracefully()
+   {
+      version(Windows)
+      {
+         channel.shutdown(SocketShutdown.SEND);
+
+         ubyte[4096] buffer = void;
+         while(channel.receive(buffer) > 0) { }
+      }
+
+      channel.close();
+   }
+
    void wake(Modules...)()
    {
 
@@ -220,7 +239,7 @@ struct Worker
             sendPayload(wp);
          }
 
-         channel.close();
+         closeChannelGracefully();
          exit(0);
       }).start();
 
