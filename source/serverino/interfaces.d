@@ -2011,50 +2011,68 @@ class WebSocket
             foreach(i, ref ubyte b; payload)
                b ^= mask[i % 4];
 
-         _parsedData ~= payload;
          _toParse = cursor[payloadLength..$];
 
-         if (flagFIN)
+         WebSocketMessage.OpCode msgOpcode;
+         ubyte[] msgData;
+
+         // Control frames (close, ping, pong) are never fragmented, but they can arrive
+         // between the fragments of a message: they must not touch the fragments.
+         if ((opcode & WebSocketMessage.OpCode.Close) != 0)
          {
-            scope(exit) _parsedData = null;
-
-            if (opcode == WebSocketMessage.OpCode.Ping)
-            {
-               debug log("PING received, sending PONG");
-               sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Pong, _parsedData));
-               return WebSocketMessage.init;
-            }
-
-            auto msg = WebSocketMessage
-            (
-               cast(WebSocketMessage.OpCode)opcode,
-               _parsedData
-            );
-
-            msg.isValid = true;
-
-            bool propagate = true;
-
-            switch(cast(WebSocketMessage.OpCode)opcode)
-            {
-               case WebSocketMessage.OpCode.Binary:
-                  if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
-                  break;
-
-               case WebSocketMessage.OpCode.Text:
-                  if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
-                  break;
-
-               case WebSocketMessage.OpCode.Close:
-                  if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
-                  break;
-               default: break;
-            }
-
-            if (propagate && onMessage !is null) propagate = onMessage(msg);
-
-            return msg;
+            msgOpcode = cast(WebSocketMessage.OpCode)opcode;
+            msgData = payload.dup;
          }
+         else
+         {
+            // Only the first fragment tells what the message is: the others are Continue.
+            if (opcode != WebSocketMessage.OpCode.Continue)
+               _fragmentOpcode = cast(WebSocketMessage.OpCode)opcode;
+
+            _parsedData ~= payload;
+
+            if (!flagFIN)
+               continue;
+
+            msgOpcode = _fragmentOpcode;
+            msgData = _parsedData;
+
+            _parsedData = null;
+            _fragmentOpcode = WebSocketMessage.OpCode.Continue;
+         }
+
+         if (msgOpcode == WebSocketMessage.OpCode.Ping)
+         {
+            debug log("PING received, sending PONG");
+            sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Pong, msgData));
+            return WebSocketMessage.init;
+         }
+
+         auto msg = WebSocketMessage(msgOpcode, msgData);
+
+         msg.isValid = true;
+
+         bool propagate = true;
+
+         switch(msgOpcode)
+         {
+            case WebSocketMessage.OpCode.Binary:
+               if (propagate && onBinaryMessage !is null) propagate = onBinaryMessage(msg.as!(ubyte[]));
+               break;
+
+            case WebSocketMessage.OpCode.Text:
+               if (propagate && onTextMessage !is null) propagate = onTextMessage(msg.as!string);
+               break;
+
+            case WebSocketMessage.OpCode.Close:
+               if (propagate && onCloseMessage !is null) propagate = onCloseMessage(msg);
+               break;
+            default: break;
+         }
+
+         if (propagate && onMessage !is null) propagate = onMessage(msg);
+
+         return msg;
       }
 
       assert(false);
@@ -2070,6 +2088,8 @@ class WebSocket
    ubyte[]   _toParse;
    ubyte[]   _parsedData;
    ubyte[]   _leftover;
+
+   WebSocketMessage.OpCode _fragmentOpcode = WebSocketMessage.OpCode.Continue;
    Socket    _socket;
 
    bool      _isDirty = false;

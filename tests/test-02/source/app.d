@@ -187,6 +187,7 @@ ServerinoConfig conf()
 
    assert(msg.isValid);
    assert(msg.asString == "Hello from client");
+   assert(msg.opcode == WebSocketMessage.OpCode.Text);
    s.send(msg.asString);
    s.send(cast(int)123);
 
@@ -786,6 +787,53 @@ void test()
 
       assert(reply[2..$].startsWith("Hello from client".representation), reply.to!string);
       assert(reply[2 + "Hello from client".representation.length + 2..$].startsWith([123,0,0,0]), reply.to!string);
+      ws.sendClose();
+   }
+
+   info("Test ping between the parts of a message");
+   {
+      auto handshake = "GET /hello HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n";
+
+      auto sck = new TcpSocket();
+      sck.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, 1);
+      sck.blocking = true;
+      sck.connect(new InternetAddress("localhost", 8080));
+      sck.send(handshake);
+
+      ubyte[] buffer;
+      buffer.length = 129;
+
+      {
+         auto ln = sck.receive(buffer);
+         auto handshakeReply = buffer[0..ln];
+
+         assert(handshakeReply.startsWith("HTTP/1.1 101 Switching Protocols"));
+      }
+
+      WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
+
+      ws.sendMessage(WebSocketMessage("Hello "), false);
+      ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "from "), false);
+      ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Ping, "ping!"), true);
+      ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "client"), true);
+
+      // Pong first, then the message and the int sent back by ws3
+      enum pongLength = 2 + "ping!".length;
+      enum replyLength = pongLength + 2 + "Hello from client".length + 2 + 4;
+
+      buffer.length = 32000;
+      ubyte[] reply;
+
+      while(reply.length < replyLength)
+      {
+         auto recv = sck.receive(buffer);
+         if (recv <= 0) break;
+         reply ~= buffer[0..recv];
+      }
+
+      assert(reply.length >= replyLength, reply.to!string);
+      assert(reply[0] == 0x8A && reply[2..pongLength] == "ping!".representation, reply.to!string);
+      assert(reply[pongLength + 2..$].startsWith("Hello from client".representation), reply.to!string);
       ws.sendClose();
    }
 
