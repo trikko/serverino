@@ -529,6 +529,14 @@ package class WorkerInfo
                log("Error sending socket to websocket.");
                webs.shutdown(SocketShutdown.BOTH);
                webs.close();
+
+               // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+               // (this close was missing anyway: keep it even if the rest is reverted)
+               version(Posix)
+               {
+                  import core.sys.posix.unistd : close;
+                  close(toSend);
+               }
             }
             else
             {
@@ -539,11 +547,11 @@ package class WorkerInfo
                // Send worker http upgrade response
                webs.send(hdrs);
 
-               version(Posix)
-               {
-                  import core.sys.posix.unistd : close;
-                  close(toSend);
-               }
+               // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+               // Revert: replace the line below with the close(toSend) of the error branch above.
+               // Don't close our copy yet: the socket could still be in flight.
+               // (see checkPendingHandoffs)
+               version(Posix) addPendingHandoff(toSend, webs);
             }
 
             // The websocket lives on its own process now: the worker is free again.
@@ -1523,6 +1531,9 @@ package:
             }
          }
 
+         // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+         version(Posix) if (pendingHandoffs.length > 0) checkPendingHandoffs();
+
          // Check if we have some free workers and some waiting communicators.
          if (Communicator.execWaitingListFront !is null)
          {
@@ -1617,6 +1628,9 @@ package:
          listener.socket.shutdown(SocketShutdown.BOTH);
          listener.socket.close();
       }
+
+      // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+      version(Posix) checkPendingHandoffs(true);
 
       // Kill all the workers and release what they own right now, while this thread
       // is still alive and the kqueue/epoll descriptors are still valid. Leaving it
@@ -1800,3 +1814,70 @@ void tryUninit(Modules...)()
 
 // Time is cached to avoid calling CoarseTime.currTime too many times.
 package __gshared CoarseTime now;
+
+// MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+// Everything in this version(Posix) block belongs to it.
+version(Posix)
+{
+   /+ A socket passed to a websocket process through SCM_RIGHTS stays open here until
+    + the process has taken it. If we close it while it's still in flight, the message
+    + is its only reference and macOS can discard it: the websocket reads EOF and the
+    + client gets a RST. The websocket process closes the channel once it has the socket
+    + and the headers, so EOF on the channel means the handoff is done.
+    +/
+   private struct PendingHandoff
+   {
+      socket_t    client;
+      Socket      channel;
+      CoarseTime  deadline;
+   }
+
+   // One list for each daemon thread: every thread runs its own loop.
+   private PendingHandoff[] pendingHandoffs;
+
+   private void addPendingHandoff(socket_t client, Socket channel)
+   {
+      import std.datetime : seconds;
+
+      channel.blocking = false;
+      pendingHandoffs ~= PendingHandoff(client, channel, now + 5.seconds);
+   }
+
+   private void checkPendingHandoffs(bool closeAll = false)
+   {
+      import std.socket : wouldHaveBlocked;
+      import core.stdc.errno : errno, EINTR;
+      import core.sys.posix.unistd : close;
+
+      size_t i = 0;
+      while (i < pendingHandoffs.length)
+      {
+         auto h = &pendingHandoffs[i];
+
+         bool done = closeAll || now >= h.deadline;
+
+         if (!done)
+         {
+            ubyte[1] data;
+            auto received = h.channel.receive(data);
+
+            // EOF or a real error. Anything else means the websocket is not done yet.
+            done = received == 0 || (received < 0 && !wouldHaveBlocked && errno != EINTR);
+         }
+
+         if (!done)
+         {
+            ++i;
+            continue;
+         }
+
+         close(h.client);
+         h.channel.shutdown(SocketShutdown.BOTH);
+         h.channel.close();
+
+         pendingHandoffs[i] = pendingHandoffs[$-1];
+         pendingHandoffs.length--;
+         pendingHandoffs.assumeSafeAppend();
+      }
+   }
+}

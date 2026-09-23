@@ -678,10 +678,8 @@ void test()
 
       WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
 
-      // On macOS there's a race condition between daemon closing the socket and client sending the first message.
-      // If the daemon closes the socket while there's unread data in the buffer, it sends a RST.
-      version(OSX) Thread.sleep(10.msecs);
-
+      // MACOS-HANDOFF: a `version(OSX) Thread.sleep(10.msecs);` was here, removed to check
+      // the fix in daemon.d. Put it back if the fix is reverted.
       ws.sendMessage(WebSocketMessage("Hello from client"), true);
 
       buffer.length = 32000;
@@ -746,10 +744,8 @@ void test()
 
       WebSocket ws = new WebSocket(sck, WebSocket.Role.Client);
 
-      // On macOS there's a race condition between daemon closing the socket and client sending the first message.
-      // If the daemon closes the socket while there's unread data in the buffer, it sends a RST.
-      version(OSX) Thread.sleep(10.msecs);
-
+      // MACOS-HANDOFF: a `version(OSX) Thread.sleep(10.msecs);` was here, removed to check
+      // the fix in daemon.d. Put it back if the fix is reverted.
       ws.sendMessage(WebSocketMessage("Hello "), false);
       ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "from "), false);
       ws.sendMessage(WebSocketMessage(WebSocketMessage.OpCode.Continue, "client"), true);
