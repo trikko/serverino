@@ -977,6 +977,16 @@ package:
             sigaction_t act_ignore = { sa_handler: SIG_IGN };
             sigaction(SIGPIPE, &act_ignore, null);
          }
+         else
+         {
+            // OpenSSL uses write(): a closed client must not kill the application
+            import core.sys.posix.signal : sigset_t, sigemptyset, sigaddset, pthread_sigmask, SIG_BLOCK, SIGPIPE;
+
+            sigset_t set;
+            sigemptyset(&set);
+            sigaddset(&set, SIGPIPE);
+            pthread_sigmask(SIG_BLOCK, &set, null);
+         }
       }
 
       if (isMainThread) tryInit!Modules();
