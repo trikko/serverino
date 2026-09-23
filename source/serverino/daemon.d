@@ -1243,6 +1243,10 @@ package:
 
          now = CoarseTime.currTime;
 
+         // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+         // Here and not later: a wait that times out skips the rest of the loop.
+         version(Posix) if (pendingHandoffs.length > 0) checkPendingHandoffs();
+
          // Some sanity checks. We don't want to check too often.
          {
             static CoarseTime lastCheck = CoarseTime.zero;
@@ -1530,9 +1534,6 @@ package:
                }
             }
          }
-
-         // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
-         version(Posix) if (pendingHandoffs.length > 0) checkPendingHandoffs();
 
          // Check if we have some free workers and some waiting communicators.
          if (Communicator.execWaitingListFront !is null)
