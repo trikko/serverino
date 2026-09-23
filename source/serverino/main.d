@@ -276,7 +276,15 @@ int wakeServerino(Modules...)(ref ServerinoConfig config)
 
 
    if (ServerinoProcess.isWorker) Worker.wake!Modules();
-   else if (ServerinoProcess.isWebSocket) WebSocketWorker.wake!Modules();
+   else if (ServerinoProcess.isWebSocket)
+   {
+      WebSocketWorker.wake!Modules();
+
+      // Never return, as the workers do: with ServerinoBackground we are inside a
+      // static constructor, and returning would run the user's main() in this process.
+      import core.stdc.stdlib : exit;
+      exit(0);
+   }
    else Daemon.wake!Modules(daemonConfig, workerConfig);
 
    return 0;
