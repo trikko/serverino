@@ -224,9 +224,9 @@ package class Communicator
          
          version(serverino_enable_https)
          {
+            // TLS was shut down by reset(), while the socket was still open.
             if (tlsStream !is null)
             {
-               tlsStream.close();
                tlsStream.releaseContext();
                tlsStream = null;
             }
@@ -312,6 +312,12 @@ package class Communicator
    // Reset the communicator to the initial state and clear the requests queue
    void reset()
    {
+      // SSL_shutdown writes on the socket: call it while the socket is still open.
+      version(serverino_enable_https)
+      {
+         if (tlsStream !is null) tlsStream.close();
+      }
+
       if (clientSkt !is null)
       {
          clientSkt.shutdown(SocketShutdown.BOTH);
@@ -323,7 +329,6 @@ package class Communicator
       {
          if (tlsStream !is null)
          {
-            tlsStream.close();
             tlsStream.releaseContext();
             tlsStream = null;
          }
