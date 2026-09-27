@@ -48,3 +48,6 @@ void test_5(Request r, Output o) { history ~= 5; }
 // Functions missing the @endpoint attribute
 @priority(4) void wrong_function(Request r) { return; }
 @route!"/hello" void wrong_function_2(Request r) { return; }
+// Types whose constructors take a Request or an Output are not handlers: they must compile and be ignored
+struct NotAHandler { string path; this(Request r) { path = r.path; } }
+struct NotAHandlerEither { this(Request r, Output o) { } }

@@ -867,8 +867,10 @@ struct Worker
                import std.traits : hasUDA;
                alias s = __traits(getMember, globalNs, sy);
 
+               // `!is(s)`: a type whose constructor takes a Request or an Output compiles too, but it's not a handler
                static if
                (
+                  !is(s) &&
                   (
                      __traits(compiles, s(request, output)) ||
                      __traits(compiles, s(request)) ||
