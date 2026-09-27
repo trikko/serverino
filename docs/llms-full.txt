@@ -1,11 +1,18 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.8.3 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.4 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
 Source of truth: https://github.com/trikko/serverino
 Runnable examples (compiled in CI): https://github.com/trikko/serverino/tree/master/examples
+Latest version of this file: https://serverino.dev/llms-full.txt
+
+Everything here refers to 0.8.4. Check the version the project uses
+(`dub.selections.json`, or `SERVERINO_MAJOR`/`SERVERINO_MINOR`/`SERVERINO_REVISION`
+from `serverino.common`). If it is newer, this copy is out of date: fetch the latest
+one before writing code, or say that you are working from an older reference. If it
+is older, anything marked *(since x.y.z)* may not exist there yet.
 
 Contents:
   1. Project overview
@@ -49,7 +56,7 @@ dub add serverino
 The library exposes two dub configurations:
 
 - `lib` (default): plain HTTP/WebSocket server, no external libraries.
-- `https`: enables TLS. POSIX only; links `ssl` and `crypto` and sets the
+- `https` *(since 0.8.0)*: enables TLS. POSIX only; links `ssl` and `crypto` and sets the
   `serverino_enable_https` version identifier. See section 10.
 
 The I/O backend is chosen automatically from the target OS. To override it, set
@@ -107,7 +114,7 @@ void main() {
 The daemon runs on its own thread, so a failed boot (an invalid configuration, or
 a `setReturnCode()` from `@onServerInit`) can't reach your `main()` as a return
 code, and it does **not** terminate the process: it's up to you to check it.
-`Daemon.bootFailed` and `Daemon.bootError` (from `serverino.daemon`) report it:
+`Daemon.bootFailed` and `Daemon.bootError` (from `serverino.daemon`, *since 0.8.0*) report it:
 
 ```d
 while(!Daemon.bootCompleted && !Daemon.bootFailed) Thread.sleep(10.msecs);
@@ -116,6 +123,9 @@ if (Daemon.bootFailed) { stderr.writeln(Daemon.bootError); return 1; }
 
 Waiting on `bootCompleted` alone would wait forever. With `ServerinoMain` none of
 this applies: the return code is the process exit code.
+
+Your `main()` runs only in the main process: worker and WebSocket processes start
+from the same executable but exit when they're done, without ever reaching it.
 
 ---
 
@@ -162,7 +172,7 @@ and turned into an exception during validation, listing every failed listener.
 | `.setMaxDynamicWorkerIdling(dur)` | `60.seconds` | Applies only to workers above `minWorkers`. |
 | `.setMaxRequestTime(dur)` | `5.seconds` | Worker handling the request is **killed** past this. Override per request with `output.setMaxRequestTime()`. |
 | `.setDaemonInstances(n)` | `1` | Number of accept/event loops. Must be 1 on Windows. |
-| `.enableWorkerBacklog(depth = 4)` | disabled | When no worker is idle and none can be started, queue up to `depth` requests behind a busy worker (at most 32 KiB in flight per worker; bigger requests wait for a free worker). Good for many short requests, bad if a request can be slow: a queued request waits for the one in front of it. `.disableWorkerBacklog()` turns it off. |
+| `.enableWorkerBacklog(depth = 4)` *(since 0.8.3)* | disabled | When no worker is idle and none can be started, queue up to `depth` requests behind a busy worker (at most 32 KiB in flight per worker; bigger requests wait for a free worker). Good for many short requests, bad if a request can be slow: a queued request waits for the one in front of it. `.disableWorkerBacklog()` turns it off. |
 | `.enableWorkersAutoReload(bool)` | disabled | Reload workers when the executable changes. The daemon is *not* reloaded, so daemon-side code (including this config) is not updated. |
 
 ### 4.3 Security & metadata
@@ -173,7 +183,7 @@ and turned into an exception during validation, listing every failed listener.
 | `.enableServerSignature(bool)` | disabled | Adds the `Server: serverino` header. |
 | `.enableRemoteIp(bool)` | disabled | Adds an `x-remote-ip` header with the client IP. |
 | `.setWorkerUser(string)` / `.setWorkerGroup(string)` | none | Drop privileges, e.g. `"www-data"`. POSIX only; throws on Windows. |
-| `.addListener(address, port, Https(cert, key))` | - | Encrypted listener. See section 10. |
+| `.addListener(address, port, Https(cert, key))` *(since 0.8.0)* | - | Encrypted listener. See section 10. |
 
 ### 4.4 Logging & runtime
 
@@ -282,9 +292,9 @@ beyond the endpoint call.
 | `body` | tuple `(data, contentType)` | Raw body: `request.body.data`, `request.body.contentType`. |
 | `user`, `password` | `string` | Basic Auth credentials. |
 | `id` | `string` | Unique per request, e.g. `a1b2-0042`. Handy for logs. |
-| `route` | `string[]` | Fully-qualified names of the endpoints that ran. |
+| `route` | `immutable(string)[]` | Fully-qualified names of the endpoints that ran. |
 | `requestLine` | `string` | Raw request line. |
-| `isSecure` | `bool` | True if the request came from a https listener. Set by the daemon: a client can't forge it. |
+| `isSecure` *(since 0.8.0)* | `bool` | True if the request came from a https listener. Set by the daemon: a client can't forge it. |
 | `worker` | | Id of the worker serving the request. |
 | `dump(bool html = true)` | `string` | Human-readable dump of the whole request; for debugging. |
 
@@ -302,10 +312,10 @@ There is no `opIndex`.
 string name = request.get.read("name", "Guest");  // first value or default
 bool   isAdmin = request.get.has("admin");        // presence check
 
-// To iterate over all values of a specific key (e.g. ?tag=a&tag=b):
+// To iterate over all values of a specific key (e.g. ?tag=a&tag=b), since 0.8.1:
 foreach(val; request.get.readAll("tag")) { }
 
-// To iterate over all keys and values:
+// To iterate over all keys and values, since 0.8.1:
 foreach(k, v; request.get) { }
 ```
 
@@ -331,7 +341,7 @@ survive the request.
 
 | Member | Notes |
 |---|---|
-| `output ~= "string"` | Append to the response body. Also `output.write(data)` for `string` or `void[]`. |
+| `output ~= data` | Append to the response body. Strings and arrays of bytes (`ubyte[]`, `void[]`, ...) are written as they are *(bytes since 0.8.4: before, they came out as text like `[137, 80, ...]`, so use `output.write(bytes)` there)*; anything else goes through `to!string`. Also `output.write(data)` for `string` or `void[]`. |
 | `output.status` | Read/write `ushort`. `200` by default. Named constants in `Output.Status` (`OK`, `NotFound`, `Forbidden`, `InternalServerError`, ...). |
 | `output.addHeader(key, value)` | Also accepts a `Duration` or a `SysTime` as value (formatted as an HTTP date). |
 | `output.clearHeaders()` | Drop all headers added so far. |
@@ -384,7 +394,7 @@ output.setCookie(c);
 
 ## 10. HTTPS / TLS
 
-TLS support is **experimental**, **opt-in at build time** and **POSIX only**
+*(since 0.8.0)* TLS support is **experimental**, **opt-in at build time** and **POSIX only**
 (it uses OpenSSL). Add the `https` subconfiguration in your dub file, otherwise
 passing certificates to `addListener()` is a compile time error.
 
@@ -544,6 +554,10 @@ Returning `true` propagates the message to the next handler (e.g. from
 
 Constructors: `WebSocketMessage("text")` (Text), `WebSocketMessage(bytes)` or any
 basic type (Binary), or `WebSocketMessage(opcode, payload)`.
+
+Fragmented messages are reassembled before they reach you *(fixed in 0.8.4)*: the message has the
+opcode of its first fragment (Text or Binary), never `Continue`. Control frames
+(ping, pong, close) arriving between fragments don't break the message.
 
 ---
 

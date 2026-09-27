@@ -1,7 +1,7 @@
 # Serverino
 
 Serverino is a zero-dependency HTTP and WebSocket server library for the D
-programming language. Version 0.8.3.
+programming language. Version 0.8.4.
 
 Read the reference before writing serverino code. It is two files:
 
@@ -13,6 +13,20 @@ Read the reference before writing serverino code. It is two files:
 
 In the packaged skill both sit next to this file; installed from the web, fetch
 them from the addresses above.
+
+## Which version this is
+
+This reference describes Serverino 0.8.4. Before relying on it, check which
+version the project uses: `dub.selections.json` pins it (the dub file only gives
+a range), and `SERVERINO_MAJOR`, `SERVERINO_MINOR` and `SERVERINO_REVISION` from
+`serverino.common` report it at compile time.
+
+- **The project is newer than 0.8.4**: this copy is out of date. Fetch the
+  current <https://serverino.dev/llms-full.txt> before writing code; if you
+  can't, say that you are working from an older reference.
+- **The project is older than 0.8.4**: whatever `llms-full.txt` marks
+  *(since x.y.z)* may be missing. Don't use it, or suggest upgrading first.
+- **No project yet**: use the latest release (`dub add serverino`).
 
 What follows are the rules that are easiest to get wrong.
 
@@ -44,7 +58,7 @@ of them must be tagged, or the untagged ones are never called.
 
 - `request.get`, `request.post`, `request.form`, `request.header`,
   `request.cookie` are **not** associative arrays. Use `.read("key", "default")`
-  and `.has("key")`. Use `.readAll("key")` to iterate duplicate keys, or `.data` to access the underlying array of tuples.
+  and `.has("key")`. Use `.readAll("key")` to iterate duplicate keys, or `.data` to access the underlying array of tuples (since 0.8.1; before it, `.data` was a `string[string]` and `readAll` didn't exist).
 - Multipart fields **and** uploaded files are in `request.form`, never in
   `request.post`. A `FormData` has `.isFile`, `.filename`, `.contentType` and
   `.path`, the temporary file the daemon already saved.
@@ -59,6 +73,9 @@ of them must be tagged, or the untagged ones are never called.
 ## Responses
 
 - `output ~= data` appends to the body; the default content type is `text/html`.
+  Strings and byte arrays (`ubyte[]`, e.g. a PNG) are written as they are, anything
+  else through `to!string` (`output ~= 42` writes `42`). Before 0.8.4 a `ubyte[]`
+  came out as the text `[137, 80, ...]`: there, use `output.write(bytes)`.
 - `output.status = 404` sets the code. `output.addHeader("content-type", …)`,
   `output.setCookie(Cookie("k", "v").path("/").maxAge(1.hours))`.
 - `content-length`, `date`, `server`, `status` and `transfer-encoding` are

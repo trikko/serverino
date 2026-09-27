@@ -75,6 +75,9 @@ jobs:
              that renews its own Let's Encrypt certificate.
 
           When an answer depends on a signature, check it against `llms-full.txt` before writing it.
+
+          This copy documents one release: `AGENTS.md` says which, and what to do when the
+          project uses a different one.
           EOF
 
       - name: Zip the Skill folder

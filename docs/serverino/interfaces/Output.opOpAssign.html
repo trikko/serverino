@@ -62,7 +62,9 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 					</code>
 				</div>
 				<section><h2>Example</h2>
-<pre class="code"><code class="lang-d"><span class="pln">output </span><span class="pun">~= </span><span class="str">"Hello world"</span><span class="pun">;</span></code></pre>
+<pre class="code"><code class="lang-d"><span class="pln">output </span><span class="pun">~= </span><span class="str">"Hello world"</span><span class="pun">;
+</span><span class="pln">output </span><span class="pun">~= </span><span class="kwd">cast</span><span class="pun">(</span><span class="typ">ubyte</span><span class="pun">[]) </span><span class="pln">read</span><span class="pun">(</span><span class="str">"logo.png"</span><span class="pun">); </span><span class="com">// Arrays of bytes are written as they are
+</span><span class="pln">output </span><span class="pun">~= </span><span class="lit">42</span><span class="pun">;                             </span><span class="com">// Anything else is converted with to!string</span></code></pre>
 </section>
 
 			</div>
