@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+   A plain html page, with example content: open it in a browser to see what it looks like.
+   The code fills it through ids and classes, and removes the example rows and the sections
+   that are not needed. There is no template language in here.
+-->
+<html lang="en">
+<head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <title>Page inspector</title>
+   <style>
+      :root { --ink: #1f3b53; --soft: #5f7488; --line: #dde3e8; --accent: #b3541e; --bg: #f5f6f3; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+      main { max-width: 960px; margin: 0 auto; padding: 32px 20px 60px; }
+      h1 { margin: 0 0 4px; font-size: 26px; }
+      h2 { margin: 0 0 12px; font-size: 16px; text-transform: uppercase; letter-spacing: .06em; color: var(--soft); }
+      a { color: var(--accent); }
+      .lead { margin: 0 0 20px; color: var(--soft); }
+      form { display: flex; gap: 8px; }
+      input[type=url] { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+      input[type=url]::placeholder { color: #aab6c0; font-style: italic; opacity: 1; }
+      button { padding: 10px 20px; border: 0; border-radius: 6px; background: var(--ink); color: #fff; font: inherit; cursor: pointer; }
+      .try { margin: 8px 0 0; font-size: 13px; color: var(--soft); }
+      .try a { margin-right: 10px; }
+      .card { margin-top: 20px; padding: 20px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+      .error { border-color: #e2b6a0; background: #fdf3ee; color: #8a3413; }
+      .summary { display: grid; grid-template-columns: 1fr 170px; gap: 24px; }
+      .summary h3 { margin: 0 0 6px; font-size: 20px; }
+      .summary p { margin: 0 0 8px; }
+      .muted { color: var(--soft); font-size: 13px; word-break: break-all; }
+      .preview { max-width: 100%; max-height: 180px; margin-top: 8px; border-radius: 6px; }
+      .qr svg { display: block; width: 170px; height: 170px; }
+      .qr a { display: block; margin-top: 4px; font-size: 13px; text-align: center; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+      .stat { padding: 12px; border: 1px solid var(--line); border-radius: 6px; }
+      .stat b { display: block; font-size: 22px; }
+      .stat span { color: var(--soft); font-size: 13px; }
+      .columns { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+      ul { margin: 0; padding: 0; list-style: none; }
+      .outline li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+      .outline .tag { display: inline-block; width: 28px; color: var(--soft); font-size: 12px; }
+      .outline .h2 { padding-left: 18px; }
+      .outline .h3 { padding-left: 36px; }
+      .domains li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--line); }
+      .errors li { font: 13px/1.6 ui-monospace, monospace; }
+      footer { margin-top: 28px; color: var(--soft); font-size: 13px; }
+      @media (max-width: 700px) { .summary, .columns { grid-template-columns: 1fr; } }
+   </style>
+</head>
+<body>
+<main>
+   <h1>Page inspector</h1>
+   <p class="lead">Give it a web page: it's downloaded and parsed with parserino, as a browser would.</p>
+
+   <form method="get" action="/">
+      <input type="url" name="url" id="url" placeholder="Paste the address of a page…" required>
+      <button>Inspect</button>
+   </form>
+   <p class="try">Try:
+      <a href="/?url=https://dlang.org/">dlang.org</a>
+      <a href="/?url=https://en.wikipedia.org/wiki/D_(programming_language)">Wikipedia</a>
+      <a href="/?url=https://news.ycombinator.com/">Hacker News</a>
+      <a href="/?url=https://serverino.dev/">serverino.dev</a>
+   </p>
+
+   <div class="card error" id="error">The page could not be downloaded.</div>
+
+   <div id="report">
+      <section class="card summary">
+         <div>
+            <h3 id="title">Home - D Programming Language</h3>
+            <p id="description">D is a general-purpose programming language with static typing, systems-level access, and C-like syntax.</p>
+            <p class="muted"><span id="final-url">https://dlang.org/</span> · lang <span id="lang">en</span> · <span id="encoding">UTF-8</span></p>
+            <p class="muted" id="canonical-row">canonical: <a id="canonical" href="https://dlang.org/">https://dlang.org/</a></p>
+            <img class="preview" id="preview" src="" alt="The og:image of the page">
+         </div>
+         <div class="qr">
+            <div id="qr"><svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#dde3e8"/></svg></div>
+            <a id="qr-download" href="/qr.png?data=https://dlang.org/">Download the QR code</a>
+         </div>
+      </section>
+
+      <section class="card">
+         <h2>At a glance</h2>
+         <div class="stats">
+            <div class="stat"><b id="words">1,234</b><span>words of text</span></div>
+            <div class="stat"><b id="links-internal">56</b><span>internal links</span></div>
+            <div class="stat"><b id="links-external">21</b><span>external links</span></div>
+            <div class="stat"><b id="images">8</b><span>images, <em id="images-no-alt">2</em> without alt</span></div>
+            <div class="stat"><b id="scripts">5</b><span>scripts, <em id="scripts-inline">1</em> inline</span></div>
+            <div class="stat"><b id="html-errors">3</b><span>html errors</span></div>
+         </div>
+      </section>
+
+      <div class="columns">
+         <section class="card">
+            <h2>Outline</h2>
+            <ul class="outline" id="outline">
+               <li class="h1"><span class="tag">h1</span><span class="text">The D Programming Language</span></li>
+               <li class="h2"><span class="tag">h2</span><span class="text">Why D?</span></li>
+               <li class="h3"><span class="tag">h3</span><span class="text">Fast code, fast</span></li>
+            </ul>
+            <p class="muted" id="no-headings">This page has no headings.</p>
+         </section>
+
+         <section class="card">
+            <h2>Links to other sites</h2>
+            <ul class="domains" id="domains">
+               <li><span class="domain">github.com</span><b class="count">12</b></li>
+               <li><span class="domain">forum.dlang.org</span><b class="count">4</b></li>
+            </ul>
+            <p class="muted" id="no-domains">No links to other sites.</p>
+         </section>
+      </div>
+
+      <section class="card" id="errors-card">
+         <h2>What's wrong with the html</h2>
+         <ul class="errors" id="errors">
+            <li>12:4: unexpected-end-tag</li>
+         </ul>
+         <p class="muted" id="errors-more">… and 2 more.</p>
+      </section>
+   </div>
+
+   <footer>
+      <span id="bytes">48,210</span> bytes downloaded in <span id="download-ms">120</span> ms,
+      parsed and inspected in <span id="parse-ms">1.8</span> ms.
+      Served by serverino, html by parserino, QR code by qr.
+   </footer>
+</main>
+</body>
+</html>

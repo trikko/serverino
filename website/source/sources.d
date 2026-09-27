@@ -32,8 +32,8 @@ immutable Example[] examples = [
       "GET and POST fields, multipart forms and uploaded files.",
       import("03_form/source/app.d")),
 
-   Example("04_html_dom", "HTML templates",
-      "Filling an HTML template through a DOM, with parserino.",
+   Example("04_html_dom", "Page inspector",
+      "Downloads a web page and inspects it with parserino; the report is an HTML template, the QR code comes from qr.",
       import("04_html_dom/source/app.d")),
 
    Example("05_websocket_echo", "WebSocket echo",

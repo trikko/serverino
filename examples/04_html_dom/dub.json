@@ -4,8 +4,10 @@
 	],
 	"dependencies": {
 		"serverino":  { "path": "../../" },
-		"parserino": "~>0.2.5"
+		"parserino": "~>1.0.0",
+		"qr": "~>1.0.7"
 	},
+	"stringImportPaths": ["views"],
 	"license": "proprietary",
 	"name": "html_dom"
 }
