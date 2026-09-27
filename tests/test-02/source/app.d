@@ -140,6 +140,19 @@ void main()
    o ~= r.path[6..$];
 }
 
+@route!"/bytes"
+@endpoint void bytes(Request r, Output o)
+{
+   ubyte[] all = iota(256).map!(x => cast(ubyte)x).array;
+   ubyte[4] fixed = [1, 2, 3, 4];
+   const(void)[] raw = "raw".representation;
+
+   o ~= all;
+   o ~= fixed;
+   o ~= raw;
+   o ~= 42;
+}
+
 @onServerInit
 ServerinoConfig conf()
 {
@@ -207,6 +220,13 @@ ServerinoConfig conf()
 
 void test()
 {
+   info("Output ~= bytes");
+   {
+      auto data = get!(AutoProtocol, ubyte)("http://localhost:8080/bytes");
+      auto expected = iota(256).map!(x => cast(ubyte)x).array ~ cast(ubyte[])[1, 2, 3, 4] ~ "raw42".representation;
+      assert(data == expected, data.to!string);
+   }
+
    info("Worker crash");
    {
       bool asserted = false;

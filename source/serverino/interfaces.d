@@ -1309,9 +1309,21 @@ struct Output
    * Example:
    * --------------------
    * output ~= "Hello world";
+   * output ~= cast(ubyte[]) read("logo.png"); // Arrays of bytes are written as they are
+   * output ~= 42;                             // Anything else is converted with to!string
    * --------------------
    */
-	void opOpAssign(string op, T)(T data) if (op == "~")  { write(data.to!string); }
+	void opOpAssign(string op, T)(T data) if (op == "~")
+   {
+      import std.traits : Unqual;
+
+      // Bytes, and chars that are already UTF-8, go out as they are: to!string would
+      // print an array of bytes as "[1, 2, 3]", and copy the chars
+      static if (is(T : const(E)[], E) && (is(Unqual!E == ubyte) || is(Unqual!E == byte) || is(Unqual!E == char) || is(Unqual!E == void)))
+         write(cast(const(void)[]) data[]);
+      else
+         write(data.to!string);
+   }
 
    /**
    * Mute/unmute output. If false, serverino will not send any data to user.
