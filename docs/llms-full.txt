@@ -1,6 +1,6 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.8.4 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.5 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
@@ -8,7 +8,7 @@ Source of truth: https://github.com/trikko/serverino
 Runnable examples (compiled in CI): https://github.com/trikko/serverino/tree/master/examples
 Latest version of this file: https://serverino.dev/llms-full.txt
 
-Everything here refers to 0.8.4. Check the version the project uses
+Everything here refers to 0.8.5. Check the version the project uses
 (`dub.selections.json`, or `SERVERINO_MAJOR`/`SERVERINO_MINOR`/`SERVERINO_REVISION`
 from `serverino.common`). If it is newer, this copy is out of date: fetch the latest
 one before writing code, or say that you are working from an older reference. If it
@@ -271,6 +271,10 @@ With more than one untagged candidate, compilation fails with
 "Please tag each valid endpoint with @endpoint UDA.". This is why very short
 examples sometimes show a handler with no `@endpoint`; in real applications
 always tag them.
+
+Only functions are candidates: a type whose constructor takes a `Request` or an
+`Output` (`struct Page { this(Request r) {...} }`) is not a handler and is ignored
+*(fixed in 0.8.5: before, it counted as an untagged candidate)*.
 
 ---
 

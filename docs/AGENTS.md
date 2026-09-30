@@ -1,7 +1,7 @@
 # Serverino
 
 Serverino is a zero-dependency HTTP and WebSocket server library for the D
-programming language. Version 0.8.4.
+programming language. Version 0.8.5.
 
 Read the reference before writing serverino code. It is two files:
 
@@ -16,15 +16,15 @@ them from the addresses above.
 
 ## Which version this is
 
-This reference describes Serverino 0.8.4. Before relying on it, check which
+This reference describes Serverino 0.8.5. Before relying on it, check which
 version the project uses: `dub.selections.json` pins it (the dub file only gives
 a range), and `SERVERINO_MAJOR`, `SERVERINO_MINOR` and `SERVERINO_REVISION` from
 `serverino.common` report it at compile time.
 
-- **The project is newer than 0.8.4**: this copy is out of date. Fetch the
+- **The project is newer than 0.8.5**: this copy is out of date. Fetch the
   current <https://serverino.dev/llms-full.txt> before writing code; if you
   can't, say that you are working from an older reference.
-- **The project is older than 0.8.4**: whatever `llms-full.txt` marks
+- **The project is older than 0.8.5**: whatever `llms-full.txt` marks
   *(since x.y.z)* may be missing. Don't use it, or suggest upgrading first.
 - **No project yet**: use the latest release (`dub add serverino`).
 
