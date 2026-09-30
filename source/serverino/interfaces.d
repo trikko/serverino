@@ -938,6 +938,9 @@ struct Request
          static if (isCookie) { bool isSeparator(in char c) { return c == ';' || c == ' '; } }
          else { bool isSeparator(in char c) { return c == '&'; } }
 
+         // `+` is a space only in the form encoding, not in cookies (RFC 6265)
+         enum plusAsSpace = !isCookie;
+
          searchKey:
             if (curIdx >= s.length)
             {
@@ -968,13 +971,13 @@ struct Request
          searchValue:
             if (curIdx >= s.length)
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!true(s[lastIdx..curIdx]));
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!plusAsSpace(s[lastIdx..curIdx]));
                else output ~= SafeAccessParam!(string)(key, "");
                return;
             }
             else if(isSeparator(s[curIdx]))
             {
-               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!true(s[lastIdx..curIdx]));
+               if (curIdx != lastIdx) output ~= SafeAccessParam!(string)(key, decodeArg!plusAsSpace(s[lastIdx..curIdx]));
                else output ~= SafeAccessParam!(string)(key, "");
 
                curIdx++;
@@ -1024,6 +1027,7 @@ struct Request
          assert(parse!true("a=1; b=2") == [P("a", "1"), P("b", "2")]);
          assert(parse!true("a=1;b=2;") == [P("a", "1"), P("b", "2")]);
          assert(parse!true("session=a%3Db") == [P("session", "a=b")]);
+         assert(parse!true("a=b+c; d=e%2Bf%20g") == [P("a", "b+c"), P("d", "e+f g")]);
       }
 
       char[] _data;
@@ -1137,6 +1141,96 @@ unittest
 + output ~= "Sorry, page not found.";
 + ---
 +/
+// A header name is a token (RFC 9110, 5.1); a value can't contain CR, LF or NUL (RFC 9110, 5.5)
+package bool validHeader(in char[] key, in char[] value) @safe @nogc nothrow pure
+{
+   import std.ascii : isAlphaNum;
+
+   if (key.length == 0) return false;
+
+   foreach(c; key)
+   {
+      if (c.isAlphaNum) continue;
+
+      switch(c)
+      {
+         case '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~': continue;
+         default: return false;
+      }
+   }
+
+   foreach(c; value)
+      if (c == '\r' || c == '\n' || c == '\0')
+         return false;
+
+   return true;
+}
+
+// The domain of a cookie goes in the header as it is: no control chars, spaces or `;` (a new attribute)
+package bool validCookieDomain(in char[] domain) @safe @nogc nothrow pure
+{
+   foreach(c; domain)
+      if (c <= ' ' || c == ';' || c == 0x7f)
+         return false;
+
+   return true;
+}
+
+// For the error messages: control chars are shown as `\xNN`
+package string escapeControlChars(in char[] s) @safe pure
+{
+   import std.format : format;
+
+   string result;
+   foreach(c; s)
+      result ~= (c < ' ' || c == 0x7f) ? format("\\x%02X", c) : [c];
+
+   return result;
+}
+
+unittest
+{
+   assert(validHeader("content-type", "text/html; charset=utf-8"));
+   assert(validHeader("x-custom_header.1", ""));
+   assert(validHeader("x-tab", "a\tb"));
+   assert(validHeader("x-utf8", "città"));
+
+   assert(!validHeader("", "value"));
+   assert(!validHeader("x header", "value"));
+   assert(!validHeader("x:header", "value"));
+   assert(!validHeader("x-header\r\nset-cookie", "a=b"));
+   assert(!validHeader("location", "/\r\nset-cookie: a=b"));
+   assert(!validHeader("location", "/\nset-cookie: a=b"));
+   assert(!validHeader("location", "/\r"));
+   assert(!validHeader("location", "/\0"));
+
+   assert(validCookieDomain(""));
+   assert(validCookieDomain("example.com"));
+   assert(validCookieDomain(".sub.example.com"));
+   assert(!validCookieDomain("example.com; Secure"));
+   assert(!validCookieDomain("example.com\r\nset-cookie: a=b"));
+   assert(!validCookieDomain("example .com"));
+
+   assert(escapeControlChars("a\r\nb") == "a\\x0D\\x0Ab");
+}
+
+unittest
+{
+   import std.exception : assertThrown, assertNotThrown;
+
+   Output output;
+   output._internal = new Output.OutputImpl();
+
+   assertNotThrown(output.addHeader("Location", "/somewhere"));
+   assertThrown(output.addHeader("location", "/\r\nset-cookie: a=b"));
+   assertThrown(output.addHeader("bad header", "value"));
+   assert(output._internal._headers.length == 1);
+
+   assertNotThrown(output.setCookie(Cookie("a", "b").domain("example.com")));
+   assertThrown(output.setCookie(Cookie("a", "b").domain("example.com\r\nx: y")));
+   assert(output._internal._cookies.length == 1);
+}
+
 struct Output
 {
 
@@ -1197,6 +1291,7 @@ struct Output
    /++
    + Add a http header.
    + You can't set `content-length`, `date`, `server`, `status` or `transfer-encoding` headers. They are managed by serverino internally.
+   + Throws if the name is not a valid header name or the value contains `\r`, `\n` or `\0`.
    + ---
    + // Set content-type to json, default is text/html
    + output.addHeader("content-type", "application/json");
@@ -1216,6 +1311,10 @@ struct Output
          else if (k == "server") warning("Use `config.enableServerSignature(true)` instead");
          return;
       }
+
+      // A newline would end the header and start another one (or the body): see validHeader
+      if (!validHeader(k, value))
+         throw new Exception("Invalid header `" ~ key.escapeControlChars ~ "`: the name must be a token, the value can't contain \\r, \\n or \\0.");
 
       _internal._dirty = true;
       _internal._headers ~= KeyValue(k, value);
@@ -1372,6 +1471,10 @@ struct Output
 
       if (!c._valid)
          throw new Exception("Invalid cookie. Please use Cookie(name, value) to create a valid cookie.");
+
+      // Name, value and path are encoded, the domain is written as it is
+      if (!c._domain.validCookieDomain)
+         throw new Exception("Invalid cookie domain `" ~ c._domain.escapeControlChars ~ "`.");
 
      _internal._cookies ~= c;
    }
