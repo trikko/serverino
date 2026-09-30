@@ -94,7 +94,7 @@ void request_scope_test(Request request, Output output)
 }
 
 
-void main()
+void test()
 {
    import serverino.daemon;
 
@@ -105,9 +105,6 @@ void main()
    client.connectTimeout = 500.msecs;
    client.operationTimeout = 500.msecs;
    client.dataTimeout = 500.msecs;
-
-   while(!Daemon.bootCompleted && !Daemon.bootFailed) Thread.sleep(100.msecs);
-   assert(!Daemon.bootFailed, "Serverino did not start: " ~ Daemon.bootError);
 
    assertNotThrown(get("http://localhost:8080/1", client) == "OK");
 
@@ -211,7 +208,30 @@ void main()
       auto r2 = cast(string) get("http://localhost:8080/request-scope-test", client);
       assert(r2 == "scoped=1 persistent=2", "@requestScope second request: " ~ r2);
    }
+}
+
+void main()
+{
+   import core.stdc.stdlib: exit;
+   import serverino.daemon;
+
+   while(!Daemon.bootCompleted && !Daemon.bootFailed)
+      Thread.sleep(10.msecs);
+
+   if (Daemon.bootFailed)
+   {
+      writeln("Serverino did not start: ", Daemon.bootError);
+      exit(-1);
+   }
+
+   try { test(); }
+   catch (Throwable t)
+   {
+      writeln("Test failed");
+      writeln(t);
+      exit(-1);
+   }
 
    Daemon.shutdown();
-
+   writeln("All tests passed!");
 }

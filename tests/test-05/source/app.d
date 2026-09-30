@@ -296,6 +296,6 @@ void main()
       exit(-1);
    }
 
-   writeln("All tests passed");
+   writeln("All tests passed!");
    exit(0);
 }
