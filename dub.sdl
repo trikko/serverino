@@ -16,6 +16,12 @@ configuration "https" {
     importPaths "source-tls/"
 }
 
+// `dub test`: runs tests/test-* and builds the examples (see tests/all.d)
+configuration "unittest" {
+   targetType "library"
+   sourceFiles "tests/all.d"
+}
+
 sourcePaths "source"
 
 subPackage "./init-exec"
