@@ -778,33 +778,58 @@ struct Request
       ~this() { clearFiles(); }
 
 
+      // A value on each line: `\\` and newlines are escaped (a decoded query string can contain them)
+      private static string escapeLine(string s)
+      {
+         import std.array : replace;
+         if (!s.canFind('\\') && !s.canFind('\n')) return s;
+         return s.replace("\\", "\\\\").replace("\n", "\\n");
+      }
+
+      private static string unescapeLine(string s)
+      {
+         if (!s.canFind('\\')) return s;
+
+         char[] result;
+         result.reserve(s.length);
+
+         for (size_t i = 0; i < s.length; i++)
+         {
+            if (s[i] == '\\' && i + 1 < s.length)
+            {
+               i++;
+               result ~= (s[i] == 'n') ? '\n' : s[i];
+            }
+            else result ~= s[i];
+         }
+
+         return cast(string)result;
+      }
+
       string serialize()
       {
          DataBuffer!char buffer;
-         buffer.append(_method ~ "\n");
-         buffer.append(_path ~ "\n");
-         buffer.append(_httpVersion ~ "\n");
-         buffer.append(_host ~ "\n");
-         buffer.append(_user ~ "\n");
-         buffer.append(_password ~ "\n");
-         buffer.append(_worker ~ "\n");
-         buffer.append((_isSecure ? "1" : "0") ~ "\n");
 
-         buffer.append(_header.length.to!string ~ "\n");
-         foreach(item; _header)
-            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
+         void line(string s) { buffer.append(escapeLine(s), "\n"); }
 
-         buffer.append(_cookie.length.to!string ~ "\n");
-         foreach(item; _cookie)
-            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
+         line(_method);
+         line(_path);
+         line(_httpVersion);
+         line(_host);
+         line(_user);
+         line(_password);
+         line(_worker);
+         line(_isSecure ? "1" : "0");
 
-         buffer.append(_get.length.to!string ~ "\n");
-         foreach(item; _get)
-            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
-
-         buffer.append(_post.length.to!string ~ "\n");
-         foreach(item; _post)
-            buffer.append(item.key ~ "\n" ~ item.value ~ "\n");
+         foreach(params; [_header, _cookie, _get, _post])
+         {
+            line(params.length.to!string);
+            foreach(item; params)
+            {
+               line(item.key);
+               line(item.value);
+            }
+         }
 
          return cast(string)buffer.array;
       }
@@ -812,55 +837,62 @@ struct Request
       void deserialize(string s)
       {
          import std.conv: to;
-         import std.string: split;
+         import std.algorithm : splitter;
 
-         auto lines = s.split("\n");
+         auto lines = s.splitter("\n");
 
-         _method = lines[0];
-         _path = lines[1];
-         _httpVersion = cast(HttpVersion)lines[2];
-         _host = lines[3];
-         _user = lines[4];
-         _password = lines[5];
-         _worker = lines[6];
-         _isSecure = (lines[7] == "1");
-
-         size_t index = 8;
-         size_t headerLength = lines[index].to!size_t;
-         index++;
-
-         for(size_t i = 0; i < headerLength; i++)
+         string next()
          {
-            _header ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
-            index += 2;
+            auto l = unescapeLine(lines.front);
+            lines.popFront();
+            return l;
          }
 
-         size_t cookieLength = lines[index].to!size_t;
-         index++;
+         _method = next();
+         _path = next();
+         _httpVersion = cast(HttpVersion)next();
+         _host = next();
+         _user = next();
+         _password = next();
+         _worker = next();
+         _isSecure = (next() == "1");
 
-         for(size_t i = 0; i < cookieLength; i++)
+         foreach(params; [&_header, &_cookie, &_get, &_post])
          {
-            _cookie ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
-            index += 2;
+            immutable length = next().to!size_t;
+            foreach(i; 0 .. length)
+            {
+               auto key = next();
+               *params ~= SafeAccessParam!(string)(key, next());
+            }
          }
+      }
 
-         size_t getLength = lines[index].to!size_t;
-         index++;
+      unittest
+      {
+         RequestImpl a;
+         a._method = "GET";
+         a._path = "/a\\b";
+         a._httpVersion = HttpVersion.HTTP11;
+         a._host = "localhost";
+         a._user = "user";
+         a._password = "pa\nss\\n";
+         a._worker = "1234";
+         a._isSecure = true;
+         a._header = [SafeAccessParam!string("host", "localhost"), SafeAccessParam!string("empty", "")];
+         a._cookie = [SafeAccessParam!string("session", "abc")];
+         a._get = [SafeAccessParam!string("x", "a\nb"), SafeAccessParam!string("y\n", "\\"), SafeAccessParam!string("", "")];
 
-         for(size_t i = 0; i < getLength; i++)
-         {
-            _get ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
-            index += 2;
-         }
+         RequestImpl b;
+         b.deserialize(a.serialize());
 
-         size_t postLength = lines[index].to!size_t;
-         index++;
-
-         for(size_t i = 0; i < postLength; i++)
-         {
-            _post ~= SafeAccessParam!(string)(lines[index], lines[index + 1]);
-            index += 2;
-         }
+         assert(b._method == a._method && b._path == a._path && b._httpVersion == a._httpVersion);
+         assert(b._host == a._host && b._user == a._user && b._password == a._password);
+         assert(b._worker == a._worker && b._isSecure == a._isSecure);
+         assert(b._header == a._header);
+         assert(b._cookie == a._cookie);
+         assert(b._get == a._get);
+         assert(b._post.length == 0);
       }
 
       // Fast path for decoding query string and cookies. Avoids unnecessary allocations.
@@ -956,6 +988,44 @@ struct Request
             }
       }
 
+      unittest
+      {
+         import std.exception : assertThrown;
+         import std.uri : URIException;
+
+         alias P = SafeAccessParam!string;
+
+         auto parse(bool isCookie = false)(string s)
+         {
+            RequestImpl r;
+            P[] output;
+            r.parseArgsString!isCookie(s, output);
+            return output;
+         }
+
+         assert(parse("") == []);
+         assert(parse("a=1&b=2") == [P("a", "1"), P("b", "2")]);
+         assert(parse("a&b=&c") == [P("a", ""), P("b", ""), P("c", "")]);
+         assert(parse("&&a=1&&") == [P("a", "1")]);
+         assert(parse("a=1=2") == [P("a", "1=2")]);
+         assert(parse("a=1&a=2") == [P("a", "1"), P("a", "2")]);
+
+         // `+` is a space only in the values, `%xx` is decoded everywhere
+         assert(parse("k+ey=hello+world") == [P("k+ey", "hello world")]);
+         assert(parse("%61=b%20c%2Bd&x=%E2%82%AC") == [P("a", "b c+d"), P("x", "€")]);
+         assert(parse("x=a%0Ab") == [P("x", "a\nb")]);
+
+         // Malformed escapes: the worker answers 400
+         assertThrown!URIException(parse("x=%zz"));
+         assertThrown!URIException(parse("x=%"));
+         assertThrown!URIException(parse("%zz=1"));
+
+         // Cookies are separated by `;` and spaces
+         assert(parse!true("a=1; b=2") == [P("a", "1"), P("b", "2")]);
+         assert(parse!true("a=1;b=2;") == [P("a", "1"), P("b", "2")]);
+         assert(parse!true("session=a%3Db") == [P("session", "a=b")]);
+      }
+
       char[] _data;
       SafeAccessParam!(string)[]  _get;
       SafeAccessParam!(string)[]  _post;
@@ -1042,6 +1112,20 @@ package char[] uintToChars(size_t N)(return scope ref char[N] buffer, size_t val
    } while (value > 0 && idx > 0);
 
    return buffer[idx..N];
+}
+
+unittest
+{
+   char[20] buffer;
+   assert(uintToChars(buffer, 0) == "0");
+   assert(uintToChars(buffer, 7) == "7");
+   assert(uintToChars(buffer, 10) == "10");
+   assert(uintToChars(buffer, 200) == "200");
+   assert(uintToChars(buffer, 1_234_567) == "1234567");
+   assert(uintToChars(buffer, size_t.max) == size_t.max.to!string);
+
+   char[3] status;
+   assert(uintToChars(status, 404) == "404");
 }
 
 /++ A response to user. Default content-type is "text/html".

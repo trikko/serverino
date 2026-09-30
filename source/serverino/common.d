@@ -776,6 +776,29 @@ auto newlineSplitter(T)(T data) @nogc nothrow pure
 	return NewlineSplitter!T(data);
 }
 
+unittest
+{
+	import std.array : array;
+
+	// Only \r\n splits: a \n or a \r alone is part of the line
+	assert("".newlineSplitter.array == []);
+	assert("a".newlineSplitter.array == ["a"]);
+	assert("a\r\nb".newlineSplitter.array == ["a", "b"]);
+	assert("a\r\nb\r\n".newlineSplitter.array == ["a", "b", ""]);
+	assert("\r\n".newlineSplitter.array == ["", ""]);
+	assert("a\r\n\r\nb".newlineSplitter.array == ["a", "", "b"]);
+	assert("a\nb\rc\r\nd".newlineSplitter.array == ["a\nb\rc", "d"]);
+	assert("\r\r\n\n\r\n".newlineSplitter.array == ["\r", "\n", ""]);
+
+	// Every alignment of the \r\n, as indexOfNewline skips two chars at a time
+	foreach (prefix; ["", "x", "xx", "xxx", "x\r", "x\n"])
+		assert((prefix ~ "\r\nend").newlineSplitter.array == [prefix, "end"]);
+
+	// The request line and the headers, as the worker reads them
+	assert("GET / HTTP/1.1\r\nhost:localhost\r\ncookie:a=1".newlineSplitter.array
+		== ["GET / HTTP/1.1", "host:localhost", "cookie:a=1"]);
+}
+
 string thisExePathWithFallback()
 {
 	try
