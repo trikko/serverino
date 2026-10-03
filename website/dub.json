@@ -25,7 +25,8 @@
 				"-Oz",
 				"-L=--gc-sections",
 				"-linker=lld",
-				"-L=--icf=all"
+				"-L=--icf=all",
+				"-Xcc=-no-pie"
 			],
 			"dflags-dmd": [
 				"-L--gc-sections"

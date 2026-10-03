@@ -77,7 +77,7 @@ Without any proxy the header is absent and the site falls back to
 
 The site shows its own executable size, so it is worth building it properly. The
 `small` build type uses LDC with `-Oz`, section garbage collection, identical code
-folding and a final `strip`. Measured on this site:
+folding, a non-PIE link and a final `strip`. Measured on this site:
 
 | Build | Size |
 |-------|------|
@@ -85,11 +85,17 @@ folding and a final `strip`. Measured on this site:
 | dmd, release | 6.4 MB |
 | ldc, release | 2.3 MB |
 | ldc, release + strip | 1.75 MB |
-| **`--build=small --compiler=ldc2`** | **1.45 MB** |
+| `--build=small --compiler=ldc2`, as PIE | 1.46 MB |
+| **`--build=small --compiler=ldc2`** | **1.31 MB** |
 
-Linkers, same flags, stripped: lld 1,522,968 · mold 1,544,992 · gold 1,607,672 ·
+Linkers, same flags, PIE, stripped: lld 1,522,968 · mold 1,544,992 · gold 1,607,672 ·
 bfd 1,693,416. Hence `-linker=lld`. Full LTO was tried and made the binary *bigger*
 (2.1 MB), so it is not used.
+
+`-Xcc=-no-pie` drops the relocation tables a position-independent executable carries,
+about 160 KB here, and with them the randomised address of the executable's own code;
+stack, heap and libraries are still randomised. It has to reach the compiler driver:
+`-L=-no-pie` reaches only the linker, and a static build linked that way crashes at startup.
 
 **UPX is deliberately not used.** It does compress the binary to 391 KB, but this is
 a multi-process server, and that changes the arithmetic:
