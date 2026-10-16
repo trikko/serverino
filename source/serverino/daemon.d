@@ -129,6 +129,8 @@ package class WorkerInfo
       auto pipes = pipeProcess(pname, Redirect.stdin, env, Config.detached);
 
       Socket accepted = s.accept();
+      s.close();
+
       this.pi = new ProcessInfo(pipes.pid.processID);
       this.unixSocket = accepted;
       this.unixSocketHandle = accepted.handle;
@@ -924,6 +926,8 @@ package:
          (cast(ThreadGroup)Daemon.threadGroup).add(Thread.getThis());
       }
 
+      setOpenFilesLimit(config);
+
       // Multi-process daemon: spawn additional daemon processes on first entry
       // Only the main process (not child daemons) should spawn additional processes
       const bool isChildDaemon = environment.get("SERVERINO_DAEMON_CHILD") == "1";
@@ -1102,6 +1106,7 @@ package:
             }
 
             listener.socket.listen(config.listenerBacklog);
+            listener.socket.blocking = false;
             version(serverino_enable_https)
             {
                if (listener.tlsContext !is null) info("Listening on https://%s/".format(listener.socket.localAddress.toString));
@@ -1212,7 +1217,7 @@ package:
 
             // Fill socketSet with listeners, waiting for new connections.
             foreach(ref listener; threadListeners)
-               ssRead.add(listener.socket);
+               if (!listener.paused) ssRead.add(listener.socket);
 
             // Fill socketSet with workers, waiting updates.
             foreach(ref worker; WorkerInfo.alive)
@@ -1229,7 +1234,7 @@ package:
             }
 
             long updates = -1;
-            try { updates = Socket.select(ssRead, ssWrite, null, 1.seconds); }
+            try { updates = Socket.select(ssRead, ssWrite, null, Listener.pausedCount > 0 ? Listener.PAUSE_DURATION : 1.seconds); }
             catch (SocketException se) {
                import std.experimental.logger : warning;
                warning("Exception: ", se.msg);
@@ -1240,18 +1245,28 @@ package:
          {
             enum MAX_EPOLL_EVENTS = 1500;
             epoll_event[MAX_EPOLL_EVENTS] events = void;
-            long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, 1000);
+            long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, Listener.pausedCount > 0 ? cast(int) Listener.PAUSE_DURATION.total!"msecs" : 1000);
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE) {
 
             enum MAX_KQUEUE_EVENTS = 1500;
             kevent[MAX_KQUEUE_EVENTS] eventList = void;
-            auto timeout = timespec(1, 0);
+            auto timeout = Listener.pausedCount > 0 ? timespec(0, Listener.PAUSE_DURATION.total!"nsecs") : timespec(1, 0);
             int updates = kevent_f(kq, changeList.ptr, cast(int)changes, eventList.ptr, cast(int)MAX_KQUEUE_EVENTS, &timeout);
             changes = 0;
          }
 
          now = CoarseTime.currTime;
+
+         // Listeners paused by a failed accept: retry if a connection was closed or after a while
+         if (Listener.pausedCount > 0)
+         {
+            foreach(listener; threadListeners)
+               if (listener.paused && (Listener.connectionClosed || now >= listener.resumeAt))
+                  listener.resume();
+
+            Listener.connectionClosed = false;
+         }
 
          // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
          // Here and not later: a wait that times out skips the rest of the loop.
@@ -1699,6 +1714,51 @@ package:
       Thread.sleep(100.msecs);
 
       isDaemonRunning = false;
+   }
+
+   // Apply config.maxOpenFiles to RLIMIT_NOFILE and reserve some fds for the workers
+   void setOpenFilesLimit(DaemonConfigPtr config)
+   {
+      version(Posix)
+      {
+         import core.sys.posix.sys.resource : rlimit, setrlimit, getrlimit, RLIMIT_NOFILE, rlim_t;
+         import std.algorithm : min;
+
+         rlimit rlim;
+         if (getrlimit(RLIMIT_NOFILE, &rlim) != 0) return;
+
+         rlim_t target = config.maxOpenFiles;
+
+         if (target == 0)
+         {
+            // Older Phobos closes every fd up to the limit when spawning a process (issue 24524)
+            static if (__VERSION__ >= 2110) target = rlim.rlim_max;
+            else target = 16_384;
+         }
+
+         // Phobos casts the limit to int when spawning a process
+         target = min(target, rlim.rlim_max, int.max);
+
+         // macOS refuses anything above OPEN_MAX
+         version(OSX) target = min(target, 10_240);
+
+         if (target != rlim.rlim_cur)
+         {
+            auto wanted = rlim;
+            wanted.rlim_cur = target;
+
+            if (setrlimit(RLIMIT_NOFILE, &wanted) == 0) rlim = wanted;
+            else if (config.maxOpenFiles > 0) warning("Can't set the open files limit to ", target, ". Current limit: ", rlim.rlim_cur);
+         }
+
+         // Every worker needs a few fds (unix socket, pipes, spawn) even under heavy load
+         immutable reserved = config.maxWorkers * 4 + 32;
+         Listener.fdLimit = cast(size_t) rlim.rlim_cur;
+         Listener.fdThreshold = Listener.fdLimit > reserved * 2 ? Listener.fdLimit - reserved : 0;
+
+         if (Listener.fdThreshold == 0)
+            warning("The open files limit (", rlim.rlim_cur, ") is too low for ", config.maxWorkers, " workers");
+      }
    }
 
    static if (serverino.common.Backend == BackendType.EPOLL)

@@ -156,6 +156,7 @@ have a matching `disableXxx()`.
 | `.setHttpTimeout(dur)` | `10.seconds` | Max wait for a request after the connection is opened. |
 | `.enableKeepAlive(bool = true, timeout = 3.seconds)` | enabled, 3s | Also `.enableKeepAlive(dur)` and `.disableKeepAlive()`. |
 | `.setListenerBacklog(int)` | `2048` | TCP backlog. |
+| `.setMaxOpenFiles(n)` *(since 0.8.6)* | `0` (auto) | POSIX only. Soft `RLIMIT_NOFILE` of the daemon and its workers, capped by the hard limit. It caps the concurrent connections too: about `4 * maxWorkers + 32` fds are kept for the workers. `0` raises it to the hard limit when built with a 2.110+ frontend, otherwise sets 16384 (older Phobos spawns processes slowly with a high limit). When the fds run out the daemon stops accepting for a moment (warning in the log) and keeps serving the open connections. |
 
 An address/port that cannot be bound is not reported immediately: it is collected
 and turned into an exception during validation, listing every failed listener.

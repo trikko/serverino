@@ -152,24 +152,6 @@ template ServerinoLoop(Modules...)
       else static if (is (RunMode == OnMainThread)) enum runAsSecondaryThread = false;
       else static assert(0, "Invalid run mode. It must be `OnSecondaryThread` or `OnMainThread`");
 
-      // Docker container has a too generous limit of open files, it slows down the server
-      // NOTE: Workaround for #issue 24524
-      // NOTE: Waiting for https://github.com/dlang/phobos/pull/8990
-      version(Posix)
-      {
-         import core.sys.posix.sys.resource : rlimit, setrlimit, getrlimit, RLIMIT_NOFILE;
-         import std.algorithm : min;
-
-         rlimit rlim;
-         getrlimit(RLIMIT_NOFILE, &rlim);
-
-         // 16k seems to be a good value that balances performance and resources
-         // until the issue is fixed
-         rlim.rlim_cur = min(rlim.rlim_max, 16_384);
-
-         setrlimit(RLIMIT_NOFILE, &rlim);
-      }
-
       // Enable terminal colors on older windows
       version(Windows)
       {

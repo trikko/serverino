@@ -31,8 +31,9 @@ import std.socket : Socket, InternetAddress, Internet6Address, Address;
 import std.stdio : File;
 import std.datetime : Duration, seconds, hours, msecs;
 import std.traits : ReturnType;
+import std.conv : to;
 
-import serverino.common : Backend, BackendType;
+import serverino.common : Backend, BackendType, CoarseTime;
 
 version(serverino_enable_https) import serverino.tls : TlsContext;
 
@@ -276,6 +277,7 @@ struct ServerinoConfig
       sc.setMaxWorkerIdling();
       sc.setMaxDynamicWorkerIdling();
       sc.setListenerBacklog();
+      sc.setMaxOpenFiles();
 
       sc.setMaxRequestTime();
       sc.setMaxRequestSize();
@@ -347,6 +349,14 @@ struct ServerinoConfig
 
    /// Sets the maximum number of pending connections in the listener's backlog.
    @safe ref ServerinoConfig setListenerBacklog(int val = 2048) return                   { daemonConfig.listenerBacklog = val; return this; }
+
+   /++
+      Sets the soft limit of open files (RLIMIT_NOFILE) for the daemon and its workers, capped by the hard limit (POSIX only).
+      It is also the cap on concurrent client connections: a few fds are kept for the workers.
+      0 (default) means: the hard limit if built with DMD/LDC frontend >= 2.110, otherwise 16384
+      (older Phobos versions are very slow at spawning processes with a high limit).
+   +/
+   @safe ref ServerinoConfig setMaxOpenFiles(size_t val = 0) return                     { daemonConfig.maxOpenFiles = val; return this; }
 
    /// Sets the maximum duration a request can take. After this time, the worker handling the request is terminated.
    @safe ref ServerinoConfig setMaxRequestTime(Duration dur = 5.seconds) return  { workerConfig.maxRequestTime = dur; return this; }
@@ -532,6 +542,21 @@ package class Listener
    {
       import serverino.communicator : Communicator;
       import serverino.daemon : now;
+      import std.socket : SocketAcceptException;
+
+      Socket client;
+
+      try client = socket.accept();
+      catch (SocketAcceptException e) { onAcceptFailed(e.errorCode); return; }
+
+      // Keep some fds for the workers: refuse the connection if we are too close to the limit
+      if (fdThreshold > 0 && cast(size_t) client.handle >= fdThreshold)
+      {
+         client.close();
+         warnOnce("Too many open files (limit: " ~ fdLimit.to!string ~ "). Can't accept new connections for now.");
+         pause();
+         return;
+      }
 
       // We have an incoming connection to handle
       Communicator communicator;
@@ -543,8 +568,97 @@ package class Listener
       else communicator = new Communicator(config);
 
       communicator.lastRecv = now;
-      communicator.setClientSocket(socket.accept(), this);
+      communicator.setClientSocket(client, this);
    }
+
+   // A failed accept must not kill the daemon: transient errors are ignored, the others pause the listener
+   void onAcceptFailed(int err)
+   {
+      version(Posix)
+      {
+         import core.stdc.errno;
+         version(linux) immutable transient = [EINTR, EAGAIN, EWOULDBLOCK, ECONNABORTED, EPROTO, ENETDOWN, ENOPROTOOPT, EHOSTDOWN, ENONET, EHOSTUNREACH, EOPNOTSUPP, ENETUNREACH];
+         else immutable transient = [EINTR, EAGAIN, EWOULDBLOCK, ECONNABORTED, EPROTO];
+      }
+      else version(Windows)
+      {
+         import core.sys.windows.winsock2 : WSAEINTR, WSAEWOULDBLOCK, WSAECONNRESET;
+         immutable transient = [WSAEINTR, WSAEWOULDBLOCK, WSAECONNRESET];
+      }
+      else immutable int[] transient = [];
+
+      import std.algorithm : canFind;
+      if (transient.canFind(err)) return;
+
+      import std.socket : formatSocketError;
+      warnOnce("Can't accept new connections for now: " ~ formatSocketError(err) ~ (fdLimit > 0 ? " (limit: " ~ fdLimit.to!string ~ ")" : ""));
+      pause();
+   }
+
+   // Stop accepting until a connection is closed or for PAUSE_DURATION
+   void pause()
+   {
+      import serverino.daemon : now, Daemon;
+
+      if (paused) return;
+
+      paused = true;
+      resumeAt = now + PAUSE_DURATION;
+      connectionClosed = false;
+      pausedCount++;
+
+      static if (Backend == BackendType.EPOLL) Daemon.epollRemoveSocket(socket.handle);
+      else static if (Backend == BackendType.KQUEUE)
+      {
+         import serverino.common : EVFILT_READ, EV_DISABLE;
+         Daemon.addKqueueChange(socket.handle, EVFILT_READ, EV_DISABLE, cast(void*) this);
+      }
+   }
+
+   void resume()
+   {
+      import serverino.daemon : Daemon;
+
+      if (!paused) return;
+
+      paused = false;
+      pausedCount--;
+
+      static if (Backend == BackendType.EPOLL)
+      {
+         import core.sys.linux.epoll : EPOLLIN;
+         Daemon.epollAddSocket(socket.handle, EPOLLIN, cast(void*) this);
+      }
+      else static if (Backend == BackendType.KQUEUE)
+      {
+         import serverino.common : EVFILT_READ, EV_ENABLE;
+         Daemon.addKqueueChange(socket.handle, EVFILT_READ, EV_ENABLE, cast(void*) this);
+      }
+   }
+
+   // At most one warning every 10 seconds
+   static void warnOnce(string msg)
+   {
+      import serverino.daemon : now;
+      import std.experimental.logger : warning;
+
+      static CoarseTime lastWarning = CoarseTime.zero;
+
+      if (lastWarning != CoarseTime.zero && now - lastWarning < 10.seconds) return;
+
+      lastWarning = now;
+      warning(msg);
+   }
+
+   enum PAUSE_DURATION = 100.msecs;
+
+   static size_t  pausedCount = 0;        // Listeners paused on this thread
+   static bool    connectionClosed = false; // Set when a client socket is closed: an fd is free again
+   static size_t  fdLimit = 0;            // Soft RLIMIT_NOFILE, 0 if unknown
+   static size_t  fdThreshold = 0;        // Connections on fds above this are refused, 0 = no check
+
+   bool                    paused = false;
+   CoarseTime              resumeAt;
 
    @safe:
 
@@ -598,6 +712,7 @@ package struct DaemonConfig
    size_t      maxWorkers;
    size_t      workerBacklog;
    int         listenerBacklog;
+   size_t      maxOpenFiles;
    bool        withRemoteIp;
    bool        overrideLogger;
    bool        autoReload;

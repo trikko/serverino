@@ -323,6 +323,7 @@ package class Communicator
          clientSkt.shutdown(SocketShutdown.BOTH);
          clientSkt.close();
          unsetClientSocket();
+         Listener.connectionClosed = true;
       }
 
       version(serverino_enable_https)

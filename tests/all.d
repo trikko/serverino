@@ -102,7 +102,7 @@ private void waitWorkers(string name)
 
 unittest
 {
-   string[] tests = ["test-01", "test-02", "test-03", "test-05"];
+   string[] tests = ["test-01", "test-02", "test-03", "test-05", "test-06"];
    if (https) tests ~= "test-04";
 
    string[] examples = [
@@ -128,6 +128,8 @@ unittest
    foreach (workers; ["1", "2"])
       foreach (backlog; ["0", "1"])
          test("test-05", ["SERVERINO_TEST_WORKERS" : workers, "SERVERINO_TEST_BACKLOG" : backlog]);
+
+   test("test-06");
 
    foreach (t; ["test-01", "test-02"])
       test(t, ["SERVERINO_TEST_BACKLOG" : "1"]);
