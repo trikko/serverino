@@ -24,7 +24,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-// The daemon must survive running out of file descriptors (POSIX only).
+// The daemon must survive running out of file descriptors (POSIX only), and connections closed
+// while a large response is in flight.
 // The clients run in a child process (this same binary, with TEST06_CLIENT set): they must
 // not use the fds of the daemon, which lives in this process.
 
@@ -55,8 +56,16 @@ ServerinoConfig conf()
       .setWorkers(2);
 }
 
+// A file far larger than the kernel's socket buffers, for test (4)
+enum BIG_SIZE = 32 * 1024 * 1024;
+string bigFile() { return buildPath(tempDir, "serverino-test-06.bin"); }
+
 @endpoint
-void handler(Request r, Output o) { o ~= "ok"; }
+void handler(Request r, Output o)
+{
+   if (r.path == "/big") o.serveFile(bigFile, false);
+   else o ~= "ok";
+}
 
 void main()
 {
@@ -260,5 +269,42 @@ void test()
 
    // The daemon is still alive
    assert(get() == "ok");
+
+   // ---- (4) a connection closed while a large response is in flight: the next connection is
+   // served normally
+   {
+      {
+         auto f = File(bigFile, "wb");
+         auto chunk = new ubyte[1024 * 1024];
+         foreach (i, ref b; chunk) b = cast(ubyte)('a' + i % 26);
+         foreach (i; 0 .. BIG_SIZE / chunk.length) f.rawWrite(chunk);
+      }
+      scope(exit) remove(bigFile);
+
+      foreach (round; 0 .. 3)
+      {
+         // a small receive window, a little read, then a reset
+         auto a = new TcpSocket();
+         a.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVBUF, 4096);
+         a.connect(new InternetAddress("127.0.0.1", PORT));
+         a.send("GET /big HTTP/1.1\r\nHost: localhost\r\n\r\n");
+         char[1000] head;
+         a.receive(head);
+         Thread.sleep(300.msecs);
+         Linger reset;
+         reset.on = 1;
+         reset.time = 0;
+         a.setOption(SocketOptionLevel.SOCKET, SocketOption.LINGER, reset);
+         a.close();
+         Thread.sleep(300.msecs);
+
+         // the next connection: its response starts with its own status line
+         auto b = connect();
+         b.send("GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+         auto response = readResponse(b, 5.seconds);
+         b.close();
+         assert(isOk(response), "round " ~ round.to!string ~ ": " ~ response[0 .. min(60, $)]);
+      }
+   }
 }
 else void test() { }

@@ -360,6 +360,10 @@ package class Communicator
       responseSent = 0;
       leftover.length = 0;
 
+      // Nothing of the old connection's output survives the reset.
+      sendBuffer.clear();
+      bufferSent = 0;
+
       // Clear requests queue
       while(requestToProcess !is null)
       {
