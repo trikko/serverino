@@ -1132,15 +1132,6 @@ unittest
    assert(uintToChars(status, 404) == "404");
 }
 
-/++ A response to user. Default content-type is "text/html".
-+ ---
-+ // Set status code to 404
-+ output.status = 404
-+
-+ // Send a response. Same as: output.write("Sorry, page not found.");
-+ output ~= "Sorry, page not found.";
-+ ---
-+/
 // A header name is a token (RFC 9110, 5.1); a value can't contain CR, LF or NUL (RFC 9110, 5.5)
 package bool validHeader(in char[] key, in char[] value) @safe @nogc nothrow pure
 {
@@ -1231,6 +1222,15 @@ unittest
    assert(output._internal._cookies.length == 1);
 }
 
+/++ A response to user. Default content-type is "text/html".
++ ---
++ // Set status code to 404
++ output.status = 404
++
++ // Send a response. Same as: output.write("Sorry, page not found.");
++ output ~= "Sorry, page not found.";
++ ---
++/
 struct Output
 {
 
