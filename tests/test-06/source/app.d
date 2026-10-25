@@ -72,13 +72,6 @@ void main()
    import core.stdc.stdlib : exit;
    import serverino.daemon;
 
-   version(Posix) { }
-   else
-   {
-      writeln("All tests passed!");
-      return;
-   }
-
    if (auto mode = environment.get("TEST06_CLIENT"))
    {
       try client(mode);
@@ -98,6 +91,16 @@ void main()
    {
       writeln("Serverino did not start: ", Daemon.bootError);
       exit(-1);
+   }
+
+   version(Posix) { }
+   else
+   {
+      // Nothing to test here, but the daemon is stopped first, as at the end of the test: leaving main()
+      // while the daemon thread was still starting its workers could hang the process on Windows
+      Daemon.shutdown();
+      writeln("All tests passed!");
+      return;
    }
 
    try { test(); }
