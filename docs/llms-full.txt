@@ -1,6 +1,6 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.8.5 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.6 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
@@ -8,7 +8,7 @@ Source of truth: https://github.com/trikko/serverino
 Runnable examples (compiled in CI): https://github.com/trikko/serverino/tree/master/examples
 Latest version of this file: https://serverino.dev/llms-full.txt
 
-Everything here refers to 0.8.5. Check the version the project uses
+Everything here refers to 0.8.6. Check the version the project uses
 (`dub.selections.json`, or `SERVERINO_MAJOR`/`SERVERINO_MINOR`/`SERVERINO_REVISION`
 from `serverino.common`). If it is newer, this copy is out of date: fetch the latest
 one before writing code, or say that you are working from an older reference. If it
@@ -293,7 +293,7 @@ beyond the endpoint call.
 | `post` | `SafeAccess!string` | URL-encoded body fields. |
 | `form` | `SafeAccess!FormData` | `multipart/form-data` fields and files. |
 | `header` | `SafeAccess!string` | Header names are **always lowercase**. |
-| `cookie` | `SafeAccess!string` | Incoming cookies. |
+| `cookie` | `SafeAccess!string` | Incoming cookies. A `+` in a cookie stays a `+` *(fixed in 0.8.6: before, it was read as a space)*. |
 | `body` | tuple `(data, contentType)` | Raw body: `request.body.data`, `request.body.contentType`. |
 | `user`, `password` | `string` | Basic Auth credentials. |
 | `id` | `string` | Unique per request, e.g. `a1b2-0042`. Handy for logs. |
@@ -348,7 +348,7 @@ survive the request.
 |---|---|
 | `output ~= data` | Append to the response body. Strings and arrays of bytes (`ubyte[]`, `void[]`, ...) are written as they are *(bytes since 0.8.4: before, they came out as text like `[137, 80, ...]`, so use `output.write(bytes)` there)*; anything else goes through `to!string`. Also `output.write(data)` for `string` or `void[]`. |
 | `output.status` | Read/write `ushort`. `200` by default. Named constants in `Output.Status` (`OK`, `NotFound`, `Forbidden`, `InternalServerError`, ...). |
-| `output.addHeader(key, value)` | Also accepts a `Duration` or a `SysTime` as value (formatted as an HTTP date). |
+| `output.addHeader(key, value)` | Also accepts a `Duration` or a `SysTime` as value (formatted as an HTTP date). Throws if the name is not a token or the value contains `\r`, `\n` or `\0` *(since 0.8.6: before, they went out as given and could add headers of their own)*. |
 | `output.clearHeaders()` | Drop all headers added so far. |
 | `output.clear()` | Discard the body written so far. |
 | `output.setCookie(Cookie)` | See section 9. |
@@ -391,6 +391,8 @@ output.setCookie(c);
 
 - `.expire(SysTime)` and `.maxAge(Duration)` override each other: setting one
   clears the other.
+- `output.setCookie` throws for a cookie not made with `Cookie(name, value)`, and for a
+  domain with spaces, `;` or control characters *(the domain since 0.8.6)*.
 - `.invalidate()` turns the cookie into a deletion instruction for the client.
 - `Cookie.SameSite` selects the `SameSite` attribute.
 - Read incoming cookies with `request.cookie.read("session")`.

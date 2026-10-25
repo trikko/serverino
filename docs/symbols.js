@@ -51,6 +51,7 @@ var symbols = [
 {name: 'serverino.config.ServerinoConfig.setListenerBacklog', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setListenerBacklog.html', attributes: ["ref", "return", "safe"]},
 {name: 'serverino.config.ServerinoConfig.setLogLevel', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setLogLevel.html', attributes: ["ref", "return", "safe"]},
 {name: 'serverino.config.ServerinoConfig.setMaxDynamicWorkerIdling', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setMaxDynamicWorkerIdling.html', attributes: ["ref", "return", "safe"]},
+{name: 'serverino.config.ServerinoConfig.setMaxOpenFiles', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setMaxOpenFiles.html', attributes: ["ref", "return", "safe"]},
 {name: 'serverino.config.ServerinoConfig.setMaxRequestSize', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setMaxRequestSize.html', attributes: ["ref", "return", "safe"]},
 {name: 'serverino.config.ServerinoConfig.setMaxRequestTime', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setMaxRequestTime.html', attributes: ["ref", "return", "safe"]},
 {name: 'serverino.config.ServerinoConfig.setMaxWorkerIdling', kind: "functiondeclaration", path: './serverino/config/ServerinoConfig.setMaxWorkerIdling.html', attributes: ["ref", "return", "safe"]},

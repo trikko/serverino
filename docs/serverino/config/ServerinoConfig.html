@@ -280,6 +280,19 @@ document.getElementById('symbolSearchPane').style.display = 'block';</script>
 						</tr>
 						<tr>
 							<td>
+								<a href="../../serverino/config/ServerinoConfig.setMaxOpenFiles.html" class="public">
+									<code>setMaxOpenFiles</code>
+								</a>
+								<span class="tableEntryAnnotation">(val)</span>
+							</td>
+							<td>Sets the soft limit of open files (RLIMIT_NOFILE) for the daemon and its workers, capped by the hard limit (POSIX only).
+      It is also the cap on concurrent client connections: a few fds are kept for the workers.
+      0 (default) means: the hard limit if built with DMD/LDC frontend &gt;= 2.110, otherwise 16384
+      (older Phobos versions are very slow at spawning processes with a high limit).
+</td>
+						</tr>
+						<tr>
+							<td>
 								<a href="../../serverino/config/ServerinoConfig.setMaxRequestSize.html" class="public">
 									<code>setMaxRequestSize</code>
 								</a>

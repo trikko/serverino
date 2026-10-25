@@ -54,6 +54,7 @@
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setListenerBacklog.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setLogLevel.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setMaxDynamicWorkerIdling.html</loc></url>
+<url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setMaxOpenFiles.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setMaxRequestSize.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setMaxRequestTime.html</loc></url>
 <url><loc>http://127.0.0.1/serverino/config/ServerinoConfig.setMaxWorkerIdling.html</loc></url>
