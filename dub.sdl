@@ -14,6 +14,9 @@ configuration "https" {
     versions "serverino_enable_https"
     libs "ssl" "crypto"
     importPaths "source-tls/"
+    // the OpenSSL headers through ImportC, preprocessed as C17: GCC 15's stddef.h declares
+    // C23's nullptr_t, which the ImportC of older compilers (dmd 2.109) cannot read
+    dflags "-P=-std=c17" platform="posix"
 }
 
 // `dub test`: runs tests/test-* and builds the examples (see tests/all.d)
