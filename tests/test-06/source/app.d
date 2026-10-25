@@ -204,8 +204,20 @@ void client(string mode)
       // The daemon accepts it as soon as the fds are released
       enforce(stdin.readln().strip == "released");
 
-      auto response = readResponse(s, 5.seconds);
-      enforce(isOk(response), "connection not served after the fds were released: " ~ response);
+      version(linux)
+      {
+         auto response = readResponse(s, 5.seconds);
+         enforce(isOk(response), "connection not served after the fds were released: " ~ response);
+      }
+      else
+      {
+         // macOS and the BSDs take a connection off the queue before an accept() fails with EMFILE, and
+         // close it (Linux leaves it queued): here it may be closed, or served if it was not at the head
+         string response;
+         try response = readResponse(s, 5.seconds);
+         catch (Exception e) { }
+         enforce(response.length == 0 || isOk(response), "connection neither served nor closed: " ~ response);
+      }
       writeln("served");
    }
    else enforce(false, "unknown mode " ~ mode);
