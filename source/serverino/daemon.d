@@ -532,8 +532,7 @@ package class WorkerInfo
                webs.shutdown(SocketShutdown.BOTH);
                webs.close();
 
-               // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
-               // (this close was missing anyway: keep it even if the rest is reverted)
+               // The socket never reached the websocket: our copy is the last one
                version(Posix)
                {
                   import core.sys.posix.unistd : close;
@@ -549,10 +548,7 @@ package class WorkerInfo
                // Send worker http upgrade response
                webs.send(hdrs);
 
-               // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
-               // Revert: replace the line below with the close(toSend) of the error branch above.
-               // Don't close our copy yet: the socket could still be in flight.
-               // (see checkPendingHandoffs)
+               // Not closed yet: the socket may still be in flight to the websocket (see PendingHandoff)
                version(Posix) addPendingHandoff(toSend, webs);
             }
 
@@ -1268,8 +1264,8 @@ package:
             Listener.connectionClosed = false;
          }
 
-         // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
-         // Here and not later: a wait that times out skips the rest of the loop.
+         // The sockets the websockets have taken by now (see PendingHandoff). Here and not later:
+         // a wait that times out skips the rest of the loop.
          version(Posix) if (pendingHandoffs.length > 0) checkPendingHandoffs();
 
          // Some sanity checks. We don't want to check too often.
@@ -1655,7 +1651,7 @@ package:
          listener.socket.close();
       }
 
-      // MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
+      // The sockets still waiting to be taken by a websocket (see PendingHandoff)
       version(Posix) checkPendingHandoffs(true);
 
       // Kill all the workers and release what they own right now, while this thread
@@ -1886,15 +1882,15 @@ void tryUninit(Modules...)()
 // Time is cached to avoid calling CoarseTime.currTime too many times.
 package __gshared CoarseTime now;
 
-// MACOS-HANDOFF: experimental, trying to fix the intermittent websocket failure on macOS CI.
-// Everything in this version(Posix) block belongs to it.
+// The handoff of a client socket to its websocket process.
 version(Posix)
 {
    /+ A socket passed to a websocket process through SCM_RIGHTS stays open here until
     + the process has taken it. If we close it while it's still in flight, the message
     + is its only reference and macOS can discard it: the websocket reads EOF and the
     + client gets a RST. The websocket process closes the channel once it has the socket
-    + and the headers, so EOF on the channel means the handoff is done.
+    + and the headers, so EOF on the channel means the handoff is done. After five seconds,
+    + or when the daemon stops, it is closed anyway.
     +/
    private struct PendingHandoff
    {
