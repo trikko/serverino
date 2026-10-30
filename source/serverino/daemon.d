@@ -1236,12 +1236,16 @@ package:
                warning("Exception: ", se.msg);
                updates = 0;
             }
+            import core.stdc.errno : errno;
+            immutable waitErrno = updates < 0 ? errno : 0;	// before anything else can overwrite it
          }
          else static if (serverino.common.Backend == BackendType.EPOLL)
          {
             enum MAX_EPOLL_EVENTS = 1500;
             epoll_event[MAX_EPOLL_EVENTS] events = void;
             long updates = epoll_wait(epoll, events.ptr, MAX_EPOLL_EVENTS, Listener.pausedCount > 0 ? cast(int) Listener.PAUSE_DURATION.total!"msecs" : 1000);
+            import core.stdc.errno : errno;
+            immutable waitErrno = updates < 0 ? errno : 0;	// before anything else can overwrite it
          }
          else static if (serverino.common.Backend == BackendType.KQUEUE) {
 
@@ -1249,6 +1253,8 @@ package:
             kevent[MAX_KQUEUE_EVENTS] eventList = void;
             auto timeout = Listener.pausedCount > 0 ? timespec(0, Listener.PAUSE_DURATION.total!"nsecs") : timespec(1, 0);
             int updates = kevent_f(kq, changeList.ptr, cast(int)changes, eventList.ptr, cast(int)MAX_KQUEUE_EVENTS, &timeout);
+            import core.stdc.errno : errno;
+            immutable waitErrno = updates < 0 ? errno : 0;	// before anything else can overwrite it
             changes = 0;
          }
 
@@ -1396,9 +1402,11 @@ package:
          {
             if (suspended) break;
 
-            // Retry if wait was interrupted by a signal.
-            import core.stdc.errno : errno, EINTR;
-            if (updates < 0 && errno == EINTR) continue;
+            // Retry if wait was interrupted by a signal. The errno saved right after the wait: by now the
+            // code in between (or a signal handler, e.g. the GC stopping the world when another thread of
+            // the daemon allocates) may have overwritten it, and the daemon would exit on a harmless EINTR.
+            import core.stdc.errno : EINTR;
+            if (updates < 0 && waitErrno == EINTR) continue;
 
             // If not, exit.
             if (isMainThread) removeCanary();

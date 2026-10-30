@@ -320,9 +320,12 @@ package class Communicator
 
       if (clientSkt !is null)
       {
-         clientSkt.shutdown(SocketShutdown.BOTH);
-         clientSkt.close();
+         // Out of the event loop before closing it: after close() the removal fails with EBADF
+         // (and overwrites errno, see the event loop in daemon.d).
+         auto skt = clientSkt;
          unsetClientSocket();
+         skt.shutdown(SocketShutdown.BOTH);
+         skt.close();
          Listener.connectionClosed = true;
       }
 
