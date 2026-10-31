@@ -1,6 +1,6 @@
 # Serverino - Consolidated API Reference & Examples
 
-Serverino 0.8.6 - a zero-dependency HTTP/WebSocket server library for the D
+Serverino 0.8.7 - a zero-dependency HTTP/WebSocket server library for the D
 programming language. This document is a single-file reference intended for
 consumption by Large Language Models.
 
@@ -8,7 +8,7 @@ Source of truth: https://github.com/trikko/serverino
 Runnable examples (compiled in CI): https://github.com/trikko/serverino/tree/master/examples
 Latest version of this file: https://serverino.dev/llms-full.txt
 
-Everything here refers to 0.8.6. Check the version the project uses
+Everything here refers to 0.8.7. Check the version the project uses
 (`dub.selections.json`, or `SERVERINO_MAJOR`/`SERVERINO_MINOR`/`SERVERINO_REVISION`
 from `serverino.common`). If it is newer, this copy is out of date: fetch the latest
 one before writing code, or say that you are working from an older reference. If it
@@ -413,6 +413,12 @@ passing certificates to `addListener()` is a compile time error.
 ```
 
 The dub.sdl equivalent is `subConfiguration "serverino" "https"`.
+
+OpenSSL 3.x and 4.x both work. *(fixed in 0.8.7: before, the build failed with
+OpenSSL 4.1 (`undefined identifier X509_check_host`, e.g. Homebrew's current openssl)
+and with dmd 2.109 on systems with GCC 15 headers.)* On macOS point the compiler at
+Homebrew's OpenSSL: `CPATH=$(brew --prefix openssl)/include` and
+`LIBRARY_PATH=$(brew --prefix openssl)/lib`.
 
 Certificates are attached to a **listener**, not to the whole process: plain and
 encrypted listeners can coexist in the same serverino.
