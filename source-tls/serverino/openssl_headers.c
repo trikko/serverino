@@ -6,6 +6,11 @@
 #include <openssl/x509v3.h>
 #include <openssl/evp.h>
 
+// Deprecated in OpenSSL 4.1 (so hidden by OPENSSL_NO_DEPRECATED), but still in libcrypto
+#ifdef OPENSSL_NO_DEPRECATED_4_1
+int X509_check_host(const X509 *x, const char *chk, size_t chklen, unsigned int flags, char **peername);
+#endif
+
 enum {
     D_SSL_FILETYPE_PEM = SSL_FILETYPE_PEM,
     D_SSL_ERROR_WANT_READ = SSL_ERROR_WANT_READ,
